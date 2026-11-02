@@ -5,6 +5,7 @@ export const VERSION = import.meta.env.HOARD_VERSION || "dev";
 export const RELEASE_NOTES = import.meta.env.HOARD_RELEASE_NOTES || "";
 export const REPO_URL = "https://github.com/wangxu-dev/hoard";
 const key = ["update"] as const;
+let checkOnLaunch = true;
 
 // ?update=1 shows an available release in the browser, where there is no Go side.
 const demo: UpdateInfo | undefined = import.meta.env.DEV && new URLSearchParams(window.location.search).has("update")
@@ -16,7 +17,11 @@ export function useUpdate() {
   const client = useQueryClient();
   const { data } = useQuery({
     queryKey: key,
-    queryFn: () => demo ?? Updates.check(VERSION, false),
+    queryFn: async () => {
+      const info = demo ?? await Updates.check(VERSION, checkOnLaunch);
+      checkOnLaunch = false;
+      return info;
+    },
     staleTime: 0,
     refetchOnWindowFocus: "always",
     refetchOnReconnect: "always",
