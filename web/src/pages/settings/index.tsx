@@ -108,12 +108,12 @@ export function SettingsPage() {
               <span className="font-medium">{t("update.version", { version: transfer?.version || info?.latest })}</span>
               <span className="text-xs text-brand">{t(ready ? "update.readyBadge" : "update.newBadge")}</span>
             </div>
-            <div data-testid="settings-update-notes" className="max-h-40 overflow-y-auto text-xs leading-relaxed text-muted-foreground [&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:font-medium [&_h3]:text-foreground [&_h3:first-child]:mt-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-4 [&_p]:mb-1">
+            <div data-testid="settings-update-notes" className="text-xs leading-relaxed text-muted-foreground [&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:font-medium [&_h3]:text-foreground [&_h3:first-child]:mt-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-4 [&_p]:mb-1">
               <Markdown allowedElements={["p", "h3", "ul", "ol", "li", "strong", "em", "code", "br"]} unwrapDisallowed>{info?.notes || ""}</Markdown>
             </div>
             {failed && <p className="text-xs text-muted-foreground" role="status">{t("update.downloadFailed")}</p>}
           </div>}
-          {!available && RELEASE_NOTES && <div data-testid="settings-update-notes" className="max-h-56 overflow-y-auto px-4 py-3 text-xs leading-relaxed text-muted-foreground [&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:font-medium [&_h3]:text-foreground [&_h3:first-child]:mt-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-4 [&_p]:mb-1"><Markdown allowedElements={["p", "h3", "ul", "ol", "li", "strong", "em", "code", "br"]} unwrapDisallowed>{RELEASE_NOTES}</Markdown></div>}
+          {!available && RELEASE_NOTES && <div data-testid="settings-update-notes" className="px-4 py-3 text-xs leading-relaxed text-muted-foreground [&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:font-medium [&_h3]:text-foreground [&_h3:first-child]:mt-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-4 [&_p]:mb-1"><Markdown allowedElements={["p", "h3", "ul", "ol", "li", "strong", "em", "code", "br"]} unwrapDisallowed>{RELEASE_NOTES}</Markdown></div>}
         </div>
           <div data-testid="settings-about-footer" className="flex items-center justify-end gap-1 text-muted-foreground">
             <div className="flex shrink-0 items-center gap-1 text-muted-foreground">
