@@ -27,6 +27,8 @@ func TestIndexAndObserve(t *testing.T) {
 		}
 		calls++
 		switch path {
+		case opusFeed:
+			return []byte(`{"code":0,"data":{"items":[],"has_more":false}}`), nil
 		case "/x/v2/history/toview":
 			return []byte(`{"code":0,"data":{"count":1,"list":[{"aid":123,"bvid":"BV0000000001","title":"Example","owner":{"mid":42}}]}}`), nil
 		case "/x/v3/fav/folder/created/list-all":
@@ -50,7 +52,7 @@ func TestIndexAndObserve(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(videos) != 1 || calls != 4 {
+	if len(videos) != 1 || calls != 5 {
 		t.Fatalf("deduplication: videos=%d calls=%d", len(videos), calls)
 	}
 	for _, kind := range []string{"watch_later", "favorite"} {

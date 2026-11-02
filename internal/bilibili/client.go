@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
@@ -16,8 +17,9 @@ import (
 type Read func(context.Context, string, map[string]string) ([]byte, error)
 
 type Client struct {
-	Read    Read
-	Changed func(string)
+	Read      Read
+	Changed   func(string)
+	Completed func(string)
 }
 
 func (c Client) read(ctx context.Context, path string, params map[string]string) ([]byte, error) {
@@ -51,6 +53,9 @@ func (c Client) Index(ctx context.Context, db *store.Store, accountID string) ([
 	if err = c.save(ctx, db, accountID, "watch_later", true, later); err != nil {
 		return nil, err
 	}
+	if c.Completed != nil {
+		c.Completed("watch_later")
+	}
 	body, err = c.read(ctx, "/x/v3/fav/folder/created/list-all", map[string]string{"up_mid": account.RemoteID})
 	if err != nil {
 		return nil, err
@@ -74,7 +79,7 @@ func (c Client) Index(ctx context.Context, db *store.Store, accountID string) ([
 			if page > 10000 {
 				return nil, fmt.Errorf("favorite pagination limit exceeded")
 			}
-			body, err = c.read(ctx, "/x/v3/fav/resource/list", map[string]string{"media_id": f.ID, "pn": strconv.Itoa(page), "ps": "20", "order": "mtime", "type": "0"})
+			body, err = c.read(ctx, "/x/v3/fav/resource/list", map[string]string{"media_id": f.ID, "pn": strconv.Itoa(page), "ps": "20", "order": "mtime", "type": "0", "platform": "web"})
 			if err != nil {
 				return nil, err
 			}
@@ -83,7 +88,16 @@ func (c Client) Index(ctx context.Context, db *store.Store, accountID string) ([
 				return nil, err
 			}
 			// A repeated response must not turn a broken pagination endpoint into a loop.
-			key := sha256.Sum256(body)
+			var envelope struct {
+				Data struct {
+					Medias json.RawMessage `json:"medias"`
+				} `json:"data"`
+			}
+			if json.Unmarshal(body, &envelope) != nil {
+				return nil, ErrInvalid
+			}
+			key := sha256.Sum256(envelope.Data.Medias)
+			log.Printf("[hoard:sync] Bilibili favorite page=%d videos=%d more=%t repeated=%t", page, len(parsed.Videos), parsed.HasMore, pagesSeen[key])
 			if pagesSeen[key] {
 				return nil, fmt.Errorf("favorite pagination stalled")
 			}
@@ -106,6 +120,12 @@ func (c Client) Index(ctx context.Context, db *store.Store, accountID string) ([
 				break
 			}
 		}
+	}
+	if err := c.indexOpus(ctx, db, accountID); err != nil {
+		return videos, err
+	}
+	if c.Completed != nil {
+		c.Completed("favorite")
 	}
 	return videos, nil
 }

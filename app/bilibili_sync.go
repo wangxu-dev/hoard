@@ -25,6 +25,10 @@ func (s *Sync) runBilibili(ctx context.Context, accountID string) {
 		s.save(accountID, r)
 	}
 	if !s.waitReady(ctx) {
+		for _, r := range records {
+			r.Status, r.ErrorCode = "paused", "NOT_READY"
+			s.save(accountID, r)
+		}
 		return
 	}
 	lastPath := ""
@@ -56,17 +60,25 @@ func (s *Sync) runBilibili(ctx context.Context, accountID string) {
 		if err := libraryChanged.Broadcast(LibraryChange{AccountID: accountID, Kind: kind}); err != nil {
 			log.Print("[hoard:sync] library event delivery failed")
 		}
+	}, Completed: func(kind string) {
+		r := records[kind]
+		now := time.Now().Unix()
+		r.Phase, r.Status, r.LastFullAt = "done", "idle", &now
+		s.save(accountID, r)
 	}}
 	videos, err := client.Index(ctx, s.app.Store, accountID)
 	for _, kind := range kinds {
 		r := records[kind]
+		if r.Phase == "done" {
+			continue
+		}
 		if err != nil {
 			r.Status, r.ErrorCode = "paused", "REQUEST_FAILED"
 			if errors.Is(err, bilibili.ErrAuth) {
 				r.Status, r.ErrorCode = "signed_out", "AUTH_REQUIRED"
 			}
 			if ctx.Err() != nil {
-				r.Status, r.ErrorCode = "idle", ""
+				r.Status, r.ErrorCode = "paused", "CANCELED"
 			}
 		} else {
 			now := time.Now().Unix()
@@ -79,7 +91,8 @@ func (s *Sync) runBilibili(ctx context.Context, accountID string) {
 		return
 	}
 	log.Printf("[hoard:sync] Bilibili indexing complete videos=%d", len(videos))
-	for _, video := range videos {
+	log.Printf("[hoard:sync] Bilibili observing total=%d", len(videos))
+	for index, video := range videos {
 		if ctx.Err() != nil {
 			return
 		}
@@ -89,6 +102,9 @@ func (s *Sync) runBilibili(ctx context.Context, accountID string) {
 		if err := client.Observe(ctx, s.app.Store, accountID, video); err != nil {
 			log.Print("[hoard:sync] Bilibili observation paused")
 			return
+		}
+		if (index+1)%20 == 0 || index+1 == len(videos) {
+			log.Printf("[hoard:sync] Bilibili observed=%d total=%d", index+1, len(videos))
 		}
 	}
 }

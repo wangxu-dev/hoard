@@ -41,6 +41,7 @@
     "filters": "筛选"
   },
   "sync": {
+    "paused": "同步已暂停，点击重试",
     "label": "同步详情",
     "eta": "约 {{count}} 分钟",
     "soon": "1 分钟内",

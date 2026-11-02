@@ -26,7 +26,7 @@ func allowedMedia(raw string) bool {
 	if err != nil || u.Scheme != "https" || u.User != nil || u.Port() != "" {
 		return false
 	}
-	for _, host := range []string{"bilivideo.com", "bilivideo.cn", "upos-hz-mirrorakam.akamaized.net", "douyinvod.com", "douyinpic.com", "douyinstatic.com", "byteimg.com", "pstatp.com", "douyin.com", "iesdouyin.com", "bytecdn.cn", "bytedance.com", "douyincdn.com", "snssdk.com", "amemv.com"} {
+	for _, host := range []string{"hdslb.com", "bilivideo.com", "bilivideo.cn", "upos-hz-mirrorakam.akamaized.net", "douyinvod.com", "douyinpic.com", "douyinstatic.com", "byteimg.com", "pstatp.com", "douyin.com", "iesdouyin.com", "bytecdn.cn", "bytedance.com", "douyincdn.com", "snssdk.com", "amemv.com"} {
 		if u.Hostname() == host || strings.HasSuffix(u.Hostname(), "."+host) {
 			return true
 		}

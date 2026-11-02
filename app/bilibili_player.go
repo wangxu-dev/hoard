@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/wangxu-dev/hoard/internal/bilibili"
@@ -42,6 +43,23 @@ func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord) (Medi
 		body, err := engine.ReadBilibili(call, path, params)
 		p.app.lastRequest = time.Now()
 		return body, err
+	}
+	if strings.HasPrefix(rec.RemoteID, "opus:") {
+		body, err := read("/x/polymer/web-dynamic/v1/opus/detail", map[string]string{"id": strings.TrimPrefix(rec.RemoteID, "opus:"), "features": "htmlNewStyle"})
+		if err != nil {
+			return MediaResult{}, errors.New("REQUEST_FAILED")
+		}
+		opus, err := bilibili.ParseOpus(body)
+		if err != nil || opus.ID != strings.TrimPrefix(rec.RemoteID, "opus:") {
+			return MediaResult{}, errors.New("UNAVAILABLE")
+		}
+		out := MediaResult{Kind: "gallery", Author: rec.Author, Desc: opus.Text, PublishedAt: rec.PublishedAt, Complete: true}
+		for _, raw := range opus.Images {
+			if u := p.app.Media.Register(raw); u != "" {
+				out.Images = append(out.Images, MediaImage{URL: u})
+			}
+		}
+		return out, nil
 	}
 	body, err := read("/x/web-interface/view", map[string]string{"bvid": rec.RemoteID})
 	if err != nil {

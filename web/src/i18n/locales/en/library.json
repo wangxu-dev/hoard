@@ -41,6 +41,7 @@
     "filters": "Filters"
   },
   "sync": {
+    "paused": "Sync paused · click to retry",
     "label": "Sync details",
     "eta": "About {{count}} min",
     "soon": "Under 1 min",
