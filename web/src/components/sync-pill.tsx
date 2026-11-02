@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, Clock, LogIn, RefreshCw, ShieldAlert } from "lucide-react";
+import { Check, Clock, LogIn, Pause, RefreshCw, ShieldAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -108,6 +108,7 @@ export function SyncPill({ state, states, visible, compact = false, onLogin }: {
   const tone = state.status === "signed_out" || state.status === "blocked" ? "border-destructive/40 bg-destructive/10 text-destructive" : state.status === "cooling" ? "text-muted-foreground" : "";
   const icon = state.status === "signed_out" ? <LogIn className="size-3 shrink-0" />
     : state.status === "blocked" ? <ShieldAlert className="size-3 shrink-0" />
+    : state.status === "paused" ? <Pause className="size-3 shrink-0" />
     : state.status === "cooling" ? <Clock className="size-3 shrink-0" />
     : backfilling(state) || checking(state) ? <Spinner className="size-3 shrink-0" />
     : state.status === "unsupported" ? <RefreshCw className="size-3 shrink-0" /> : <Check className="size-3 shrink-0" />;
