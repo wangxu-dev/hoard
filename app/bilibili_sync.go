@@ -40,6 +40,25 @@ func (s *Sync) runBilibili(ctx context.Context, accountID string) {
 		records[kind] = r
 		s.save(accountID, r)
 	}
+	defer func() {
+		for _, kind := range kinds {
+			r := records[kind]
+			if r.Status != "checking" {
+				continue
+			}
+			r.Status, r.ErrorCode = "idle", ""
+			if err != nil {
+				r.Status, r.ErrorCode = "paused", "REQUEST_FAILED"
+				if errors.Is(err, bilibili.ErrAuth) {
+					r.Status, r.ErrorCode = "signed_out", "AUTH_REQUIRED"
+				}
+			}
+			if ctx.Err() != nil {
+				r.Status, r.ErrorCode = "paused", "CANCELED"
+			}
+			s.save(accountID, r)
+		}
+	}()
 	if !s.waitReady(ctx) {
 		for _, r := range records {
 			r.Status, r.ErrorCode = "paused", "NOT_READY"
@@ -79,7 +98,7 @@ func (s *Sync) runBilibili(ctx context.Context, accountID string) {
 	}, Completed: func(kind string) {
 		r := records[kind]
 		now := time.Now().Unix()
-		r.Phase, r.Status, r.LastFullAt = "done", "idle", &now
+		r.Phase, r.Status, r.LastFullAt = "done", "checking", &now
 		s.save(accountID, r)
 	}}
 	videos, err := client.Index(ctx, s.app.Store, accountID)
@@ -115,7 +134,7 @@ func (s *Sync) runBilibili(ctx context.Context, accountID string) {
 		if !video.Available {
 			continue
 		}
-		if err := client.Observe(ctx, s.app.Store, accountID, video); err != nil {
+		if err = client.Observe(ctx, s.app.Store, accountID, video); err != nil {
 			log.Print("[hoard:sync] Bilibili observation paused")
 			return
 		}
