@@ -58,18 +58,18 @@ export function SourceSelect({ sources, onAddAccount, compact = false }: { sourc
         </div>)}
       </DropdownMenuRadioGroup>
       <DropdownMenuSeparator />
-      <div data-testid="add-account-row" data-expanded={expanded} className="flex h-10 items-center gap-1 px-1" onPointerEnter={() => { pointerInAdd.current = true; setExpanded(true); }} onPointerLeave={(event) => { pointerInAdd.current = false; if (!event.currentTarget.contains(document.activeElement)) setExpanded(false); }} onBlur={(event) => { if (!pointerInAdd.current && !event.currentTarget.contains(event.relatedTarget)) setExpanded(false); }}>
+      <div data-testid="add-account-row" data-expanded={expanded} className="flex h-10 items-center gap-1" onPointerEnter={() => { pointerInAdd.current = true; setExpanded(true); }} onPointerLeave={(event) => { pointerInAdd.current = false; if (!event.currentTarget.contains(document.activeElement)) setExpanded(false); }} onBlur={(event) => { if (!pointerInAdd.current && !event.currentTarget.contains(event.relatedTarget)) setExpanded(false); }}>
         <DropdownMenuItem className="h-8 min-w-0 flex-1 text-[13px]" onFocus={() => setExpanded(true)} onSelect={(event) => { event.preventDefault(); setExpanded(true); }} aria-expanded={expanded}>
-          <Plus className="size-3.5" /><span>{t("toolbar.source.add")}</span>
+          <Plus className="size-4" /><span>{t("toolbar.source.add")}</span>
         </DropdownMenuItem>
         <div className="flex w-17 shrink-0 items-center gap-1">
           {platforms.map((source, index) => <DropdownMenuItem key={source} aria-label={t("toolbar.source.addPlatform", { name: t(`toolbar.source.${source}`) })} onFocus={() => setExpanded(true)} onSelect={() => onAddAccount(source)}
               className="size-8 shrink-0 justify-center rounded-full bg-transparent p-0 focus:bg-transparent [&_svg]:text-foreground">
-              <span data-platform-icon className={`pointer-events-none flex size-8 items-center justify-center rounded-full bg-popover transition-transform duration-(--duration-slow) ease-(--ease-out) motion-reduce:transition-none ${index === 1 && !expanded ? "-translate-x-7" : "translate-x-0"}`}><SourceIcon source={source} className="size-4.5" /></span>
+              <span data-platform-icon className={`pointer-events-none flex size-8 items-center justify-center rounded-full bg-popover transition-transform duration-(--duration-slow) ease-(--ease-out) motion-reduce:transition-none ${index === 0 && !expanded ? "translate-x-7" : "translate-x-0"}`}><SourceIcon source={source} className="size-4.5" /></span>
             </DropdownMenuItem>)}
         </div>
       </div>
-      {account?.status === "active" && <DropdownMenuItem className="h-8 text-[13px]" onSelect={() => { void Accounts.signOut(account.id).catch(() => toast.error(t("toolbar.source.signOutFailed"))); }}><LogOut className="size-3.5" />{t("toolbar.source.signOut")}</DropdownMenuItem>}
+      {account?.status === "active" && <DropdownMenuItem className="h-8 text-[13px]" onSelect={() => { void Accounts.signOut(account.id).catch(() => toast.error(t("toolbar.source.signOutFailed"))); }}><LogOut className="size-4" />{t("toolbar.source.signOut")}</DropdownMenuItem>}
     </DropdownMenuContent>
   </DropdownMenu>;
 }
