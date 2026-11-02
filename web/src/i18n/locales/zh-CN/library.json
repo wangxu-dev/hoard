@@ -168,7 +168,7 @@
       "music": "收藏音乐"
     },
     "remove": {
-      "like": "取消点赞",
+      "like": "取消喜欢",
       "favorite": "取消收藏",
       "music": "取消收藏音乐"
     },
@@ -178,6 +178,7 @@
     "login": "请先登录",
     "saving": "正在确认…",
     "loading": "读取状态…",
-    "musicUnavailable": "音乐收藏暂未接入"
+    "musicUnavailable": "音乐收藏暂未接入",
+    "retry": "重新读取状态"
   }
 }

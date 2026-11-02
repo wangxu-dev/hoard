@@ -178,6 +178,7 @@
     "login": "Sign in first",
     "saving": "Confirming…",
     "loading": "Loading state…",
-    "musicUnavailable": "Music saving is not available yet"
+    "musicUnavailable": "Music saving is not available yet",
+    "retry": "Retry loading state"
   }
 }

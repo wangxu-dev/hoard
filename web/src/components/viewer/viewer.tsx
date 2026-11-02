@@ -14,6 +14,7 @@ import { setSound, togglePlay, useMediaState, useSound, pauseAll } from "@/lib/p
 import { ControlButton, SeekBar, SpeedMenu, TimeLabel, VolumeControl } from "./controls";
 import { VideoStage } from "./video-stage";
 import { GalleryStage, type GalleryHandle } from "./gallery-stage";
+import { ViewerActions } from "@/components/entry-actions";
 import { InfoPanel } from "./info-panel";
 import { useMedia } from "./use-media";
 import { prefetchMedia } from "@/lib/query";
@@ -232,7 +233,8 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
         </div>
 
         {/* The item pair ends on the center line, so a gallery's next-image arrow sits just below it. */}
-        <div className={cn("absolute right-4 bottom-1/2 flex flex-col gap-2", fade)}>
+        <div onPointerEnter={() => setOverControls(true)} onPointerLeave={() => setOverControls(false)} className={cn("absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2", fade)}>
+          {entry && <ViewerActions key={entry.id} entry={entry} />}
           <ControlButton data-testid="viewer-prev" label={t("viewer.previousItem")} hint="↑" side="left" onClick={() => move(-1)} disabled={index === 0} className="size-10 bg-viewer-control backdrop-blur-md disabled:opacity-30"><ChevronUp className="size-5" /></ControlButton>
           <ControlButton data-testid="viewer-next" label={t("viewer.nextItem")} hint="↓" side="left" onClick={() => move(1)} disabled={index >= total - 1} className="size-10 bg-viewer-control backdrop-blur-md disabled:opacity-30"><ChevronDown className="size-5" /></ControlButton>
         </div>

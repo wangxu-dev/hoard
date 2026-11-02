@@ -1,4 +1,3 @@
-import { PreviewActions } from "@/components/entry-actions";
 import { useTranslation } from "react-i18next";
 import { Clapperboard, Images, Music2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -45,6 +44,5 @@ export function InfoPanel({ entry, media }: { entry: LibraryEntry; media: MediaR
         {entry.kind === "gallery" && media?.music.title && <Chip icon={Music2}>{media.music.author ? `${media.music.title} · ${media.music.author}` : media.music.title}</Chip>}
       </div>
     </div>
-    <PreviewActions entry={entry} />
   </div>;
 }
