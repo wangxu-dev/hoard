@@ -14,7 +14,7 @@ import { EntryAccounts } from "@/components/entry-accounts";
 import { LibraryNumber } from "@/components/library-number";
 import { pageTransition } from "@/lib/motion";
 import { getLibrarySource, type LibraryEntry, type ListKind, type Scope, type SortKey, type WorkType } from "@/lib/library";
-import { queryClient, queryKeys } from "@/lib/query";
+import { prefetchMedia, queryClient, queryKeys } from "@/lib/query";
 import { useMusic } from "@/lib/music";
 
 // The list loads in pages of this size at any offset, so a jump far down only fetches what it shows.
@@ -182,7 +182,15 @@ function Cover({ src, square }: { src: string; square: boolean }) {
 const EntryCard = memo(function EntryCard({ entry, onOpen, fresh = false, playing }: { entry: LibraryEntry; onOpen: (entry: LibraryEntry) => void; fresh?: boolean; playing?: "playing" | "paused" }) {
   const { t } = useTranslation("library");
   const music = entry.kind === "music";
-  return <EntryActionMenu entry={entry} onPlay={() => onOpen(entry)}><Card data-testid="library-card" data-entry={`${entry.kind}:${entry.id}`} tabIndex={0} onClick={() => onOpen(entry)} onKeyDown={(event) => { if (event.key === "Enter") onOpen(entry); }} className={`group group/entry relative gap-0 overflow-hidden rounded-md py-0 shadow-none transition-[transform,scale,box-shadow] duration-(--duration-slow) ease-(--ease-out) hover:z-10 hover:scale-[1.015] hover:shadow-sm motion-reduce:transition-none motion-reduce:hover:scale-100!${fresh ? " animate-in fade-in-0 zoom-in-95 duration-500 motion-reduce:animate-none" : ""}`}>
+  const prefetchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const cancelPrefetch = () => clearTimeout(prefetchTimer.current);
+  const schedulePrefetch = () => {
+    cancelPrefetch();
+    const delay = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--duration-slow"));
+    prefetchTimer.current = setTimeout(() => { void prefetchMedia(entry).catch(() => undefined); }, delay);
+  };
+  useEffect(() => cancelPrefetch, [entry.kind, entry.id]);
+  return <EntryActionMenu entry={entry} onPlay={() => onOpen(entry)}><Card onPointerEnter={schedulePrefetch} onPointerLeave={cancelPrefetch} onFocus={schedulePrefetch} onBlur={cancelPrefetch} data-testid="library-card" data-entry={`${entry.kind}:${entry.id}`} tabIndex={0} onClick={() => onOpen(entry)} onKeyDown={(event) => { if (event.key === "Enter") onOpen(entry); }} className={`group group/entry relative gap-0 overflow-hidden rounded-md py-0 shadow-none transition-[transform,scale,box-shadow] duration-(--duration-slow) ease-(--ease-out) hover:z-10 hover:scale-[1.015] hover:shadow-sm motion-reduce:transition-none motion-reduce:hover:scale-100!${fresh ? " animate-in fade-in-0 zoom-in-95 duration-500 motion-reduce:animate-none" : ""}`}>
       <div className="relative">
         <Cover src={coverOf(entry)} square={music} />
         <div className="absolute top-1.5 left-1.5"><EntryAccounts entry={entry} /></div>
@@ -544,7 +552,7 @@ export const LibraryGrid = memo(function LibraryGrid({ scope, kind, type, query,
   useEffect(() => { if (settled && measured) onGeometry?.({ columns: layout.columns, rowHeight, scrollMargin, count }); }, [settled, measured, layout.columns, rowHeight, scrollMargin, count, onGeometry]);
   useEffect(() => { onItemsChange(items); onTotalChange(total); }, [items, total, onItemsChange, onTotalChange]);
   if (error && !where.current.size) return <div role="alert" className="flex items-center gap-3 py-10 text-sm text-muted-foreground">{t("grid.loadFailed")}<Button variant="outline" size="sm" onClick={() => { setError(false); setRetry((n) => n + 1); }}>{t("grid.retry")}</Button></div>;
-  if (settled && !pending && count === 0) return <div data-testid="library-empty" className="flex items-center gap-2 py-16 text-sm text-muted-foreground">
+  if (settled && !pending && count === 0) return <div data-testid="library-empty" className="flex min-h-[calc(100dvh-8rem)] items-center justify-center gap-2 text-center text-sm text-muted-foreground">
     {syncing && <Spinner className="size-4" />}{query || type !== "all" ? t("grid.emptyFiltered") : syncing ? t("grid.emptySyncing") : t("grid.empty")}
   </div>;
   return <motion.div className="flex min-w-0 flex-col gap-2" initial={false} animate={{ opacity: pending && count > 0 ? 0.55 : 1 }} transition={pageTransition}>

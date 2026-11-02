@@ -87,6 +87,10 @@ func (s *Store) KnownWorks(ctx context.Context, accountID, kind string, remoteID
 	if len(remoteIDs) == 0 {
 		return known, nil
 	}
+	var source string
+	if err := s.db.QueryRowContext(ctx, `SELECT source FROM accounts WHERE id=?`, accountID).Scan(&source); err != nil {
+		return nil, fmt.Errorf("read known account: %w", err)
+	}
 	table, column, kindFilter := "relations", "work_id", " AND kind=?"
 	if kind == "music" {
 		table, column, kindFilter = "music_relations", "music_id", ""
@@ -98,7 +102,7 @@ func (s *Store) KnownWorks(ctx context.Context, accountID, kind string, remoteID
 	marks := make([]string, len(remoteIDs))
 	for i, id := range remoteIDs {
 		marks[i] = "?"
-		args = append(args, "douyin:"+id)
+		args = append(args, source+":"+id)
 	}
 	rows, err := s.db.QueryContext(ctx, `SELECT `+column+` FROM `+table+` WHERE account_id=?`+kindFilter+` AND `+column+` IN (`+strings.Join(marks, ",")+`)`, args...)
 	if err != nil {
@@ -110,7 +114,7 @@ func (s *Store) KnownWorks(ctx context.Context, accountID, kind string, remoteID
 		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
-		known[strings.TrimPrefix(id, "douyin:")] = true
+		known[strings.TrimPrefix(id, source+":")] = true
 	}
 	return known, rows.Err()
 }
@@ -118,7 +122,7 @@ func (s *Store) KnownWorks(ctx context.Context, accountID, kind string, remoteID
 // SaveWorks adds works to a list. Head pages go above every saved item,
 // backfill pages below, so seq DESC is always the list's own order.
 func (s *Store) SaveWorks(ctx context.Context, accountID, kind string, head bool, works []Work) (int, error) {
-	if kind != "like" && kind != "favorite" {
+	if kind != "like" && kind != "favorite" && kind != "watch_later" {
 		return 0, fmt.Errorf("invalid work relation kind")
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -158,21 +162,30 @@ ON CONFLICT(id) DO UPDATE SET nickname=excluded.nickname,avatar_url=excluded.ava
 			}
 		}
 		id := source + ":" + work.RemoteID
-		if _, err := tx.ExecContext(ctx, `INSERT INTO works(id,source,remote_id,kind,title,author_id,published_at,duration_ms,width,height,image_count,is_live,cover_url,extra,updated_at)
-VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+		if _, err := tx.ExecContext(ctx, `INSERT INTO works(id,source,remote_id,kind,title,author_id,published_at,duration_ms,width,height,image_count,is_live,cover_url,extra,updated_at,available)
+VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(?,1)) ON CONFLICT(id) DO UPDATE SET
 kind=excluded.kind,title=excluded.title,author_id=excluded.author_id,published_at=excluded.published_at,
 duration_ms=excluded.duration_ms,width=excluded.width,height=excluded.height,image_count=excluded.image_count,
-is_live=excluded.is_live,cover_url=excluded.cover_url,extra=excluded.extra,updated_at=excluded.updated_at`,
-			id, source, work.RemoteID, work.Kind, work.Title, authorID, work.PublishedAt, work.DurationMS, work.Width, work.Height, work.ImageCount, work.IsLive, work.CoverURL, string(extra), now); err != nil {
+is_live=excluded.is_live,cover_url=excluded.cover_url,extra=excluded.extra,updated_at=excluded.updated_at,available=COALESCE(?,works.available)`,
+			id, source, work.RemoteID, work.Kind, work.Title, authorID, work.PublishedAt, work.DurationMS, work.Width, work.Height, work.ImageCount, work.IsLive, work.CoverURL, string(extra), now, work.Available, work.Available); err != nil {
 			return 0, fmt.Errorf("upsert work: %w", err)
 		}
+		relationSeq := seq
+		if work.AddedAt > 0 {
+			relationSeq = work.AddedAt
+		}
 		res, err := tx.ExecContext(ctx, `INSERT INTO relations(account_id,work_id,kind,seq,published_at,first_seen) VALUES(?,?,?,?,?,?)
-ON CONFLICT(account_id,kind,work_id) DO NOTHING`, accountID, id, kind, seq, work.PublishedAt, now)
+ON CONFLICT(account_id,kind,work_id) DO NOTHING`, accountID, id, kind, relationSeq, work.PublishedAt, now)
 		if err != nil {
 			return 0, fmt.Errorf("insert relation: %w", err)
 		}
 		if n, _ := res.RowsAffected(); n > 0 {
 			added++
+		}
+		if source == "bilibili" {
+			if _, err := tx.ExecContext(ctx, `UPDATE relations SET published_at=?,seq=CASE WHEN ?>0 THEN ? ELSE seq END WHERE account_id=? AND kind=? AND work_id=?`, work.PublishedAt, work.AddedAt, work.AddedAt, accountID, kind, id); err != nil {
+				return 0, fmt.Errorf("update relation metadata: %w", err)
+			}
 		}
 		seq--
 	}
@@ -245,6 +258,17 @@ ON CONFLICT(id) DO UPDATE SET title=excluded.title,author=excluded.author,durati
 // CoverURLs returns the stored cover URLs of one work ("w"), music ("m"),
 // gallery image ("g", id:index) or work author avatar ("a") by remote id, best first.
 func (s *Store) CoverURLs(ctx context.Context, kind, remoteID string) ([]string, error) {
+	if kind == "account" {
+		var avatar string
+		err := s.read.QueryRowContext(ctx, `SELECT COALESCE(avatar_url,'') FROM accounts WHERE id=?`, remoteID).Scan(&avatar)
+		if err != nil || avatar == "" {
+			return nil, err
+		}
+		if strings.HasPrefix(avatar, "http://") {
+			avatar = "https://" + strings.TrimPrefix(avatar, "http://")
+		}
+		return []string{avatar}, nil
+	}
 	if kind == "a" {
 		var avatar string
 		err := s.read.QueryRowContext(ctx, `SELECT COALESCE(a.avatar_url,'') FROM works w JOIN authors a ON a.id=w.author_id WHERE w.remote_id=? LIMIT 1`, remoteID).Scan(&avatar)

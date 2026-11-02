@@ -11,7 +11,8 @@ import (
 type LibraryQuery struct {
 	AccountID string
 	Source    string
-	Kind      string // like | favorite | music
+	FolderID  string
+	Kind      string // like | favorite | watch_later | music
 	Type      string // all | video | gallery
 	Query     string
 	Sort      string // published | recent
@@ -39,6 +40,7 @@ func likePattern(q string) string {
 // MediaRecord is the stored metadata needed to resolve one item.
 type MediaRecord struct {
 	RemoteID, Kind, Title, Author string
+	Source                        string
 	CoverURL                      string
 	PublishedAt                   int64
 	Extra                         []byte
@@ -52,7 +54,7 @@ func (s *Store) MediaRecord(ctx context.Context, kind, remoteID string) (MediaRe
 		err := s.db.QueryRowContext(ctx, `SELECT remote_id,'music',title,author,cover_url,0,extra FROM musics WHERE remote_id=? LIMIT 1`, remoteID).Scan(&r.RemoteID, &r.Kind, &r.Title, &r.Author, &r.CoverURL, &r.PublishedAt, &r.Extra)
 		return r, err
 	}
-	err := s.db.QueryRowContext(ctx, `SELECT w.remote_id,w.kind,w.title,COALESCE(a.nickname,''),COALESCE(w.cover_url,''),w.published_at,w.extra,COALESCE(a.avatar_url,'')<>'' FROM works w LEFT JOIN authors a ON a.id=w.author_id WHERE w.remote_id=? LIMIT 1`, remoteID).Scan(&r.RemoteID, &r.Kind, &r.Title, &r.Author, &r.CoverURL, &r.PublishedAt, &r.Extra, &r.HasAvatar)
+	err := s.db.QueryRowContext(ctx, `SELECT w.remote_id,w.kind,w.title,COALESCE(a.nickname,''),COALESCE(w.cover_url,''),w.published_at,w.extra,COALESCE(a.avatar_url,'')<>'',w.source FROM works w LEFT JOIN authors a ON a.id=w.author_id WHERE w.remote_id=? LIMIT 1`, remoteID).Scan(&r.RemoteID, &r.Kind, &r.Title, &r.Author, &r.CoverURL, &r.PublishedAt, &r.Extra, &r.HasAvatar, &r.Source)
 	return r, err
 }
 
@@ -106,7 +108,7 @@ func (s *Store) Library(ctx context.Context, q LibraryQuery) ([]LibraryItem, int
 // order. Without a type or search filter the works are joined only for the rows returned,
 // so pages far down cost about as little as the first.
 func relationsOnly(q LibraryQuery) (where string, args []any, order string, ok bool) {
-	if q.AccountID == "" || (q.Kind != "like" && q.Kind != "favorite") {
+	if q.FolderID != "" || q.AccountID == "" || (q.Kind != "like" && q.Kind != "favorite" && q.Kind != "watch_later") {
 		return "", nil, "", false
 	}
 	where, args = "r.account_id=? AND r.kind=?", []any{q.AccountID, q.Kind}
@@ -166,6 +168,9 @@ FROM r JOIN works w ON w.id=r.work_id LEFT JOIN authors a ON a.id=w.author_id OR
 // query over it so they always agree on what the list holds.
 func listFilter(q LibraryQuery) (from, filter, order string, args []any, err error) {
 	where := []string{}
+	if q.FolderID != "" && (q.Kind != "favorite" || q.AccountID == "") {
+		return "", "", "", nil, fmt.Errorf("folder requires an account favorite list")
+	}
 	args = []any{}
 	single := q.AccountID != ""
 	if q.Kind == "music" {
@@ -185,11 +190,15 @@ func listFilter(q LibraryQuery) (from, filter, order string, args []any, err err
 			order = "MAX(r.seq) DESC"
 		}
 	} else {
-		if q.Kind != "like" && q.Kind != "favorite" {
+		if q.Kind != "like" && q.Kind != "favorite" && q.Kind != "watch_later" {
 			return "", "", "", nil, fmt.Errorf("invalid list kind")
 		}
 		from = `FROM relations r JOIN works w ON w.id=r.work_id LEFT JOIN authors a ON a.id=w.author_id`
 		where, args = append(where, "r.kind=?"), append(args, q.Kind)
+		if q.FolderID != "" {
+			where = append(where, "EXISTS (SELECT 1 FROM folder_works f WHERE f.account_id=r.account_id AND f.work_id=r.work_id AND f.folder_id=?)")
+			args = append(args, q.FolderID)
+		}
 		if single {
 			where, args = append(where, "r.account_id=?"), append(args, q.AccountID)
 		}
@@ -274,7 +283,7 @@ func (s *Store) Timeline(ctx context.Context, q LibraryQuery) ([]TimelineMonth, 
 // LibraryCounts returns how many distinct items each list holds in a scope.
 func (s *Store) LibraryCounts(ctx context.Context, accountID, source string) (map[string]int, error) {
 	counts := map[string]int{"like": 0, "favorite": 0, "music": 0}
-	for _, kind := range []string{"like", "favorite", "music"} {
+	for _, kind := range []string{"like", "favorite", "music", "watch_later"} {
 		_, total, err := s.Library(ctx, LibraryQuery{AccountID: accountID, Source: source, Kind: kind, Type: "all", Limit: 1})
 		if err != nil {
 			return nil, err

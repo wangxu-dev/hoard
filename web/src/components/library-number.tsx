@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { tickerTransition } from "@/lib/motion";
 
-export function LibraryNumber({ value }: { value: number }) {
+export function LibraryNumber({ value: input }: { value: number }) {
+  const value = Number.isFinite(input) ? input : 0;
   const { i18n } = useTranslation("library");
   const reduced = useReducedMotion();
   const host = useRef<HTMLSpanElement>(null);
@@ -21,7 +22,7 @@ export function LibraryNumber({ value }: { value: number }) {
     if (!element) return;
     const format = new Intl.NumberFormat(i18n.language);
     // The registry ticker fixes locale and spring settings; the host supplies the product transition.
-    const animation = animate(current.current, display, { ...tickerTransition, duration: reduced ? 0 : tickerTransition.duration,
+    const animation = animate(Number.isFinite(current.current) ? current.current : 0, display, { ...tickerTransition, duration: reduced ? 0 : tickerTransition.duration,
       onUpdate(latest) { current.current = latest; element.textContent = format.format(Math.round(latest)); },
     });
     return () => animation.stop();

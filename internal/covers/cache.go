@@ -114,7 +114,7 @@ func Allowed(raw string) bool {
 	if err != nil || u.Scheme != "https" || u.User != nil || u.Port() != "" {
 		return false
 	}
-	for _, host := range []string{"douyinpic.com", "douyinstatic.com", "douyinvod.com", "douyin.com", "iesdouyin.com", "bytecdn.cn", "bytedance.com", "douyincdn.com", "byteimg.com", "pstatp.com"} {
+	for _, host := range []string{"hdslb.com", "douyinpic.com", "douyinstatic.com", "douyinvod.com", "douyin.com", "iesdouyin.com", "bytecdn.cn", "bytedance.com", "douyincdn.com", "byteimg.com", "pstatp.com"} {
 		if u.Hostname() == host || strings.HasSuffix(u.Hostname(), "."+host) {
 			return true
 		}
@@ -244,6 +244,9 @@ func (c *Cache) get(ctx context.Context, kind, id, raw string) (string, error) {
 		return "", err
 	}
 	req.Header.Set("Referer", "https://www.douyin.com/")
+	if req.URL.Hostname() == "hdslb.com" || strings.HasSuffix(req.URL.Hostname(), ".hdslb.com") {
+		req.Header.Set("Referer", "https://www.bilibili.com/")
+	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15")
 	res, err := c.client.Do(req)
 	if err != nil {
@@ -284,7 +287,7 @@ func (c *Cache) get(ctx context.Context, kind, id, raw string) (string, error) {
 // ServeHTTP answers hoard-cover://localhost/<kind>/<id> from disk, fetching on a miss.
 func (c *Cache) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/"), "/")
-	if (len(parts) != 2 && len(parts) != 3) || (parts[0] != "w" && parts[0] != "m" && parts[0] != "g" && parts[0] != "a") || parts[1] == "" || (parts[0] == "g" && (len(parts) != 3 || parts[2] == "")) {
+	if (len(parts) != 2 && len(parts) != 3) || (parts[0] != "w" && parts[0] != "m" && parts[0] != "g" && parts[0] != "a" && parts[0] != "account") || parts[1] == "" || (parts[0] == "g" && (len(parts) != 3 || parts[2] == "")) {
 		http.NotFound(w, r)
 		return
 	}

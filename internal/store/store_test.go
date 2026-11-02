@@ -49,7 +49,7 @@ func TestWorkPageRoundTrip(t *testing.T) {
 				t.Fatalf("list: %d %v %v", len(works), next, err)
 			}
 			w := works[0]
-			if w.ID != "test:1" || w.Source != "test" || w.RemoteID != "1" || w.Title != "Test work" || w.Author == nil || w.Author.Nickname != "Test author" || w.Seq != 1 || !w.Available || string(w.Extra) != "{}" {
+			if w.ID != "test:1" || w.Source != "test" || w.RemoteID != "1" || w.Title != "Test work" || w.Author == nil || w.Author.Nickname != "Test author" || w.Seq != 1 || w.Available == nil || !*w.Available || string(w.Extra) != "{}" {
 				t.Fatalf("work: %+v", w)
 			}
 			page.Works[0].Title = "Updated work"

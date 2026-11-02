@@ -9,12 +9,14 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/google/uuid"
+	"github.com/wangxu-dev/hoard/internal/covers"
 	"github.com/wangxu-dev/hoard/internal/douyin"
 	"github.com/wangxu-dev/hoard/internal/store"
 )
 
 type Account struct {
 	ID       string `json:"id"`
+	Source   string `json:"source"`
 	Nickname string `json:"nickname"`
 	Avatar   string `json:"avatar"`
 	Status   string `json:"status"`
@@ -35,7 +37,11 @@ func NewAccounts(a *App) *Accounts {
 }
 
 func accountView(account store.Account, active string) Account {
-	return Account{ID: account.ID, Nickname: account.Nickname, Avatar: account.AvatarURL, Status: account.Status, Active: account.ID == active}
+	avatar := account.AvatarURL
+	if avatar != "" {
+		avatar = covers.URL("account", account.ID)
+	}
+	return Account{ID: account.ID, Source: account.Source, Nickname: account.Nickname, Avatar: avatar, Status: account.Status, Active: account.ID == active}
 }
 
 func accountContext() (context.Context, context.CancelFunc) {
@@ -77,19 +83,22 @@ func (s *Accounts) List() ([]Account, error) {
 	return s.app.listLocked()
 }
 
-func (s *Accounts) Add() (Account, error) {
+func (s *Accounts) Add(source string) (Account, error) {
 	s.app.mu.Lock()
 	defer s.app.mu.Unlock()
-	return s.app.addLocked()
+	return s.app.addLocked(source)
 }
 
-func (a *App) addLocked() (Account, error) {
+func (a *App) addLocked(source string) (Account, error) {
+	if source != "douyin" && source != "bilibili" {
+		return Account{}, errors.New("UNSUPPORTED_SOURCE")
+	}
 	if a.Store == nil {
 		return Account{}, errors.New("STORE_FAILED")
 	}
 	ctx, cancel := accountContext()
 	defer cancel()
-	account, err := a.Store.CreatePendingAccount(ctx, uuid.NewString())
+	account, err := a.Store.CreatePendingSourceAccount(ctx, uuid.NewString(), source)
 	if err != nil {
 		return Account{}, errors.New("STORE_FAILED")
 	}
@@ -140,7 +149,17 @@ func (a *App) activateLocked(account store.Account, show bool) error {
 	a.stopLocked()
 	a.accountID, a.uid, a.nickname = account.ID, account.RemoteID, account.Nickname
 	a.sessionCtx, a.cancelSession = context.WithCancel(context.Background())
-	if err := a.Engine.UseSession(account.SessionName, show); err != nil {
+	var openErr error
+	if engine, ok := a.Engine.(interface {
+		UseSourceSession(string, string, bool) error
+	}); ok {
+		openErr = engine.UseSourceSession(account.Source, account.SessionName, show)
+	} else if account.Source == "douyin" {
+		openErr = a.Engine.UseSession(account.SessionName, show)
+	} else {
+		openErr = errors.New("UNSUPPORTED_SOURCE")
+	}
+	if openErr != nil {
 		a.cancelSession()
 		return errors.New("SESSION_OPEN_FAILED")
 	}

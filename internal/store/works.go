@@ -8,7 +8,7 @@ import (
 )
 
 func (s *Store) WriteWorkPage(ctx context.Context, page WorkPage) error {
-	if page.Kind != "like" && page.Kind != "favorite" {
+	if page.Kind != "like" && page.Kind != "favorite" && page.Kind != "watch_later" {
 		return fmt.Errorf("invalid work relation kind")
 	}
 	if page.Phase != "head" && page.Phase != "backfill" {
@@ -57,12 +57,12 @@ ON CONFLICT(id) DO UPDATE SET nickname=excluded.nickname,avatar_url=excluded.ava
 			}
 		}
 		id := source + ":" + work.RemoteID
-		if _, err := tx.ExecContext(ctx, `INSERT INTO works(id,source,remote_id,kind,title,author_id,published_at,duration_ms,width,height,image_count,is_live,cover_url,extra,updated_at)
-VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+		if _, err := tx.ExecContext(ctx, `INSERT INTO works(id,source,remote_id,kind,title,author_id,published_at,duration_ms,width,height,image_count,is_live,cover_url,extra,updated_at,available)
+VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(?,1)) ON CONFLICT(id) DO UPDATE SET
 kind=excluded.kind,title=excluded.title,author_id=excluded.author_id,published_at=excluded.published_at,
 duration_ms=excluded.duration_ms,width=excluded.width,height=excluded.height,image_count=excluded.image_count,
-is_live=excluded.is_live,cover_url=excluded.cover_url,extra=excluded.extra,updated_at=excluded.updated_at`,
-			id, source, work.RemoteID, work.Kind, work.Title, authorID, work.PublishedAt, work.DurationMS, work.Width, work.Height, work.ImageCount, work.IsLive, work.CoverURL, string(extra), now); err != nil {
+is_live=excluded.is_live,cover_url=excluded.cover_url,extra=excluded.extra,updated_at=excluded.updated_at,available=COALESCE(?,works.available)`,
+			id, source, work.RemoteID, work.Kind, work.Title, authorID, work.PublishedAt, work.DurationMS, work.Width, work.Height, work.ImageCount, work.IsLive, work.CoverURL, string(extra), now, work.Available, work.Available); err != nil {
 			return fmt.Errorf("upsert work: %w", err)
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO relations(account_id,work_id,kind,seq,published_at,first_seen) VALUES(?,?,?,?,?,?)

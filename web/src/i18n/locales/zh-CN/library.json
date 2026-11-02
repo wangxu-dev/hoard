@@ -4,7 +4,9 @@
       "label": "来源",
       "all": "全部账号",
       "platform": "全部{{name}}账号",
-      "add": "添加账号…",
+      "add": "添加账号",
+      "addPlatform": "添加{{name}}账号",
+      "bilibili": "哔哩哔哩",
       "douyin": "抖音",
       "signed_out": "登录已过期",
       "syncing": "正在同步",
@@ -13,6 +15,7 @@
     },
     "kind": {
       "label": "列表",
+      "watch_later": "稍后再看",
       "like": "喜欢",
       "favorite": "收藏",
       "music": "音乐"
@@ -31,13 +34,14 @@
     "sort": {
       "label": "排序",
       "published": "发布时间",
-      "recent": "最近喜欢",
+      "recent": "最近加入",
       "music": "收藏时间",
       "unavailable_music": "音乐没有发布时间"
     },
     "filters": "筛选"
   },
   "sync": {
+    "paused": "同步已暂停，点击重试",
     "label": "同步详情",
     "eta": "约 {{count}} 分钟",
     "soon": "1 分钟内",
@@ -133,7 +137,7 @@
     "locate": "定位到正在播放"
   },
   "grid": {
-    "empty": "还没有内容，点右上角「同步」把抖音的内容拉进来",
+    "empty": "还没有内容",
     "emptySyncing": "正在同步，内容马上出现",
     "emptyFiltered": "没有符合条件的内容",
     "untitled": "无标题",

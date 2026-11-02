@@ -4,7 +4,7 @@ import i18n from "@/i18n";
 import { fixtureName } from "./demo";
 import { createFixtureSource } from "@/mocks/fixture";
 
-export type ListKind = "like" | "favorite" | "music";
+export type ListKind = "like" | "favorite" | "music" | "watch_later";
 export type WorkType = "all" | "video" | "gallery";
 export type SortKey = "published" | "recent";
 export type PlayMode = "list" | "one" | "shuffle";
@@ -20,7 +20,7 @@ export interface SyncState {
   status: "running" | "checking" | "queued" | "paused" | "cooling" | "blocked" | "verifying" | "signed_out" | "unsupported" | "idle";
   items: number; remoteTotal?: number; pages: number; retryAt?: number; etaSeconds?: number; errorCode?: string; lastSyncAt?: number; fresh?: number;
 }
-export interface LibraryCounts { like: number; favorite: number; music: number }
+export interface LibraryCounts { like: number; favorite: number; music: number; watch_later: number }
 export interface LibraryEntry {
   id: string; kind: "video" | "gallery" | "music"; title: string; author: string; cover: string; authorAvatar?: string;
   publishedAt: number; durationMs: number; imageCount: number; accountIds?: string[]; likedAccountIds?: string[]; favoritedAccountIds?: string[];
@@ -64,10 +64,10 @@ function toState(view: SyncView): SyncState {
 const realSource: LibrarySource = {
   async sources() {
     const accounts = await Accounts.list();
-    return [{ id: "douyin", name: i18n.t("library:toolbar.source.douyin"), kinds: ["like", "favorite", "music"], accounts: accounts.filter((a) => a.status !== "pending").map((a) => ({
-      id: a.id, source: "douyin", nickname: a.nickname, avatarUrl: a.avatar,
+    return ["douyin", "bilibili"].map((source): SourceGroup => ({ id: source, name: i18n.t(`library:toolbar.source.${source}`), kinds: source === "douyin" ? ["like", "favorite", "music"] : ["favorite", "watch_later"], accounts: accounts.filter((a) => a.source === source && a.status !== "pending").map((a) => ({
+      id: a.id, source: a.source, nickname: a.nickname, avatarUrl: a.avatar,
       status: a.status === "signed_out" ? "signed_out" : a.status === "pending" ? "pending" : "active", syncing: false,
-    })) }];
+    })) })).filter((group) => group.accounts.length > 0);
   },
   async counts(scope) {
     return Library.counts(scope.accountId ?? "", scope.source ?? "");

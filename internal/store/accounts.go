@@ -30,8 +30,15 @@ func (s *Store) Accounts(ctx context.Context) ([]Account, error) {
 }
 
 func (s *Store) CreatePendingAccount(ctx context.Context, id string) (Account, error) {
+	return s.CreatePendingSourceAccount(ctx, id, "douyin")
+}
+
+func (s *Store) CreatePendingSourceAccount(ctx context.Context, id, source string) (Account, error) {
+	if source != "douyin" && source != "bilibili" {
+		return Account{}, fmt.Errorf("unsupported account source")
+	}
 	now := time.Now().Unix()
-	a := Account{ID: id, Source: "douyin", SessionName: "hoard-account-" + id, Status: "pending"}
+	a := Account{ID: id, Source: source, SessionName: "hoard-account-" + id, Status: "pending"}
 	_, err := s.db.ExecContext(ctx, `INSERT INTO accounts(id,source,session_name,status,position,created_at,last_used_at) VALUES(?,?,?,?,(SELECT COALESCE(MAX(position),-1)+1 FROM accounts),?,?)`, a.ID, a.Source, a.SessionName, a.Status, now, now)
 	if err != nil {
 		return Account{}, fmt.Errorf("create pending account: %w", err)

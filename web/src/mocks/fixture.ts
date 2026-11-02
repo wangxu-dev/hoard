@@ -27,8 +27,8 @@ const sources: SourceGroup[] = [{ id: "douyin", name: "抖音", kinds: ["like", 
     retryAt: name === "cooling" ? Math.floor(Date.now() / 1000) + 118 : undefined };
   return {
     async sources() { return sources.map((g) => ({ ...g, accounts: g.accounts.map((a) => ({ ...a, syncing: a.id === "demo-a" && state.status === "running" })) })); },
-    async counts(scope) { return scope.accountId === "demo-a" ? { like: 10000, favorite: 56, music: 78 }
-      : scope.accountId === "demo-b" ? { like: 1234, favorite: 12, music: 0 } : { like: 10860, favorite: 68, music: 78 }; },
+    async counts(scope) { return scope.accountId === "demo-a" ? { like: 10000, favorite: 56, music: 78, watch_later: 0 }
+      : scope.accountId === "demo-b" ? { like: 1234, favorite: 12, music: 0, watch_later: 0 } : { like: 10860, favorite: 68, music: 78, watch_later: 0 }; },
     async syncStates() { return [state,
       { accountId: "demo-a", kind: "cover", phase: "head", status: "running", items: 210, pages: 0 },
       { accountId: "demo-a", kind: "favorite", phase: "idle", status: "idle", items: 0, pages: 0 }]; },

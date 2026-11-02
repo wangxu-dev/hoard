@@ -32,7 +32,7 @@ func TestSchemaConstraints(t *testing.T) {
 func TestDatabaseConfiguration(t *testing.T) {
 	s := newTestStore(t)
 	for _, tt := range []struct{ pragma, want string }{
-		{"journal_mode", "wal"}, {"foreign_keys", "1"}, {"busy_timeout", "5000"}, {"user_version", "1"},
+		{"journal_mode", "wal"}, {"foreign_keys", "1"}, {"busy_timeout", "5000"}, {"user_version", "3"},
 	} {
 		t.Run(tt.pragma, func(t *testing.T) {
 			var value string

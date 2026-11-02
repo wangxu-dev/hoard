@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, Clock, LogIn, RefreshCw, ShieldAlert } from "lucide-react";
+import { Check, Clock, LogIn, Pause, RefreshCw, ShieldAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,7 @@ const notified = new Map<string, number>();
 const freshFor = 4000;
 const busy = (s: SyncState) => s.status === "running" || s.status === "checking" || s.status === "queued" || s.status === "cooling" || s.status === "verifying";
 // A list that still has backfill left keeps syncing on its own, so between turns and across restarts it reads as syncing.
-const backfilling = (s: SyncState) => s.phase !== "done" && s.status !== "unsupported" && s.status !== "signed_out" && s.status !== "blocked" && s.status !== "verifying" && s.status !== "cooling";
+const backfilling = (s: SyncState) => s.phase !== "done" && !["paused", "unsupported", "signed_out", "blocked", "verifying", "cooling"].includes(s.status);
 const checking = (s: SyncState) => s.phase === "done" && (s.status === "checking" || s.status === "queued" || s.status === "running");
 export function useSyncVisible(state?: SyncState) {
   return !!state;
@@ -67,6 +67,7 @@ export function SyncPill({ state, states, visible, compact = false, onLogin }: {
       : s.status === "blocked" ? t("sync.verifyRequired")
       : s.status === "verifying" ? t("sync.verifying")
       : s.status === "cooling" ? t("sync.cooling", { time })
+      : s.status === "paused" ? t("sync.paused")
       : s.status === "unsupported" ? t("sync.unsupported")
       : backfilling(s) ? `${t("sync.syncing")} · ${progress(s)}`
       : checking(s) ? t("sync.checking")
@@ -77,14 +78,14 @@ export function SyncPill({ state, states, visible, compact = false, onLogin }: {
   function listNode(s: SyncState) {
     const total = s.remoteTotal === undefined ? null : <> / {format(s.remoteTotal)}</>;
     if (backfilling(s)) return <>{t("sync.syncing")} · <LibraryNumber value={s.items} />{total}</>;
-    if (s.status === "unsupported" || s.status === "signed_out" || s.status === "blocked" || s.status === "verifying" || s.status === "cooling" || checking(s) || freshCount(s)) return listLabel(s);
+    if (s.status === "paused" || s.status === "unsupported" || s.status === "signed_out" || s.status === "blocked" || s.status === "verifying" || s.status === "cooling" || checking(s) || freshCount(s)) return listLabel(s);
     return t("sync.synced");
   }
   const label = state.status === "cooling" ? `${kindName(state)} · ${listLabel(state)}` : listLabel(state);
   const live = backfilling(state);
   const action = state.status === "signed_out" ? t("sync.login")
     : state.status === "blocked" || state.status === "verifying" ? t("sync.verify")
-    : anyBusy ? listLabel(rows.find(busy)!) : t("sync.clickToSync");
+    : anyBusy ? listLabel(state) : t("sync.clickToSync");
   const timeLabel = lastSync ? (now - lastSync < 180 ? t("sync.justNow") : formatWhen(lastSync, i18n.language)) : t("sync.timeUnknown");
   const showTime = label === t("sync.synced");
   const start = async () => {
@@ -107,6 +108,7 @@ export function SyncPill({ state, states, visible, compact = false, onLogin }: {
   const tone = state.status === "signed_out" || state.status === "blocked" ? "border-destructive/40 bg-destructive/10 text-destructive" : state.status === "cooling" ? "text-muted-foreground" : "";
   const icon = state.status === "signed_out" ? <LogIn className="size-3 shrink-0" />
     : state.status === "blocked" ? <ShieldAlert className="size-3 shrink-0" />
+    : state.status === "paused" ? <Pause className="size-3 shrink-0" />
     : state.status === "cooling" ? <Clock className="size-3 shrink-0" />
     : backfilling(state) || checking(state) ? <Spinner className="size-3 shrink-0" />
     : state.status === "unsupported" ? <RefreshCw className="size-3 shrink-0" /> : <Check className="size-3 shrink-0" />;
