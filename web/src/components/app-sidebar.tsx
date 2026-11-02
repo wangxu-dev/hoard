@@ -114,11 +114,11 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
               {available && <span data-testid="update-dot" aria-label={t("sidebar.update")} className="absolute top-2.5 left-6 size-2 rounded-full bg-brand" />}
               <span>{t("sidebar.settings")}</span>
             </SidebarMenuButton>
-            <div className="ml-1 w-8 shrink-0 overflow-hidden transition-[width,margin,opacity] duration-200 ease-(--ease-out) group-data-[collapsible=icon]:ml-0 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
-              <SidebarMenuButton asChild onClickCapture={() => console.debug("[hoard:ui] theme click")} tooltip={{ children: t("theme.toggle"), sideOffset: TIP_OFFSET }} className="size-8 shrink-0 justify-center p-0">
+            <div className="ml-1 w-10 shrink-0 overflow-hidden transition-[width,margin,opacity] duration-200 ease-(--ease-out) group-data-[collapsible=icon]:ml-0 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
+              <SidebarMenuButton asChild onClickCapture={() => console.debug("[hoard:ui] theme click")} tooltip={{ children: t("theme.toggle"), sideOffset: TIP_OFFSET }} className="size-10 shrink-0 justify-center p-0">
                 <span>
                   <AnimatedThemeToggler
-                    className="flex size-8 items-center justify-center rounded-md hover:bg-sidebar-accent [&_svg]:size-4"
+                    className="flex size-10 items-center justify-center rounded-md hover:bg-sidebar-accent [&_svg]:size-4"
                     theme={isDark ? "dark" : "light"}
                     onThemeChange={(next) => { console.debug("[hoard:ui] theme changed", next); setTheme(next); }}
                     aria-label={t("theme.toggle")}
