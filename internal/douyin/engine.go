@@ -3,6 +3,7 @@ package douyin
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -49,7 +50,6 @@ func (a *Engine) ClearSession(name string) error {
 func (a *Engine) openWindowLocked(show bool) Status {
 	if a.douyin != nil {
 		if show {
-			_ = a.douyin.Page().LoadURL("https://www.douyin.com/user/self?from_tab_name=main&showTab=like")
 			a.douyin.Show()
 			a.douyin.Focus()
 		}
@@ -81,6 +81,10 @@ func (a *Engine) openWindowLocked(show bool) Status {
 	a.readyAt = time.Time{}
 	win.Page().OnDOMReady(func() {
 		log.Print("[hoard:douyin] DOM ready")
+		parsed, err := url.Parse(win.Page().URL())
+		if err != nil || parsed.Scheme != "https" || (parsed.Hostname() != "douyin.com" && !strings.HasSuffix(parsed.Hostname(), ".douyin.com")) {
+			return
+		}
 		a.mu.Lock()
 		if a.douyin == win {
 			a.domReady = true
@@ -96,7 +100,7 @@ func (a *Engine) openWindowLocked(show bool) Status {
 		a.mu.Unlock()
 	})
 	a.douyin = win
-	if err := win.Page().LoadURL("https://www.douyin.com/user/self?from_tab_name=main&showTab=like"); err != nil {
+	if err := win.Page().LoadURL("https://www.douyin.com/user/self"); err != nil {
 		log.Print("[hoard:douyin] initial navigation request failed")
 	} else {
 		log.Print("[hoard:douyin] initial navigation requested")

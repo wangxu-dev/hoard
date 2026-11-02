@@ -2,6 +2,7 @@
   const visible = el => el.isConnected && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
   const deadline = Date.now() + 15000;
   let clicked = null;
+  let absentSince = null;
   const url = location.href;
   while (Date.now() < deadline) {
     if (location.href !== url) return false;
@@ -15,8 +16,14 @@
       const buttons = new Set();
       for (const prompt of prompts) {
         for (const button of prompt.querySelectorAll('button, [role="button"]')) {
-          if (visible(button) && !button.disabled && button.getAttribute('aria-disabled') !== 'true' && /^(保存|保存登录信息)$/.test((button.innerText || '').trim())) buttons.add(button);
+          if (visible(button) && !button.disabled && button.getAttribute('aria-disabled') !== 'true' && /^(保存|保存登录信息|确定)$/.test((button.innerText || '').trim())) buttons.add(button);
         }
+      }
+      if (prompts.length === 0) {
+        absentSince ??= Date.now();
+        if (Date.now() - absentSince >= 4000) return true;
+      } else {
+        absentSince = null;
       }
       if (buttons.size === 1) {
         const button = [...buttons][0];
