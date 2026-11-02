@@ -92,7 +92,11 @@ export function SettingsPage() {
         <div className="divide-y overflow-hidden rounded-lg border bg-card text-card-foreground">
           <Row testId="settings-about-row" title="Hoard" description={t("app.description", { version: VERSION })}>
             <div className="flex items-center gap-1">
-              <Button variant="outline" size="sm" disabled={checking || downloading || ready} onClick={() => { void runCheck(); }}><RefreshCw className={checking ? "animate-spin" : undefined} />{t("update.check")}</Button>
+              <Button data-testid="settings-update-action" variant={available ? "default" : "outline"} size="sm" disabled={checking || starting || downloading} onClick={() => { if (!available) void runCheck(); else if (transfer?.enabled) void runUpdate(); else open(`${REPO_URL}/releases`); }}>
+                {available && !ready ? <Download aria-hidden="true" /> : <RefreshCw aria-hidden="true" className={checking ? "animate-spin" : undefined} />}
+                {t(!available ? "update.check" : ready ? "update.restart" : downloading ? "update.downloading" : failed ? "update.retry" : transfer?.enabled ? "update.download" : "update.manual")}
+                {downloading && transfer.total > 0 && <span className="tabular-nums">{Math.min(100, Math.floor(transfer.downloaded / transfer.total * 100))}%</span>}
+              </Button>
             </div>
           </Row>
 
@@ -105,21 +109,16 @@ export function SettingsPage() {
               <Markdown allowedElements={["p", "h3", "ul", "ol", "li", "strong", "em", "code", "br"]} unwrapDisallowed>{info?.notes || ""}</Markdown>
             </div>
             {downloading && <Progress aria-label={t("update.downloading")} aria-valuenow={transfer.total > 0 ? Math.min(100, transfer.downloaded / transfer.total * 100) : undefined} value={transfer.total > 0 ? Math.min(100, transfer.downloaded / transfer.total * 100) : null} />}
-            <div className="flex flex-wrap items-center gap-3">
-              {transfer?.enabled
-                ? <Button size="sm" disabled={starting || downloading} onClick={() => { void runUpdate(); }}>{ready ? <RefreshCw aria-hidden="true" /> : <Download aria-hidden="true" />}{t(ready ? "update.restart" : downloading ? "update.downloading" : failed ? "update.retry" : "update.download")}</Button>
-                : <Button size="sm" variant="secondary" onClick={() => open(`${REPO_URL}/releases`)}>{t("update.manual")}</Button>}
-              <span className="text-xs text-muted-foreground" role="status">{failed ? t("update.downloadFailed") : downloading && transfer.total > 0 ? `${Math.min(100, Math.floor(transfer.downloaded / transfer.total * 100))}%` : ""}</span>
-            </div>
+            {failed && <p className="text-xs text-muted-foreground" role="status">{t("update.downloadFailed")}</p>}
           </div>}
-          {!available && RELEASE_NOTES && <div data-testid="settings-update-notes" className="max-h-56 overflow-y-auto px-4 py-3 text-xs whitespace-pre-wrap text-muted-foreground">{RELEASE_NOTES}</div>}
-          <div data-testid="settings-about-footer" className="flex items-center justify-end gap-3 px-4 py-2">
+          {!available && RELEASE_NOTES && <div data-testid="settings-update-notes" className="max-h-56 overflow-y-auto px-4 py-3 text-xs leading-relaxed text-muted-foreground [&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:font-medium [&_h3]:text-foreground [&_h3:first-child]:mt-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-4 [&_p]:mb-1"><Markdown allowedElements={["p", "h3", "ul", "ol", "li", "strong", "em", "code", "br"]} unwrapDisallowed>{RELEASE_NOTES}</Markdown></div>}
+        </div>
+          <div data-testid="settings-about-footer" className="flex items-center justify-end gap-1 text-muted-foreground">
             <div className="flex shrink-0 items-center gap-1 text-muted-foreground">
               <IconButton label={t("github")} onClick={() => open(REPO_URL)}><SiGithub /></IconButton>
               <IconButton label={t("issues")} onClick={() => open(`${REPO_URL}/issues`)}><MessageSquareWarning /></IconButton>
             </div>
           </div>
-        </div>
       </section>
     </div>
   </main>;
