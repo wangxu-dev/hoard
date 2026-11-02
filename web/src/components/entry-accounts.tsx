@@ -20,7 +20,7 @@ export function EntryAccounts({ entry }: { entry: LibraryEntry }) {
     onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}
     className="group/owners flex flex-row-reverse items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
     {accounts.map((account) => <Avatar key={account.id} aria-label={account.nickname}
-      className="size-6 bg-transparent transition-[margin] duration-base motion-reduce:transition-none not-last:-ml-[1.125rem] group-hover/owners:not-last:ml-1 group-focus/owners:not-last:ml-1 after:hidden">
+      className="size-6 bg-transparent transition-[margin] duration-slow ease-(--ease-out) motion-reduce:transition-none not-last:-ml-[1.125rem] group-hover/entry:not-last:ml-1 group-focus-within/entry:not-last:ml-1 after:hidden">
       <AvatarImage src={account.avatarUrl} alt={account.nickname} />
       <AvatarFallback className="text-xs">{account.nickname.slice(0, 1)}</AvatarFallback>
     </Avatar>)}
