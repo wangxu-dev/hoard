@@ -60,7 +60,7 @@ function RealAccountChoice({ target, account, compact = false }: { target: Actio
   </ControlButton>;
   return <Tooltip delayDuration={0}><TooltipTrigger asChild><Button variant="ghost" className="relative size-10 shrink-0 rounded-full p-0 transition-[scale] duration-(--duration-fast) active:scale-95 motion-reduce:active:scale-100" aria-label={`${account.nickname} · ${label}`} disabled={unavailable} aria-busy={mutation.isPending} onClick={perform}>
     <Avatar className="size-10"><AvatarImage src={account.avatarUrl} alt="" /><AvatarFallback>{account.nickname.slice(0, 1)}</AvatarFallback></Avatar>
-    <span className="absolute -right-1 -bottom-1 rounded-full bg-viewer p-0.5"><Icon className={`size-3 ${on ? `fill-current ${activeColor(target.kind)}` : "text-viewer-muted"}`} /></span>
+    <span className="absolute -right-1 -bottom-1 rounded-full bg-popover p-0.5"><Icon className={`size-3 ${on ? `fill-current ${activeColor(target.kind)}` : "text-muted-foreground"}`} /></span>
   </Button></TooltipTrigger><TooltipContent side="top" className="z-[70]">{account.nickname} · {label}</TooltipContent></Tooltip>;
 }
 
@@ -89,7 +89,7 @@ function PreviewAccountChoices({ target }: { target: ActionTarget }) {
       return <Tooltip key={account.id} delayDuration={0}><TooltipTrigger asChild><Button variant="ghost" className="relative size-10 shrink-0 rounded-full p-0 transition-[scale] duration-(--duration-fast) active:scale-95 motion-reduce:active:scale-100" aria-label={t(`actions.${on ? "remove" : "add"}.${target.kind}`) + " · " + account.nickname}
         onClick={() => setPreviewRelation(target, account.id, !on)}>
         <Avatar className="size-10"><AvatarImage src={account.avatarUrl} alt="" /><AvatarFallback>{account.nickname.slice(0, 1)}</AvatarFallback></Avatar>
-        <motion.span key={String(on)} initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={fastTransition} className="absolute -right-1 -bottom-1 rounded-full bg-viewer p-0.5"><Icon className={`size-3 ${on ? `fill-current ${activeColor(target.kind)}` : "text-viewer-muted"}`} /></motion.span>
+        <motion.span key={String(on)} initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={fastTransition} className="absolute -right-1 -bottom-1 rounded-full bg-popover p-0.5"><Icon className={`size-3 ${on ? `fill-current ${activeColor(target.kind)}` : "text-muted-foreground"}`} /></motion.span>
       </Button></TooltipTrigger><TooltipContent side="top" className="z-[70]">{account.nickname} · {t(`actions.${on ? "remove" : "add"}.${target.kind}`)}</TooltipContent></Tooltip>;
     })}
   </div>;
@@ -154,7 +154,7 @@ export function EntryActionMenu({ entry, children, onPlay }: { entry: LibraryEnt
         </DropdownMenu>
       </div>}
     </div></ContextMenuTrigger>
-    <ContextMenuContent>{entry.kind === "music" && <ContextMenuItem onSelect={onPlay}><Play />{t("viewer.play")}</ContextMenuItem>}{kinds.map((kind) => <ContextMenuSub key={kind}><ContextMenuSubTrigger><MenuActionLabel entry={entry} kind={kind} /></ContextMenuSubTrigger><ContextMenuSubContent className="p-3"><AccountChoices target={{ ...entry, kind }} /></ContextMenuSubContent></ContextMenuSub>)}</ContextMenuContent>
+    <ContextMenuContent>{entry.kind === "music" && <ContextMenuItem onSelect={onPlay}><Play />{t("viewer.play")}</ContextMenuItem>}{kinds.map((kind) => <ContextMenuSub key={kind}><ContextMenuSubTrigger className="gap-2"><MenuActionLabel entry={entry} kind={kind} /></ContextMenuSubTrigger><ContextMenuSubContent className="p-3"><AccountChoices target={{ ...entry, kind }} /></ContextMenuSubContent></ContextMenuSub>)}</ContextMenuContent>
 
   </ContextMenu>;
 }
