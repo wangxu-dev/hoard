@@ -21,6 +21,7 @@ type Folder struct {
 	Count int
 }
 type Video struct {
+	AID         string
 	ID          string
 	Title       string
 	Cover       string
@@ -145,7 +146,7 @@ func ParsePage(body []byte) (Page, error) {
 		if err != nil {
 			author = ""
 		}
-		out.Videos = append(out.Videos, Video{ID: item.BVID, Title: item.Title, Cover: image(item.Cover), AuthorID: author, Author: item.Upper.Name, Avatar: image(item.Upper.Face), DurationMS: item.Duration * 1000, PublishedAt: item.PublishedAt, FavoritedAt: item.FavoritedAt, Available: item.Attr&1 == 0})
+		out.Videos = append(out.Videos, Video{AID: string(item.ID), ID: item.BVID, Title: item.Title, Cover: image(item.Cover), AuthorID: author, Author: item.Upper.Name, Avatar: image(item.Upper.Face), DurationMS: item.Duration * 1000, PublishedAt: item.PublishedAt, FavoritedAt: item.FavoritedAt, Available: item.Attr&1 == 0})
 	}
 	return out, nil
 }

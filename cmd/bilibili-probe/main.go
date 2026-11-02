@@ -110,7 +110,7 @@ func main() {
 				valid := true
 				for _, item := range result.Results {
 					switch item.Kind {
-					case "identity", "folders", "items", "detail", "play", "likes", "likes-page2":
+					case "identity", "folders", "items", "detail", "play", "watch-later", "liked-state", "favorite-state", "coin-state":
 					default:
 						valid = false
 					}
@@ -177,23 +177,10 @@ if (location.hostname !== 'www.bilibili.com') return {state:'waiting',results:[]
   return {state:'waiting',results:[]};
  }
  if (identity.summary.code !== 0 || !identity.data?.mid) return {state:'failed',results};
- const likes = await read('likes','/x/space/like/video',{vmid:String(identity.data.mid),pn:'1',ps:'2'});
- const likeList = value => Array.isArray(value) ? value : Array.isArray(value?.list) ? value.list : Array.isArray(value?.item) ? value.item : null;
- likes.summary.shape = Array.isArray(likes.data) ? 'array' : likes.data === null ? 'null' : typeof likes.data;
- likes.summary.keys = likes.data && !Array.isArray(likes.data) ? Object.keys(likes.data).filter(k=>/^[a-z_]{1,32}$/.test(k)) : [];
- if(Number.isInteger(likes.data?.total))likes.summary.total=likes.data.total;
- if(Number.isInteger(likes.data?.count))likes.summary.total=likes.data.count;
- const firstLikes = likeList(likes.data);
- if (likes.summary.code === 0 && firstLikes) {
-  likes.summary.count = firstLikes.length;
-  await new Promise(resolve=>setTimeout(resolve,1500));
-  const second = await read('likes-page2','/x/space/like/video',{vmid:String(identity.data.mid),pn:'2',ps:'2'});
-  const secondLikes = likeList(second.data);
-  if (second.summary.code === 0 && secondLikes) {
-   second.summary.count = secondLikes.length;
-   second.summary.sameAsFirst = JSON.stringify(firstLikes.map(v=>String(v.bvid||v.aid||v.id))) === JSON.stringify(secondLikes.map(v=>String(v.bvid||v.aid||v.id)));
-  }
- }
+ const later = await read('watch-later','/x/v2/history/toview');
+ later.summary.keys = later.data ? Object.keys(later.data).filter(k=>/^[a-z_]{1,32}$/.test(k)) : [];
+ later.summary.count = Array.isArray(later.data?.list) ? later.data.list.length : 0;
+ if(Number.isInteger(later.data?.count))later.summary.total=later.data.count;
  const folders = await read('folders','/x/v3/fav/folder/created/list-all',{up_mid:String(identity.data.mid)});
  if (folders.summary.code !== 0) return {state:'failed',results};
  const list = Array.isArray(folders.data?.list) ? folders.data.list : [];
@@ -207,6 +194,16 @@ if (location.hostname !== 'www.bilibili.com') return {state:'waiting',results:[]
  items.summary.hasMore = !!items.data?.has_more;
  const video = media.find(item => item.type === 2 && /^BV[0-9A-Za-z]+$/.test(item.bvid || ''));
  if (!video) return {state:'complete',results};
+ for (const [kind,path,params] of [
+  ['liked-state','/x/web-interface/archive/has/like',{bvid:video.bvid}],
+  ['favorite-state','/x/v2/fav/video/favoured',{aid:String(video.id)}],
+  ['coin-state','/x/web-interface/archive/coins',{bvid:video.bvid}]
+ ]) {
+  await new Promise(resolve=>setTimeout(resolve,1200));
+  const result=await read(kind,path,params);
+  result.summary.shape=typeof result.data;
+  result.summary.keys=result.data && typeof result.data==='object' ? Object.keys(result.data).filter(k=>/^[a-z_]{1,32}$/.test(k)) : [];
+ }
  const detail = await read('detail','/x/web-interface/view',{bvid:video.bvid});
  detail.summary.count = Array.isArray(detail.data?.pages) ? detail.data.pages.length : 0;
  if (detail.summary.code !== 0 || !detail.data?.cid) return {state:'failed',results};
