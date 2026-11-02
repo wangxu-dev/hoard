@@ -72,6 +72,12 @@ func (a *Engine) openWindowLocked(show bool) Status {
 			SwipeNavigation: true,
 		},
 	})
+	win.Page().OnWillNavigate(func(event *mygo.NavigateEvent) {
+		if !douyinNavigationAllowed(event.URL) {
+			log.Printf("[hoard:douyin] navigation refused page=%s", loginPageClass(event.URL))
+			event.PreventDefault()
+		}
+	})
 	win.Page().OnRenderProcessGone(func(_ string) { log.Print("[hoard:douyin] web content process exited") })
 	win.Page().OnDidNavigate(func(raw string) { log.Printf("[hoard:douyin] navigation committed page=%s", loginPageClass(raw)) })
 	win.Page().OnDidFinishLoad(func() { log.Print("[hoard:douyin] page load finished") })
@@ -133,6 +139,14 @@ func (a *Engine) openWindowLocked(show bool) Status {
 		}
 	}()
 	return a.statusLocked()
+}
+
+func douyinNavigationAllowed(raw string) bool {
+	if raw == "about:blank" {
+		return true
+	}
+	u, err := url.Parse(raw)
+	return err == nil && u.Scheme == "https" && u.User == nil && u.Port() == "" && (u.Hostname() == "douyin.com" || strings.HasSuffix(u.Hostname(), ".douyin.com"))
 }
 
 // loginPageClass records only a fixed category, never account paths or query values.
