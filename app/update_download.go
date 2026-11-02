@@ -28,8 +28,9 @@ type updateInstaller interface {
 }
 
 type updateTransfer struct {
-	mu    sync.Mutex
-	state UpdateDownload
+	mu         sync.Mutex
+	state      UpdateDownload
+	restarting bool
 }
 
 func (u *Updates) DownloadStatus() UpdateDownload {
@@ -94,13 +95,24 @@ func (t *updateTransfer) install(ctx context.Context, up updateInstaller) {
 
 func (u *Updates) Restart() error {
 	u.transfer.mu.Lock()
-	ready := u.transfer.state.Status == "ready"
-	u.transfer.mu.Unlock()
-	if !ready {
+	if u.transfer.state.Status != "ready" {
+		u.transfer.mu.Unlock()
 		return errors.New("UPDATE_NOT_READY")
 	}
-	log.Printf("[hoard:update] restart requested platform=%s version=%s", u.platform, mygo.App.Version())
-	mygo.App.Relaunch()
+	if u.transfer.restarting {
+		u.transfer.mu.Unlock()
+		return nil
+	}
+	version := u.transfer.state.Version
+	u.transfer.restarting = true
+	u.transfer.mu.Unlock()
+	if err := restartForUpdate(version); err != nil {
+		u.transfer.mu.Lock()
+		u.transfer.restarting = false
+		u.transfer.mu.Unlock()
+		log.Print("[hoard:update] restart helper could not start")
+		return errors.New("UPDATE_RESTART_FAILED")
+	}
 	return nil
 }
 

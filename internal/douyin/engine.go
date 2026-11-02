@@ -55,7 +55,6 @@ func (a *Engine) openWindowLocked(show bool) Status {
 		}
 		return a.statusLocked()
 	}
-	log.Printf("[hoard:douyin] login window create visible=%t", show)
 	win := mygo.NewWindow(mygo.WindowOptions{
 		Title:     "抖音登录",
 		Width:     1100,
@@ -78,14 +77,11 @@ func (a *Engine) openWindowLocked(show bool) Status {
 		}
 	})
 	win.Page().OnRenderProcessGone(func(_ string) { log.Print("[hoard:douyin] web content process exited") })
-	win.Page().OnDidNavigate(func(raw string) { log.Printf("[hoard:douyin] navigation committed page=%s", loginPageClass(raw)) })
-	win.Page().OnDidFinishLoad(func() { log.Print("[hoard:douyin] page load finished") })
 	win.Page().OnDidFailLoad(func(err *mygo.LoadError) { log.Printf("[hoard:douyin] page load failed code=%d", err.Code) })
 	win.Page().SetAudioMuted(true)
 	a.domReady = false
 	a.readyAt = time.Time{}
 	win.Page().OnDOMReady(func() {
-		log.Print("[hoard:douyin] DOM ready")
 		parsed, err := url.Parse(win.Page().URL())
 		if err != nil || parsed.Scheme != "https" || (parsed.Hostname() != "douyin.com" && !strings.HasSuffix(parsed.Hostname(), ".douyin.com")) {
 			return
@@ -107,8 +103,6 @@ func (a *Engine) openWindowLocked(show bool) Status {
 	a.douyin = win
 	if err := win.Page().LoadURL("https://www.douyin.com/user/self"); err != nil {
 		log.Print("[hoard:douyin] initial navigation request failed")
-	} else {
-		log.Print("[hoard:douyin] initial navigation requested")
 	}
 	return a.statusLocked()
 }
