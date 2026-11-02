@@ -36,7 +36,12 @@ func (s *Actions) Set(accountID, workID, kind string, on bool) (douyin.ActionSta
 	return s.run(accountID, workID, kind, on)
 }
 
-func (s *Actions) run(accountID, workID, kind string, on bool) (douyin.ActionState, error) {
+func (s *Actions) run(accountID, workID, kind string, on bool) (result douyin.ActionState, resultErr error) {
+	started := time.Now()
+	log.Print("[hoard:actions] request queued")
+	defer func() {
+		log.Printf("[hoard:actions] request finished elapsed=%s success=%t", time.Since(started).Round(time.Millisecond), resultErr == nil)
+	}()
 	empty := douyin.ActionState{}
 	if accountID == "" || !douyin.ValidWorkID(workID) {
 		return empty, errors.New("INVALID_ARGUMENT")
@@ -48,6 +53,7 @@ func (s *Actions) run(accountID, workID, kind string, on bool) (douyin.ActionSta
 	a.requestMu.Lock()
 	defer a.requestMu.Unlock()
 	a.mu.Lock()
+	log.Print("[hoard:actions] request gate acquired")
 	defer a.mu.Unlock()
 	if a.Store == nil {
 		return empty, errors.New("STORE_FAILED")
