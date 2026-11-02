@@ -146,7 +146,7 @@ func (r *Relay) upstream(ctx context.Context, method, raw, byteRange string) (*h
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Referer", "https://www.douyin.com/")
+	req.Header.Set("Referer", mediaReferer(raw))
 	req.Header.Set("User-Agent", "Mozilla/5.0")
 	if byteRange != "" {
 		req.Header.Set("Range", byteRange)

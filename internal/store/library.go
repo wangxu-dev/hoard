@@ -40,6 +40,7 @@ func likePattern(q string) string {
 // MediaRecord is the stored metadata needed to resolve one item.
 type MediaRecord struct {
 	RemoteID, Kind, Title, Author string
+	Source                        string
 	CoverURL                      string
 	PublishedAt                   int64
 	Extra                         []byte
@@ -53,7 +54,7 @@ func (s *Store) MediaRecord(ctx context.Context, kind, remoteID string) (MediaRe
 		err := s.db.QueryRowContext(ctx, `SELECT remote_id,'music',title,author,cover_url,0,extra FROM musics WHERE remote_id=? LIMIT 1`, remoteID).Scan(&r.RemoteID, &r.Kind, &r.Title, &r.Author, &r.CoverURL, &r.PublishedAt, &r.Extra)
 		return r, err
 	}
-	err := s.db.QueryRowContext(ctx, `SELECT w.remote_id,w.kind,w.title,COALESCE(a.nickname,''),COALESCE(w.cover_url,''),w.published_at,w.extra,COALESCE(a.avatar_url,'')<>'' FROM works w LEFT JOIN authors a ON a.id=w.author_id WHERE w.remote_id=? LIMIT 1`, remoteID).Scan(&r.RemoteID, &r.Kind, &r.Title, &r.Author, &r.CoverURL, &r.PublishedAt, &r.Extra, &r.HasAvatar)
+	err := s.db.QueryRowContext(ctx, `SELECT w.remote_id,w.kind,w.title,COALESCE(a.nickname,''),COALESCE(w.cover_url,''),w.published_at,w.extra,COALESCE(a.avatar_url,'')<>'',w.source FROM works w LEFT JOIN authors a ON a.id=w.author_id WHERE w.remote_id=? LIMIT 1`, remoteID).Scan(&r.RemoteID, &r.Kind, &r.Title, &r.Author, &r.CoverURL, &r.PublishedAt, &r.Extra, &r.HasAvatar, &r.Source)
 	return r, err
 }
 

@@ -157,6 +157,14 @@ func (p *Player) media(kind, id string, force bool) (out MediaResult, resultErr 
 		class = "UNAVAILABLE"
 		return out, errors.New("UNAVAILABLE")
 	}
+	if rec.Source == "bilibili" {
+		source = "bilibili"
+		out, resultErr = p.bilibiliMedia(ctx, rec)
+		if resultErr != nil {
+			class = resultErr.Error()
+		}
+		return
+	}
 	if !force {
 		// A gallery shows its cached images at once; the viewer then asks again
 		// with force for the sound and live photos.

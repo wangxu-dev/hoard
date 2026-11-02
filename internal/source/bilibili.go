@@ -11,7 +11,7 @@ import (
 // ReadBilibili only accepts the read endpoints used by the account indexer.
 func (e *Engine) ReadBilibili(ctx context.Context, path string, params map[string]string) ([]byte, error) {
 	switch path {
-	case "/x/v2/history/toview", "/x/v3/fav/folder/created/list-all", "/x/v3/fav/resource/list", "/x/web-interface/archive/has/like", "/x/v2/fav/video/favoured", "/x/web-interface/archive/coins":
+	case "/x/web-interface/view", "/x/player/playurl", "/x/v2/history/toview", "/x/v3/fav/folder/created/list-all", "/x/v3/fav/resource/list", "/x/web-interface/archive/has/like", "/x/v2/fav/video/favoured", "/x/web-interface/archive/coins":
 	default:
 		return nil, errors.New("UNSUPPORTED_ENDPOINT")
 	}

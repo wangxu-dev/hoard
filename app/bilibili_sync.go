@@ -30,6 +30,11 @@ func (s *Sync) runBilibili(ctx context.Context, accountID string) {
 	lastPath := ""
 	client := bilibili.Client{Read: func(ctx context.Context, path string, params map[string]string) ([]byte, error) {
 		lastPath = path
+		for s.app.frontRequests.Load() > 0 {
+			if !wait(ctx, 20*time.Millisecond) {
+				return nil, ctx.Err()
+			}
+		}
 		s.app.requestMu.Lock()
 		defer s.app.requestMu.Unlock()
 		if delay := time.Until(s.app.lastRequest.Add(pageGap)); delay > 0 && !wait(ctx, delay) {

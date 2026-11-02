@@ -26,7 +26,7 @@ func allowedMedia(raw string) bool {
 	if err != nil || u.Scheme != "https" || u.User != nil || u.Port() != "" {
 		return false
 	}
-	for _, host := range []string{"douyinvod.com", "douyinpic.com", "douyinstatic.com", "byteimg.com", "pstatp.com", "douyin.com", "iesdouyin.com", "bytecdn.cn", "bytedance.com", "douyincdn.com", "snssdk.com", "amemv.com"} {
+	for _, host := range []string{"bilivideo.com", "bilivideo.cn", "upos-hz-mirrorakam.akamaized.net", "douyinvod.com", "douyinpic.com", "douyinstatic.com", "byteimg.com", "pstatp.com", "douyin.com", "iesdouyin.com", "bytecdn.cn", "bytedance.com", "douyincdn.com", "snssdk.com", "amemv.com"} {
 		if u.Hostname() == host || strings.HasSuffix(u.Hostname(), "."+host) {
 			return true
 		}
@@ -93,7 +93,7 @@ func (r *Relay) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "invalid media", 502)
 		return
 	}
-	upstream.Header.Set("Referer", "https://www.douyin.com/")
+	upstream.Header.Set("Referer", mediaReferer(raw))
 	upstream.Header.Set("User-Agent", "Mozilla/5.0")
 	for _, name := range []string{"Range", "If-Range"} {
 		if v := req.Header.Get(name); v != "" {
