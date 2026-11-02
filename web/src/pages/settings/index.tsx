@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { setLanguage } from "@/i18n";
 import { Updates } from "@/lib/api";
 import { RELEASE_NOTES, REPO_URL, VERSION, useUpdate } from "@/lib/updates";
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -108,7 +107,6 @@ export function SettingsPage() {
             <div data-testid="settings-update-notes" className="max-h-40 overflow-y-auto text-xs leading-relaxed text-muted-foreground [&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:font-medium [&_h3]:text-foreground [&_h3:first-child]:mt-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-4 [&_p]:mb-1">
               <Markdown allowedElements={["p", "h3", "ul", "ol", "li", "strong", "em", "code", "br"]} unwrapDisallowed>{info?.notes || ""}</Markdown>
             </div>
-            {downloading && <Progress aria-label={t("update.downloading")} aria-valuenow={transfer.total > 0 ? Math.min(100, transfer.downloaded / transfer.total * 100) : undefined} value={transfer.total > 0 ? Math.min(100, transfer.downloaded / transfer.total * 100) : null} />}
             {failed && <p className="text-xs text-muted-foreground" role="status">{t("update.downloadFailed")}</p>}
           </div>}
           {!available && RELEASE_NOTES && <div data-testid="settings-update-notes" className="max-h-56 overflow-y-auto px-4 py-3 text-xs leading-relaxed text-muted-foreground [&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:font-medium [&_h3]:text-foreground [&_h3:first-child]:mt-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-4 [&_p]:mb-1"><Markdown allowedElements={["p", "h3", "ul", "ol", "li", "strong", "em", "code", "br"]} unwrapDisallowed>{RELEASE_NOTES}</Markdown></div>}
