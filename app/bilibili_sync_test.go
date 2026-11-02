@@ -17,7 +17,7 @@ func (e *bilibiliSyncTestEngine) ReadBilibili(ctx context.Context, path string, 
 	return e.read(ctx, path, params)
 }
 
-func TestBilibiliSyncBusyThroughObservation(t *testing.T) {
+func TestBilibiliSyncEndsWithIndexing(t *testing.T) {
 	for _, outcome := range []string{"success", "failure", "cancel"} {
 		t.Run(outcome, func(t *testing.T) {
 			a, _, engine := newAccountTestApp(t)
@@ -29,7 +29,7 @@ func TestBilibiliSyncBusyThroughObservation(t *testing.T) {
 			a.accountID, a.sessionCtx = "test", ctx
 			engine.open = true
 			syncer := NewSync(a)
-			observed := false
+			indexed := false
 			a.Engine = &bilibiliSyncTestEngine{fakeAccountEngine: engine, read: func(ctx context.Context, path string, _ map[string]string) ([]byte, error) {
 				switch path {
 				case "/x/v2/history/toview":
@@ -37,15 +37,13 @@ func TestBilibiliSyncBusyThroughObservation(t *testing.T) {
 				case "/x/v3/fav/folder/created/list-all":
 					return []byte(`{"code":0,"data":{"count":0,"list":[]}}`), nil
 				case "/x/polymer/web-dynamic/v1/opus/feed/fav":
-					return []byte(`{"code":0,"data":{"has_more":false,"items":[]}}`), nil
-				case "/x/web-interface/archive/has/like":
-					observed = true
+					indexed = true
 					records, err := a.Store.SyncRecords(ctx, "test")
 					if err != nil {
 						t.Fatal(err)
 					}
 					for _, r := range records {
-						if r.Status != "checking" || r.Phase != "done" {
+						if r.Status != "checking" && r.Status != "running" {
 							t.Fatalf("premature completion: %+v", r)
 						}
 					}
@@ -56,18 +54,14 @@ func TestBilibiliSyncBusyThroughObservation(t *testing.T) {
 						cancel()
 						return nil, ctx.Err()
 					}
-					return []byte(`{"code":0,"data":0}`), nil
-				case "/x/v2/fav/video/favoured":
-					return []byte(`{"code":0,"data":{"favoured":false}}`), nil
-				case "/x/web-interface/archive/coins":
-					return []byte(`{"code":0,"data":{"multiply":0}}`), nil
+					return []byte(`{"code":0,"data":{"has_more":false,"items":[]}}`), nil
 				}
 				t.Fatalf("unexpected endpoint %s", path)
 				return nil, nil
 			}}
 			syncer.runBilibili(ctx, "test")
-			if !observed {
-				t.Fatal("observation not reached")
+			if !indexed {
+				t.Fatal("indexing not reached")
 			}
 			records, err := a.Store.SyncRecords(context.Background(), "test")
 			if err != nil {

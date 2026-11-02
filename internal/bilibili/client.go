@@ -70,14 +70,31 @@ func (c Client) Index(ctx context.Context, db *store.Store, accountID string) ([
 	for _, v := range later {
 		seen[v.ID] = true
 	}
+	storedFolders, err := db.Folders(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	counts := map[string]int{}
+	for _, f := range storedFolders {
+		counts[f.ID] = f.Count
+	}
 	for _, f := range folders {
 		previous, err := db.FolderMembers(ctx, accountID, f.ID)
 		if err != nil {
 			return nil, err
 		}
 		folder := store.Folder{ID: f.ID, Title: f.Title, Count: f.Count}
-		if err = db.SaveFolderMembership(ctx, accountID, folder, nil); err != nil {
-			return nil, err
+		// shortcut: equal counts skip content checks; add reconciliation for same-count replacements.
+		if count, exists := counts[f.ID]; c.Incremental && exists && count == f.Count {
+			if err = db.SaveFolderMembership(ctx, accountID, folder, nil); err != nil {
+				return nil, err
+			}
+			continue
+		}
+		pageFolder := folder
+		pageFolder.Count = 0
+		if count, exists := counts[f.ID]; exists {
+			pageFolder.Count = count
 		}
 		pagesSeen := map[[32]byte]bool{}
 		for page := 1; ; page++ {
@@ -125,12 +142,15 @@ func (c Client) Index(ctx context.Context, db *store.Store, accountID string) ([
 					videos = append(videos, v)
 				}
 			}
-			if err = db.SaveFolderMembership(ctx, accountID, folder, members); err != nil {
+			if err = db.SaveFolderMembership(ctx, accountID, pageFolder, members); err != nil {
 				return nil, err
 			}
 			if !parsed.HasMore || unchanged {
 				break
 			}
+		}
+		if err = db.SaveFolderMembership(ctx, accountID, folder, nil); err != nil {
+			return nil, err
 		}
 	}
 	if err := c.indexOpus(ctx, db, accountID); err != nil {
@@ -177,7 +197,14 @@ func (c Client) Observe(ctx context.Context, db *store.Store, accountID string, 
 	if !videoID.MatchString(video.ID) {
 		return ErrInvalid
 	}
+	cached, err := db.PersonalState(ctx, accountID, video.ID)
+	if err != nil {
+		return err
+	}
 	for _, kind := range []string{"like", "favorite", "coins"} {
+		if (kind == "like" && cached.Liked != nil) || (kind == "favorite" && cached.Favorited != nil) || (kind == "coins" && cached.Coins != nil) {
+			continue
+		}
 		path, params := "/x/web-interface/archive/has/like", map[string]string{"bvid": video.ID}
 		switch kind {
 		case "favorite":

@@ -126,20 +126,4 @@ func (s *Sync) runBilibili(ctx context.Context, accountID string) {
 		return
 	}
 	log.Printf("[hoard:sync] Bilibili indexing complete videos=%d", len(videos))
-	log.Printf("[hoard:sync] Bilibili observing total=%d", len(videos))
-	for index, video := range videos {
-		if ctx.Err() != nil {
-			return
-		}
-		if !video.Available {
-			continue
-		}
-		if err = client.Observe(ctx, s.app.Store, accountID, video); err != nil {
-			log.Print("[hoard:sync] Bilibili observation paused")
-			return
-		}
-		if (index+1)%20 == 0 || index+1 == len(videos) {
-			log.Printf("[hoard:sync] Bilibili observed=%d total=%d", index+1, len(videos))
-		}
-	}
 }

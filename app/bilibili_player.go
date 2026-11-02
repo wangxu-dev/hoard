@@ -2,7 +2,9 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -20,7 +22,7 @@ func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord) (Medi
 		return MediaResult{}, errors.New("AUTH_REQUIRED")
 	}
 	p.app.mu.Lock()
-	session := p.app.sessionCtx
+	session, accountID := p.app.sessionCtx, p.app.accountID
 	p.app.mu.Unlock()
 	if session == nil {
 		return MediaResult{}, errors.New("AUTH_REQUIRED")
@@ -94,5 +96,39 @@ func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord) (Medi
 		return MediaResult{}, errors.New("CANCELED")
 	}
 	out.ExpiresAt = time.Now().Add(20 * time.Minute).UnixMilli()
+	var archive struct {
+		AID string `json:"aid"`
+	}
+	if json.Unmarshal(rec.Extra, &archive) == nil && archive.AID != "" {
+		go func() {
+			ctx, cancel := context.WithTimeout(session, 30*time.Second)
+			defer cancel()
+			client := bilibili.Client{Read: func(ctx context.Context, path string, params map[string]string) ([]byte, error) {
+				for {
+					p.app.requestMu.Lock()
+					if p.app.frontRequests.Load() == 0 {
+						break
+					}
+					p.app.requestMu.Unlock()
+					if !wait(ctx, 20*time.Millisecond) {
+						return nil, ctx.Err()
+					}
+				}
+				defer p.app.requestMu.Unlock()
+				if delay := time.Until(p.app.lastRequest.Add(pageGap)); delay > 0 && !wait(ctx, delay) {
+					return nil, ctx.Err()
+				}
+				if err := ctx.Err(); err != nil {
+					return nil, err
+				}
+				body, err := engine.ReadBilibili(ctx, path, params)
+				p.app.lastRequest = time.Now()
+				return body, err
+			}}
+			if err := client.Observe(ctx, p.app.Store, accountID, bilibili.Video{ID: rec.RemoteID, AID: archive.AID}); err != nil && ctx.Err() == nil {
+				log.Print("[hoard:player] Bilibili personal state refresh failed")
+			}
+		}()
+	}
 	return out, nil
 }

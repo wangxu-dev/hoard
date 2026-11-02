@@ -97,4 +97,16 @@ func TestIndexAndObserve(t *testing.T) {
 	if err != nil || state.Liked == nil || *state.Liked || state.Favorited == nil || !*state.Favorited || state.Coins != nil {
 		t.Fatalf("partial observations: %+v %v", state, err)
 	}
+	before := calls
+	if err = client.Observe(ctx, db, "test", videos[0]); err == nil || calls-before != 1 {
+		t.Fatalf("retry should fetch only missing coins: calls=%d err=%v", calls-before, err)
+	}
+	coins := 0
+	if err = db.SavePersonalState(ctx, "test", videos[0].ID, store.PersonalState{Coins: &coins}); err != nil {
+		t.Fatal(err)
+	}
+	before = calls
+	if err = client.Observe(ctx, db, "test", videos[0]); err != nil || calls != before {
+		t.Fatalf("cached state made a request: calls=%d err=%v", calls-before, err)
+	}
 }
