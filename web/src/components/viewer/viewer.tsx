@@ -233,11 +233,14 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
         </div>
 
         {/* The item pair ends on the center line, so a gallery's next-image arrow sits just below it. */}
-        <div onPointerEnter={() => setOverControls(true)} onPointerLeave={() => setOverControls(false)} className={cn("absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2", fade)}>
-          {entry && <ViewerActions key={entry.id} entry={entry} />}
+        <div onPointerEnter={() => setOverControls(true)} onPointerLeave={() => setOverControls(false)} className={cn("absolute right-4 bottom-[calc(50%+8px)] flex flex-col gap-2", fade)}>
           <ControlButton data-testid="viewer-prev" label={t("viewer.previousItem")} hint="↑" side="left" onClick={() => move(-1)} disabled={index === 0} className="size-10 bg-viewer-control backdrop-blur-md disabled:opacity-30"><ChevronUp className="size-5" /></ControlButton>
           <ControlButton data-testid="viewer-next" label={t("viewer.nextItem")} hint="↓" side="left" onClick={() => move(1)} disabled={index >= total - 1} className="size-10 bg-viewer-control backdrop-blur-md disabled:opacity-30"><ChevronDown className="size-5" /></ControlButton>
         </div>
+
+        {entry && <div onPointerEnter={() => setOverControls(true)} onPointerLeave={() => setOverControls(false)} className={cn("absolute right-4 top-[calc(50%+8px)]", fade)}>
+          <ViewerActions key={entry.id} entry={entry} />
+        </div>}
 
         <div data-testid="viewer-controls" onPointerEnter={() => setOverControls(true)} onPointerLeave={() => setOverControls(false)}
           className={cn("absolute inset-x-0 bottom-0 bg-linear-to-t from-viewer-scrim via-viewer-scrim/50 to-transparent px-5 pt-14 pb-3", fade)}>

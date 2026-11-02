@@ -84,9 +84,9 @@ export function GalleryStage({ entry, media, onElement, onHandle, onSlide, onExp
     </Carousel>
     {images.length > 1 && <>
       <ControlButton data-testid="image-prev" label={t("viewer.previousImage")} hint="←" side="right" onClick={() => move(-1)} disabled={selected === 0}
-        className={cn("absolute top-[calc(50%+8px)] left-4 size-10 bg-viewer-control backdrop-blur-md transition-opacity disabled:opacity-0", chrome ? "opacity-100" : "pointer-events-none opacity-0")}><ChevronLeft className="size-5" /></ControlButton>
+        className={cn("absolute top-1/2 -translate-y-1/2 left-4 size-10 bg-viewer-control backdrop-blur-md transition-opacity disabled:opacity-0", chrome ? "opacity-100" : "pointer-events-none opacity-0")}><ChevronLeft className="size-5" /></ControlButton>
       <ControlButton data-testid="image-next" label={t("viewer.nextImage")} hint="→" side="left" onClick={() => move(1)} disabled={selected === images.length - 1}
-        className={cn("absolute top-[calc(50%+8px)] right-4 size-10 bg-viewer-control backdrop-blur-md transition-opacity disabled:opacity-0", chrome ? "opacity-100" : "pointer-events-none opacity-0")}><ChevronRight className="size-5" /></ControlButton>
+        className={cn("absolute top-1/2 -translate-y-1/2 right-20 size-10 bg-viewer-control backdrop-blur-md transition-opacity disabled:opacity-0", chrome ? "opacity-100" : "pointer-events-none opacity-0")}><ChevronRight className="size-5" /></ControlButton>
     </>}
     {media?.music.url && <audio ref={setAudio} src={media.music.url} loop preload="auto" className="hidden"
       onLoadedMetadata={(event) => { if (resume.current) { event.currentTarget.currentTime = resume.current; resume.current = 0; } }}

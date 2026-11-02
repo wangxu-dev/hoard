@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Heart, Star, Music2, MoreHorizontal, Check } from "lucide-react";
 import { motion } from "motion/react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ControlButton } from "@/components/viewer/controls";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -58,12 +59,12 @@ function RealAccountChoice({ target, account, compact = false }: { target: Actio
     aria-busy={mutation.isPending} disabled={unavailable} onClick={perform}>
     <Icon className={on ? `fill-current ${activeColor(target.kind)}` : ""} />
   </ControlButton>;
-  return <Button variant="ghost" className="h-auto w-full justify-start gap-3 px-2 py-2" disabled={unavailable} aria-busy={mutation.isPending} onClick={perform}>
+  return <Tooltip><TooltipTrigger asChild><Button variant="ghost" className="h-auto w-full justify-start gap-2 rounded-md px-2 py-2 transition-[scale] duration-(--duration-fast) active:scale-95 motion-reduce:active:scale-100" aria-label={`${account.nickname} · ${label}`} disabled={unavailable} aria-busy={mutation.isPending} onClick={perform}>
     <Avatar className="size-8"><AvatarImage src={account.avatarUrl} alt="" /><AvatarFallback>{account.nickname.slice(0, 1)}</AvatarFallback></Avatar>
-    <span className="min-w-0 flex-1 truncate text-left">{account.nickname}</span>
-    <span className="text-xs text-muted-foreground">{label}</span>
+    <span className="min-w-0 flex-1 truncate text-left text-sm">{account.nickname}</span>
+    <span className="shrink-0 text-xs text-muted-foreground">{label}</span>
     <Icon className={on ? `fill-current ${activeColor(target.kind)}` : ""} />
-  </Button>;
+  </Button></TooltipTrigger><TooltipContent side="left" className="z-[70]">{account.nickname} · {label}</TooltipContent></Tooltip>;
 }
 
 function RealAccountChoices({ target }: { target: ActionTarget }) {
@@ -87,13 +88,13 @@ function PreviewAccountChoices({ target }: { target: ActionTarget }) {
   return <div className="space-y-1" data-account-choices>
     {accounts.map((account) => {
       const on = owners.includes(account.id);
-      return <Button key={account.id} variant="ghost" className="h-auto w-full justify-start gap-3 px-2 py-2" aria-label={t(`actions.${on ? "remove" : "add"}.${target.kind}`) + " · " + account.nickname}
+      return <Tooltip key={account.id}><TooltipTrigger asChild><Button variant="ghost" className="h-auto w-full justify-start gap-2 rounded-md px-2 py-2 transition-[scale] duration-(--duration-fast) active:scale-95 motion-reduce:active:scale-100" aria-label={t(`actions.${on ? "remove" : "add"}.${target.kind}`) + " · " + account.nickname}
         onClick={() => setPreviewRelation(target, account.id, !on)}>
         <Avatar className="size-8"><AvatarImage src={account.avatarUrl} alt="" /><AvatarFallback>{account.nickname.slice(0, 1)}</AvatarFallback></Avatar>
-        <span className="min-w-0 flex-1 truncate text-left">{account.nickname}</span>
-        <span className="text-xs text-muted-foreground">{t(`actions.${on ? "remove" : "add"}.${target.kind}`)}</span>
+        <span className="min-w-0 flex-1 truncate text-left text-sm">{account.nickname}</span>
+        <span className="shrink-0 text-xs text-muted-foreground">{t(`actions.${on ? "remove" : "add"}.${target.kind}`)}</span>
         <motion.span key={String(on)} initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={fastTransition} className="w-4 text-primary">{on && <Check className="size-4" />}</motion.span>
-      </Button>;
+      </Button></TooltipTrigger><TooltipContent side="left" className="z-[70]">{account.nickname} · {t(`actions.${on ? "remove" : "add"}.${target.kind}`)}</TooltipContent></Tooltip>;
     })}
   </div>;
 }
@@ -117,7 +118,7 @@ function ActionButton({ target }: { target: ActionTarget }) {
         <motion.span key={String(on)} initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={fastTransition}><Icon className={on ? `fill-current ${activeColor(target.kind)}` : ""} /></motion.span>
       </ControlButton>
     </PopoverTrigger>
-    <PopoverContent side="top" align="end" className="dark z-[60] w-72 max-w-[calc(100vw-2rem)] p-2">
+    <PopoverContent side="top" align="end" className="dark z-[60] w-64 max-w-[calc(100vw-2rem)] p-2">
       <AccountChoices target={target} />
     </PopoverContent>
   </Popover>;

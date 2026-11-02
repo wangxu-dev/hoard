@@ -64,7 +64,7 @@ const sources: SourceGroup[] = [{ id: "douyin", name: "抖音", kinds: ["like", 
       return months;
     },
     onLibraryChanged() { return () => {}; },
-    async media(kind, id) { return { kind: kind as "video", videos: kind === "music" ? [] : [avatar(id)], images: kind === "gallery" ? [{ url: avatar(id) }] : [], music: { title: "示例配乐", author: "示例作者", url: "" }, author: "示例作者", desc: "示例文案", publishedAt: 1767000000 }; },
+    async media(kind, id) { return { kind: kind as "video", videos: kind === "music" ? [] : [avatar(id)], images: kind === "gallery" ? [0, 1, 2].map((n) => ({ url: avatar(String(n + 1)) })) : [], music: { title: "示例配乐", author: "示例作者", url: "" }, author: "示例作者", desc: "示例文案", publishedAt: 1767000000 }; },
     warm() { return Promise.resolve(); },
     playMode() { return Promise.resolve("list" as const); },
     setPlayMode() { return Promise.resolve(); },

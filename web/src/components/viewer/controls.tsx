@@ -15,7 +15,7 @@ export const ControlButton = forwardRef<HTMLButtonElement, ComponentProps<typeof
   function ControlButton({ label, hint, side = "top", className, children, ...props }, ref) {
     return <Tooltip>
       <TooltipTrigger asChild>
-        <Button ref={ref} variant="ghost" size="icon" aria-label={label} className={cn("size-9 rounded-full text-viewer-foreground transition-colors duration-150 hover:bg-viewer-control-hover hover:text-viewer-foreground focus-visible:ring-viewer-foreground/30 [&_svg:not([class*='size-'])]:size-[18px]", className)} {...props}>{children}</Button>
+        <Button ref={ref} variant="ghost" size="icon" aria-label={label} className={cn("size-9 rounded-full text-viewer-foreground transition-[color,background-color,scale] duration-(--duration-fast) ease-(--ease-out) active:scale-90 motion-reduce:active:scale-100 hover:bg-viewer-control-hover hover:text-viewer-foreground focus-visible:ring-viewer-foreground/30 [&_svg:not([class*='size-'])]:size-[18px]", className)} {...props}>{children}</Button>
       </TooltipTrigger>
       <TooltipContent side={side} sideOffset={6}>{label}{hint && <kbd className="ml-2 font-sans opacity-60">{hint}</kbd>}</TooltipContent>
     </Tooltip>;
