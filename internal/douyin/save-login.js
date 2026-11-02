@@ -1,0 +1,30 @@
+(async () => {
+  const visible = el => el.isConnected && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+  const deadline = Date.now() + 15000;
+  let clicked = null;
+  const url = location.href;
+  while (Date.now() < deadline) {
+    if (location.href !== url) return false;
+    if (clicked) {
+      if (!visible(clicked)) return true;
+    } else {
+      const prompts = [...document.querySelectorAll('[role="dialog"], dialog, div')].filter(el => {
+        const text = (el.innerText || '').trim();
+        return visible(el) && text.includes('保存登录信息') && text.length < 500;
+      });
+      const buttons = new Set();
+      for (const prompt of prompts) {
+        for (const button of prompt.querySelectorAll('button, [role="button"]')) {
+          if (visible(button) && !button.disabled && button.getAttribute('aria-disabled') !== 'true' && /^(保存|保存登录信息)$/.test((button.innerText || '').trim())) buttons.add(button);
+        }
+      }
+      if (buttons.size === 1) {
+        const button = [...buttons][0];
+        clicked = prompts.filter(el => el.contains(button)).sort((a, b) => a.innerText.length - b.innerText.length)[0];
+        button.click();
+      }
+    }
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  return false;
+})()

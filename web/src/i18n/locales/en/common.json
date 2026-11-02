@@ -1,0 +1,5 @@
+{
+  "appName": "Hoard",
+  "sidebar": { "library": "Library", "settings": "Settings", "collapse": "Collapse sidebar", "expand": "Expand sidebar", "update": "Update available" },
+  "theme": { "label": "Theme", "toggle": "Toggle theme", "light": "Light", "dark": "Dark" }
+}

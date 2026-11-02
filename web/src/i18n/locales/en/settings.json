@@ -1,0 +1,30 @@
+{
+  "title": "Settings",
+  "general": "General",
+  "about": "About",
+  "language": {
+    "title": "Language",
+    "description": "Interface language",
+    "zhCN": "简体中文",
+    "en": "English"
+  },
+  "app": {
+    "description": "Version {{version}} · MIT"
+  },
+  "github": "GitHub",
+  "issues": "Feedback",
+  "update": {
+    "available": "Version {{version}} is available",
+    "check": "Check for updates",
+    "download": "Download",
+    "current": "You're up to date",
+    "openFailed": "Couldn't open the browser",
+    "error": {
+      "OFFLINE": "Couldn't reach GitHub. Check your network.",
+      "RATE_LIMITED": "Too many requests. Try again later.",
+      "NOT_FOUND": "No release published yet",
+      "BAD_RESPONSE": "Couldn't read version info right now"
+    }
+  },
+  "disclaimer": "For organizing and browsing your own account data, which stays on this device. Not affiliated with any third-party platform."
+}

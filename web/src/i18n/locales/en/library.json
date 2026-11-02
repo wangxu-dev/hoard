@@ -1,0 +1,153 @@
+{
+  "toolbar": {
+    "source": {
+      "label": "Source",
+      "all": "All accounts",
+      "platform": "All {{name}} accounts",
+      "add": "Add account…",
+      "douyin": "Douyin",
+      "signed_out": "Signed out",
+      "syncing": "Syncing",
+      "signOut": "Sign out",
+      "signOutFailed": "Couldn't sign out. Try again."
+    },
+    "kind": {
+      "label": "List",
+      "like": "Likes",
+      "favorite": "Favorites",
+      "music": "Music"
+    },
+    "type": {
+      "label": "Type",
+      "all": "All",
+      "video": "Video",
+      "gallery": "Gallery"
+    },
+    "search": {
+      "label": "Search",
+      "placeholder": "Search titles or authors",
+      "clear": "Clear search"
+    },
+    "sort": {
+      "label": "Sort",
+      "published": "Published date",
+      "recent": "Recently liked",
+      "music": "Saved date",
+      "unavailable_music": "Music has no published date"
+    },
+    "filters": "Filters"
+  },
+  "sync": {
+    "label": "Sync details",
+    "eta": "About {{count}} min",
+    "soon": "Under 1 min",
+    "cooling": "Resuming in {{time}}",
+    "toast": "Too many requests. Resuming automatically in 2 minutes",
+    "pages": "Page {{count}}",
+    "blocked": "Awaiting verification",
+    "signed_out": "Signed out",
+    "loginRequired": "Login required",
+    "login": "Log in",
+    "popover": {
+      "cover": "Covers",
+      "cached": "Cached {{count}}"
+    },
+    "verify": "Verify",
+    "verifyRequired": "Verification needed",
+    "verifying": "Verifying…",
+    "verifyHint": "Douyin needs a quick check. Finish the slider in the Douyin window and syncing continues on its own; synced items stay",
+    "now": "Sync now",
+    "unsupported": "Not supported yet",
+    "lastSync": "Last synced {{time}}",
+    "never": "Not synced yet",
+    "startFailed": "Sync didn't start. Try again in a moment",
+    "verifyFailed": "The Douyin window didn't open. Try again",
+    "syncing": "Syncing",
+    "checking": "Checking for updates",
+    "fresh": "{{n}} new",
+    "synced": "Synced",
+    "justNow": "Just now",
+    "timeUnknown": "Time unknown",
+    "clickToSync": "Click to sync"
+  },
+  "preview": {
+    "scope": "Source scope",
+    "kind": "List",
+    "type": "Type",
+    "query": "Search",
+    "sort": "Sort",
+    "empty": "None"
+  },
+  "error": {
+    "load": "Could not read local data",
+    "retry": "Reload",
+    "login": "Could not open the login window. Try again."
+  },
+  "viewer": {
+    "title": "Viewer",
+    "close": "Close",
+    "loading": "Loading",
+    "unavailable": "Can't play this right now",
+    "retry": "Retry",
+    "gallery": "Gallery",
+    "video": "Video",
+    "previous": "Previous track",
+    "next": "Next track",
+    "playMode": {
+      "list": "List loop",
+      "one": "Single loop",
+      "shuffle": "Shuffle"
+    },
+    "progress": "Progress",
+    "volume": "Volume",
+    "speed": "Playback speed",
+    "fullscreen": "Full screen",
+    "exitFullscreen": "Exit full screen",
+    "play": "Play",
+    "pause": "Pause",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "livePhoto": "Live",
+    "info": "Details",
+    "showInfo": "Show details",
+    "hideInfo": "Hide details",
+    "previousItem": "Previous",
+    "nextItem": "Next",
+    "previousImage": "Previous image",
+    "nextImage": "Next image",
+    "closePlayer": "Close player",
+    "unknownAuthor": "Unknown creator",
+    "galleryCount": "Gallery · {{count}} images",
+    "errors": {
+      "NEED_VERIFY": "Douyin needs verification. Finish it, then retry",
+      "COOLING": "Too many requests. Try again shortly",
+      "AUTH_REQUIRED": "Signed out. Sign in again",
+      "UNAVAILABLE": "This item can't be played right now",
+      "REQUEST_FAILED": "The request failed",
+      "CANCELED": "Canceled",
+      "DELETED": "This item was deleted",
+      "PRIVATE": "Only the creator can see this item",
+      "REVIEWING": "This item is under review",
+      "WITHHELD": "This item can't be viewed right now"
+    },
+    "locate": "Show in library"
+  },
+  "grid": {
+    "empty": "Nothing here yet. Choose Sync at the top right to bring in your Douyin items",
+    "emptySyncing": "Syncing. Items will show up shortly",
+    "emptyFiltered": "No items match",
+    "untitled": "Untitled",
+    "gallery": "Gallery · {{count}}",
+    "loadFailed": "Couldn't load the list",
+    "retry": "Retry",
+    "totalPrefix": "",
+    "totalSuffix": " items",
+    "incoming": "{{count}}{{more}} new",
+    "playing": "Playing",
+    "paused": "Paused"
+  },
+  "timeline": {
+    "label": "Timeline",
+    "undated": "No date"
+  }
+}

@@ -1,0 +1,116 @@
+:root {
+  --background: oklch(0.985 0.005 90);
+  --foreground: oklch(0.22 0.015 270);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.015 270);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.015 270);
+  --primary: oklch(0.22 0.015 270);
+  --primary-foreground: oklch(0.985 0.005 90);
+  --secondary: oklch(0.95 0.008 270);
+  --secondary-foreground: oklch(0.3 0.015 270);
+  --muted: oklch(0.95 0.008 270);
+  --muted-foreground: oklch(0.52 0.02 270);
+  --accent: oklch(0.94 0.012 270);
+  --accent-foreground: oklch(0.25 0.015 270);
+  --destructive: oklch(0.62 0.19 25);
+  --border: oklch(0.89 0.012 270);
+  --input: oklch(0.89 0.012 270);
+  --ring: #F97362;
+  --sidebar: oklch(0.965 0.006 90);
+  --sidebar-foreground: oklch(0.28 0.015 270);
+  --sidebar-primary: oklch(0.22 0.015 270);
+  --sidebar-primary-foreground: oklch(0.985 0.005 90);
+  --sidebar-accent: oklch(0.93 0.012 270);
+  --sidebar-accent-foreground: oklch(0.22 0.015 270);
+  --sidebar-border: oklch(0.89 0.012 270);
+  --sidebar-ring: #F97362;
+  --brand: #F97362;
+  --brand-foreground: oklch(0.985 0.005 90);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --shadow-sm: 0 1px 2px oklch(0.2 0.01 270 / 0.05);
+  --shadow-md: 0 4px 12px oklch(0.2 0.01 270 / 0.08);
+  --shadow-lg: 0 12px 30px oklch(0.2 0.01 270 / 0.12);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --duration-sidebar: 150ms;
+  --duration-pulse: 1200ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --sidebar-width: 240px;
+  /* The viewer is always dark, in both themes. */
+  --viewer: oklch(0 0 0);
+  --viewer-foreground: oklch(0.97 0.004 90);
+  --viewer-muted: oklch(0.72 0.01 270);
+  --viewer-panel: oklch(0.17 0.008 270 / 0.82);
+  /* Glass surfaces such as the music bar; a setting may drive these later. */
+  --glass-blur: 12px;
+  --glass-bg-opacity: 0.62;
+  --viewer-bar: oklch(0.17 0.008 270 / var(--glass-bg-opacity));
+  --viewer-border: oklch(1 0 0 / 0.09);
+  --viewer-control: oklch(1 0 0 / 0.1);
+  --viewer-control-hover: oklch(1 0 0 / 0.18);
+  --viewer-track: oklch(1 0 0 / 0.2);
+  --viewer-buffer: oklch(1 0 0 / 0.36);
+  --viewer-scrim: oklch(0 0 0 / 0.72);
+  /* 40px rail buttons with 8px on each side, plus the 1px border. */
+  --sidebar-width-icon: 57px;
+}
+
+.dark {
+  --background: oklch(0.17 0.012 270);
+  --foreground: oklch(0.94 0.008 90);
+  --card: oklch(0.21 0.014 270);
+  --card-foreground: oklch(0.94 0.008 90);
+  --popover: oklch(0.21 0.014 270);
+  --popover-foreground: oklch(0.94 0.008 90);
+  --primary: oklch(0.94 0.008 90);
+  --primary-foreground: oklch(0.2 0.012 270);
+  --secondary: oklch(0.26 0.014 270);
+  --secondary-foreground: oklch(0.9 0.008 90);
+  --muted: oklch(0.26 0.014 270);
+  --muted-foreground: oklch(0.68 0.014 270);
+  --accent: oklch(0.29 0.016 270);
+  --accent-foreground: oklch(0.94 0.008 90);
+  --destructive: oklch(0.7 0.16 22);
+  --border: oklch(1 0 0 / 0.11);
+  --input: oklch(1 0 0 / 0.14);
+  --ring: #F97362;
+  --sidebar: oklch(0.19 0.014 270);
+  --sidebar-foreground: oklch(0.9 0.008 90);
+  --sidebar-primary: oklch(0.94 0.008 90);
+  --sidebar-primary-foreground: oklch(0.2 0.012 270);
+  --sidebar-accent: oklch(0.27 0.016 270);
+  --sidebar-accent-foreground: oklch(0.94 0.008 90);
+  --sidebar-border: oklch(1 0 0 / 0.11);
+  --sidebar-ring: #F97362;
+  --brand: #F97362;
+  --brand-foreground: oklch(0.2 0.012 270);
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.2);
+  --shadow-md: 0 4px 12px oklch(0 0 0 / 0.25);
+  --shadow-lg: 0 12px 30px oklch(0 0 0 / 0.35);
+}
+
+/* On the root only: glass surfaces carry their own .dark class, yet follow the app theme. */
+:root.dark {
+  --glass-blur: 12px;
+  --glass-bg-opacity: 0.55;
+}
+
+@theme inline {
+  --sidebar-width: var(--sidebar-width);
+  --sidebar-width-icon: var(--sidebar-width-icon);
+  --duration-fast: var(--duration-fast);
+  --duration-base: var(--duration-base);
+  --duration-slow: var(--duration-slow);
+  --duration-sidebar: var(--duration-sidebar);
+  --ease-out: var(--ease-out);
+  --ease-in-out: var(--ease-in-out);
+}
