@@ -5,7 +5,7 @@ import { siGithub } from "simple-icons";
 import { toast } from "sonner";
 import { setLanguage } from "@/i18n";
 import { Updates } from "@/lib/api";
-import { REPO_URL, VERSION, useUpdate } from "@/lib/updates";
+import { RELEASE_NOTES, REPO_URL, VERSION, useUpdate } from "@/lib/updates";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -87,7 +87,7 @@ export function SettingsPage() {
                 : <IconButton label={t("update.check")} disabled={checking} onClick={() => { void runCheck(); }}><RefreshCw className={checking ? "animate-spin" : undefined} /></IconButton>}
             </div>
           </Row>
-          {available && info?.notes && <div data-testid="settings-update-notes" className="max-h-56 overflow-y-auto px-4 py-3 text-xs whitespace-pre-wrap text-muted-foreground">{info.notes}</div>}
+          {(available ? info?.notes : RELEASE_NOTES) && <div data-testid="settings-update-notes" className="max-h-56 overflow-y-auto px-4 py-3 text-xs whitespace-pre-wrap text-muted-foreground">{available ? info?.notes : RELEASE_NOTES}</div>}
         </div>
         <p className="px-1 text-xs text-muted-foreground">{t("disclaimer")}</p>
       </section>

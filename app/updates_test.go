@@ -126,6 +126,8 @@ func testUpdates(t *testing.T, url string) *Updates {
 	dir := t.TempDir()
 	u := NewUpdates()
 	u.url = url
+	u.fallback = ""
+	u.client = &http.Client{Timeout: time.Second}
 	u.dir = func() (string, error) { return dir, nil }
 	return u
 }

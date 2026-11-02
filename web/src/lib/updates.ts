@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Updates, type UpdateInfo } from "./api";
 
 export const VERSION = import.meta.env.HOARD_VERSION || "dev";
+export const RELEASE_NOTES = import.meta.env.HOARD_RELEASE_NOTES || "";
 export const REPO_URL = "https://github.com/wangxu-dev/hoard";
 const key = ["update"] as const;
 
