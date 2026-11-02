@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Heart, Star, Music2, MoreHorizontal, Check } from "lucide-react";
+import { Heart, Star, Music2, MoreHorizontal } from "lucide-react";
 import { motion } from "motion/react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ControlButton } from "@/components/viewer/controls";
@@ -59,11 +59,10 @@ function RealAccountChoice({ target, account, compact = false }: { target: Actio
     aria-busy={mutation.isPending} disabled={unavailable} onClick={perform}>
     <Icon className={on ? `fill-current ${activeColor(target.kind)}` : ""} />
   </ControlButton>;
-  return <Tooltip><TooltipTrigger asChild><Button variant="ghost" className="h-auto w-full justify-start gap-2 rounded-md px-2 py-2 transition-[scale] duration-(--duration-fast) active:scale-95 motion-reduce:active:scale-100" aria-label={`${account.nickname} · ${label}`} disabled={unavailable} aria-busy={mutation.isPending} onClick={perform}>
-    <Avatar className="size-8"><AvatarImage src={account.avatarUrl} alt="" /><AvatarFallback>{account.nickname.slice(0, 1)}</AvatarFallback></Avatar>
-    <span className="min-w-0 flex-1 text-right text-xs text-muted-foreground">{label}</span>
-    <Icon className={on ? `fill-current ${activeColor(target.kind)}` : ""} />
-  </Button></TooltipTrigger><TooltipContent side="left" className="z-[70]">{account.nickname} · {label}</TooltipContent></Tooltip>;
+  return <Tooltip delayDuration={0}><TooltipTrigger asChild><Button variant="ghost" className="relative size-10 shrink-0 rounded-full p-0 transition-[scale] duration-(--duration-fast) active:scale-95 motion-reduce:active:scale-100" aria-label={`${account.nickname} · ${label}`} disabled={unavailable} aria-busy={mutation.isPending} onClick={perform}>
+    <Avatar className="size-10"><AvatarImage src={account.avatarUrl} alt="" /><AvatarFallback>{account.nickname.slice(0, 1)}</AvatarFallback></Avatar>
+    <span className="absolute -right-1 -bottom-1 rounded-full bg-viewer p-0.5"><Icon className={`size-3 ${on ? `fill-current ${activeColor(target.kind)}` : "text-viewer-muted"}`} /></span>
+  </Button></TooltipTrigger><TooltipContent side="top" className="z-[70]">{account.nickname} · {label}</TooltipContent></Tooltip>;
 }
 
 function RealAccountChoices({ target }: { target: ActionTarget }) {
@@ -71,7 +70,7 @@ function RealAccountChoices({ target }: { target: ActionTarget }) {
   const { scope } = useLibraryFilters();
   const { data } = useQuery({ queryKey: queryKeys.sources, queryFn: () => getLibrarySource().sources() });
   if (target.kind === "music") return <p className="text-sm text-muted-foreground">{t("actions.musicUnavailable")}</p>;
-  return <div data-account-choices>{data?.filter((group) => group.id === "douyin").flatMap((group) => group.accounts).filter((account) => !scope.accountId || account.id === scope.accountId).map((account) => <RealAccountChoice key={account.id} target={target} account={account} />)}</div>;
+  return <div className="flex flex-wrap items-center gap-3" data-account-choices>{data?.filter((group) => group.id === "douyin").flatMap((group) => group.accounts).filter((account) => !scope.accountId || account.id === scope.accountId).map((account) => <RealAccountChoice key={account.id} target={target} account={account} />)}</div>;
 }
 
 function AccountChoices({ target }: { target: ActionTarget }) {
@@ -84,15 +83,15 @@ function PreviewAccountChoices({ target }: { target: ActionTarget }) {
   const { scope } = useLibraryFilters();
   const { data } = useQuery({ queryKey: queryKeys.sources, queryFn: () => getLibrarySource().sources() });
   const accounts = data?.flatMap((group) => group.accounts).filter((account) => !scope.accountId || account.id === scope.accountId) ?? [];
-  return <div className="space-y-1" data-account-choices>
+  return <div className="flex flex-wrap items-center gap-3" data-account-choices>
     {accounts.map((account) => {
       const on = owners.includes(account.id);
-      return <Tooltip key={account.id}><TooltipTrigger asChild><Button variant="ghost" className="h-auto w-full justify-start gap-2 rounded-md px-2 py-2 transition-[scale] duration-(--duration-fast) active:scale-95 motion-reduce:active:scale-100" aria-label={t(`actions.${on ? "remove" : "add"}.${target.kind}`) + " · " + account.nickname}
+      const Icon = target.kind === "like" ? Heart : target.kind === "favorite" ? Star : Music2;
+      return <Tooltip key={account.id} delayDuration={0}><TooltipTrigger asChild><Button variant="ghost" className="relative size-10 shrink-0 rounded-full p-0 transition-[scale] duration-(--duration-fast) active:scale-95 motion-reduce:active:scale-100" aria-label={t(`actions.${on ? "remove" : "add"}.${target.kind}`) + " · " + account.nickname}
         onClick={() => setPreviewRelation(target, account.id, !on)}>
-        <Avatar className="size-8"><AvatarImage src={account.avatarUrl} alt="" /><AvatarFallback>{account.nickname.slice(0, 1)}</AvatarFallback></Avatar>
-        <span className="min-w-0 flex-1 text-right text-xs text-muted-foreground">{t(`actions.${on ? "remove" : "add"}.${target.kind}`)}</span>
-        <motion.span key={String(on)} initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={fastTransition} className="w-4 text-primary">{on && <Check className="size-4" />}</motion.span>
-      </Button></TooltipTrigger><TooltipContent side="left" className="z-[70]">{account.nickname} · {t(`actions.${on ? "remove" : "add"}.${target.kind}`)}</TooltipContent></Tooltip>;
+        <Avatar className="size-10"><AvatarImage src={account.avatarUrl} alt="" /><AvatarFallback>{account.nickname.slice(0, 1)}</AvatarFallback></Avatar>
+        <motion.span key={String(on)} initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={fastTransition} className="absolute -right-1 -bottom-1 rounded-full bg-viewer p-0.5"><Icon className={`size-3 ${on ? `fill-current ${activeColor(target.kind)}` : "text-viewer-muted"}`} /></motion.span>
+      </Button></TooltipTrigger><TooltipContent side="top" className="z-[70]">{account.nickname} · {t(`actions.${on ? "remove" : "add"}.${target.kind}`)}</TooltipContent></Tooltip>;
     })}
   </div>;
 }
@@ -116,8 +115,8 @@ function ActionButton({ target }: { target: ActionTarget }) {
         <motion.span key={String(on)} initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={fastTransition}><Icon className={on ? `fill-current ${activeColor(target.kind)}` : ""} /></motion.span>
       </ControlButton>
     </PopoverTrigger>
-    <PopoverContent onOpenAutoFocus={(event) => event.preventDefault()} side="top" align="end" className="dark z-[60] w-44 max-w-[calc(100vw-2rem)] p-2">
-      <AccountChoices target={target} />
+    <PopoverContent onOpenAutoFocus={(event) => event.preventDefault()} side="left" align="center" sideOffset={12} className="dark z-[60] w-auto max-w-[calc(100vw-6rem)] border-0 bg-transparent p-1 shadow-none">
+      <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={fastTransition}><AccountChoices target={target} /></motion.div>
     </PopoverContent>
   </Popover>;
 }
