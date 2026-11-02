@@ -185,7 +185,7 @@ const EntryCard = memo(function EntryCard({ entry, onOpen, fresh = false, playin
   return <EntryActionMenu entry={entry}><Card data-testid="library-card" data-entry={`${entry.kind}:${entry.id}`} tabIndex={0} onClick={() => onOpen(entry)} onKeyDown={(event) => { if (event.key === "Enter") onOpen(entry); }} className={`group group/entry relative gap-0 overflow-hidden rounded-md py-0 shadow-none transition-[transform,scale,box-shadow] duration-(--duration-slow) ease-(--ease-out) hover:z-10 hover:scale-[1.015] hover:shadow-sm motion-reduce:transition-none motion-reduce:hover:scale-100!${fresh ? " animate-in fade-in-0 zoom-in-95 duration-500 motion-reduce:animate-none" : ""}`}>
       <div className="relative">
         <Cover src={coverOf(entry)} square={music} />
-        <div className="absolute top-1.5 right-1.5"><EntryAccounts entry={entry} /></div>
+        <div className="absolute top-1.5 left-1.5"><EntryAccounts entry={entry} /></div>
         {playing && <NowPlaying paused={playing === "paused"} />}
         {entry.kind !== "gallery" && entry.durationMs > 0 ? <Badge variant="secondary" className="absolute right-1.5 bottom-1.5 tabular-nums">{duration(entry.durationMs)}</Badge> : null}
       </div>

@@ -31,7 +31,7 @@ func main() {
 	service := &app.App{Media: media, Engine: &douyin.Engine{}}
 	accounts := app.NewAccounts(service)
 	syncer := app.NewSync(service)
-	mygo.Bind(service, accounts, syncer, app.NewLibrary(service), app.NewPlayer(service), app.NewUpdates())
+	mygo.Bind(service, accounts, syncer, app.NewLibrary(service), app.NewPlayer(service), app.NewUpdates(), app.NewActions(service))
 	mygo.App.OnBeforeQuit(func(_ *mygo.QuitEvent) { app.CloseAccounts(service) })
 	mygo.App.OnQuit(func() {
 		if service.Store != nil {

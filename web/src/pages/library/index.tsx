@@ -41,6 +41,8 @@ export function LibraryPage({ scrolled, onAddAccount, onLogin }: { scrolled: boo
     queryFn: () => source.timeline(timelineQuery), placeholderData: keepPreviousData, enabled: dated });
   const [geometry, setGeometry] = useState<GridGeometry | null>(null);
   const [viewer, setViewer] = useState<{ cursor: ListCursor; index: number; from: LibraryEntry } | null>(null);
+  const [visibleVersion, setVisibleVersion] = useState(version);
+  useEffect(() => { if (!viewer) setVisibleVersion(version); }, [version, viewer]);
   const items = useRef<(LibraryEntry | undefined)[]>([]);
   const total = useRef(0);
   const handleItems = useCallback((next: (LibraryEntry | undefined)[]) => { items.current = next; }, []);
@@ -73,7 +75,7 @@ export function LibraryPage({ scrolled, onAddAccount, onLogin }: { scrolled: boo
       <LibraryToolbar sources={sources} kinds={kinds as ListKind[]} counts={displayCounts} state={filters.scope.accountId ? state : undefined} states={states} scrolled={scrolled} onAddAccount={onAddAccount} onLogin={onLogin} />
       <div className="min-w-0 px-12 py-4">
         {error ? <div role="alert">{t("error.load")}<Button variant="outline" size="sm" className="ml-3" onClick={reload}>{t("error.retry")}</Button></div>
-          : <LibraryGrid scope={filters.scope} kind={filters.kind} type={filters.type} query={filters.query} sort={ordering.sort} version={version} syncing={syncing} onOpen={openEntry} onItemsChange={handleItems} onTotalChange={handleTotal} onGeometry={setGeometry} />}
+          : <LibraryGrid scope={filters.scope} kind={filters.kind} type={filters.type} query={filters.query} sort={ordering.sort} version={visibleVersion} syncing={syncing} onOpen={openEntry} onItemsChange={handleItems} onTotalChange={handleTotal} onGeometry={setGeometry} />}
       </div>
     </div>
     <div data-testid="timeline-reserved" className="pointer-events-none absolute top-0 right-0 h-full w-12">

@@ -171,6 +171,13 @@
       "like": "Unlike",
       "favorite": "Unsave",
       "music": "Unsave music"
-    }
+    },
+    "saved": "Updated",
+    "unknown": "Result not confirmed. Reload the state before trying again.",
+    "failed": "Unable to load or update. Close and retry.",
+    "login": "Sign in first",
+    "saving": "Confirming…",
+    "loading": "Loading state…",
+    "musicUnavailable": "Music saving is not available yet"
   }
 }

@@ -561,7 +561,12 @@ func pageIDs(p douyin.ListPage) []string {
 	return ids
 }
 
-func (s *Sync) store(accountID, kind string, head bool, p douyin.ListPage) error {
+func (s *Sync) store(accountID, kind string, head bool, p douyin.ListPage, revision uint64) error {
+	s.app.mu.Lock()
+	defer s.app.mu.Unlock()
+	if s.app.actionRevision.Load() != revision {
+		return errors.New("ACTIONS_CHANGED")
+	}
 	ctx, cancel := accountContext()
 	defer cancel()
 	var err error
@@ -594,6 +599,7 @@ func (s *Sync) pageLanded() {
 // syncKind syncs up to budget backfill pages of one list. It reports whether
 // the whole run must stop and whether the list has pages left for a next turn.
 func (s *Sync) syncKind(ctx context.Context, accountID, secUID string, r *store.SyncRecord, budget int, head bool) (bool, bool) {
+	revision := s.app.actionRevision.Load()
 	if r.Kind == "music" && r.Status == "unsupported" && time.Now().Unix()-r.UpdatedAt < 24*3600 {
 		s.emit(toView(accountID, *r))
 		return false, false
@@ -682,7 +688,7 @@ func (s *Sync) syncKind(ctx context.Context, accountID, secUID string, r *store.
 			cursor = page.Cursor
 		}
 		if len(fresh.Works)+len(fresh.Musics) > 0 {
-			if err := s.store(accountID, r.Kind, true, fresh); err != nil {
+			if err := s.store(accountID, r.Kind, true, fresh, revision); err != nil {
 				log.Printf("[hoard:sync] %s head write failed", r.Kind)
 				return fail(fetchPaused)
 			}
@@ -710,7 +716,7 @@ func (s *Sync) syncKind(ctx context.Context, accountID, secUID string, r *store.
 				return fail(outcome)
 			}
 			s.pageLanded()
-			if err := s.store(accountID, r.Kind, false, page); err != nil {
+			if err := s.store(accountID, r.Kind, false, page, revision); err != nil {
 				log.Printf("[hoard:sync] %s page write failed", r.Kind)
 				return fail(fetchPaused)
 			}
