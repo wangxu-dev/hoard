@@ -17,6 +17,7 @@ import (
 // This isolated diagnostic never opens Hoard's library or exports session data.
 func main() {
 	output := flag.String("log", ".agent/logs/bilibili-probe.log", "sanitized diagnostic log")
+	explore := flag.Bool("explore", false, "inspect personal-space navigation")
 	flag.Parse()
 	file, err := os.OpenFile(*output, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
@@ -72,7 +73,11 @@ func main() {
 					continue
 				}
 				callCtx, stop := context.WithTimeout(ctx, 60*time.Second)
-				value, err := win.Page().EvalContext(callCtx, probeScript)
+				script := probeScript
+				if *explore {
+					script = exploreScript
+				}
+				value, err := win.Page().EvalContext(callCtx, script)
 				stop()
 				if err != nil {
 					log.Print("[hoard:bilibili-probe] page unavailable; waiting")
@@ -80,6 +85,14 @@ func main() {
 				}
 				bytes, err := json.Marshal(value)
 				if err != nil {
+					continue
+				}
+				if *explore {
+					var summary spaceSummary
+					if json.Unmarshal(bytes, &summary) == nil {
+						clean, _ := json.Marshal(summary)
+						log.Printf("[hoard:bilibili-probe] space %s", clean)
+					}
 					continue
 				}
 				var result probeResult
@@ -97,7 +110,7 @@ func main() {
 				valid := true
 				for _, item := range result.Results {
 					switch item.Kind {
-					case "identity", "folders", "items", "detail", "play":
+					case "identity", "folders", "items", "detail", "play", "likes", "likes-page2":
 					default:
 						valid = false
 					}
@@ -117,13 +130,17 @@ func main() {
 }
 
 type endpointSummary struct {
-	Kind    string `json:"kind"`
-	Status  int    `json:"status"`
-	Code    int    `json:"code"`
-	Count   int    `json:"count"`
-	HasMore bool   `json:"hasMore"`
-	Video   bool   `json:"video"`
-	Audio   bool   `json:"audio"`
+	Kind        string   `json:"kind"`
+	Status      int      `json:"status"`
+	Code        int      `json:"code"`
+	Shape       string   `json:"shape,omitempty"`
+	Keys        []string `json:"keys,omitempty"`
+	Total       *int     `json:"total,omitempty"`
+	SameAsFirst bool     `json:"sameAsFirst,omitempty"`
+	Count       int      `json:"count"`
+	HasMore     bool     `json:"hasMore"`
+	Video       bool     `json:"video"`
+	Audio       bool     `json:"audio"`
 }
 type probeResult struct {
 	State   string            `json:"state"`
@@ -160,6 +177,23 @@ if (location.hostname !== 'www.bilibili.com') return {state:'waiting',results:[]
   return {state:'waiting',results:[]};
  }
  if (identity.summary.code !== 0 || !identity.data?.mid) return {state:'failed',results};
+ const likes = await read('likes','/x/space/like/video',{vmid:String(identity.data.mid),pn:'1',ps:'2'});
+ const likeList = value => Array.isArray(value) ? value : Array.isArray(value?.list) ? value.list : Array.isArray(value?.item) ? value.item : null;
+ likes.summary.shape = Array.isArray(likes.data) ? 'array' : likes.data === null ? 'null' : typeof likes.data;
+ likes.summary.keys = likes.data && !Array.isArray(likes.data) ? Object.keys(likes.data).filter(k=>/^[a-z_]{1,32}$/.test(k)) : [];
+ if(Number.isInteger(likes.data?.total))likes.summary.total=likes.data.total;
+ if(Number.isInteger(likes.data?.count))likes.summary.total=likes.data.count;
+ const firstLikes = likeList(likes.data);
+ if (likes.summary.code === 0 && firstLikes) {
+  likes.summary.count = firstLikes.length;
+  await new Promise(resolve=>setTimeout(resolve,1500));
+  const second = await read('likes-page2','/x/space/like/video',{vmid:String(identity.data.mid),pn:'2',ps:'2'});
+  const secondLikes = likeList(second.data);
+  if (second.summary.code === 0 && secondLikes) {
+   second.summary.count = secondLikes.length;
+   second.summary.sameAsFirst = JSON.stringify(firstLikes.map(v=>String(v.bvid||v.aid||v.id))) === JSON.stringify(secondLikes.map(v=>String(v.bvid||v.aid||v.id)));
+  }
+ }
  const folders = await read('folders','/x/v3/fav/folder/created/list-all',{up_mid:String(identity.data.mid)});
  if (folders.summary.code !== 0) return {state:'failed',results};
  const list = Array.isArray(folders.data?.list) ? folders.data.list : [];
