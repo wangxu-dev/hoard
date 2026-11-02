@@ -26,7 +26,7 @@
       "BAD_RESPONSE": "Couldn't read version info right now"
     },
     "ready": "Restart to use the new version",
-    "downloading": "Preparing update",
+    "downloading": "Downloading",
     "downloadFailed": "Download or verification failed. Please retry.",
     "restartFailed": "Could not restart. Close and reopen Hoard.",
     "recommend": "Download the update for the latest features and improvements.",

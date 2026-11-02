@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import Markdown from "react-markdown";
-import { Download, MessageSquareWarning, RefreshCw } from "lucide-react";
+import { Download, LoaderCircle, MessageSquareWarning, RefreshCw } from "lucide-react";
 import { siGithub } from "simple-icons";
 import { toast } from "sonner";
 import { setLanguage } from "@/i18n";
@@ -92,7 +92,11 @@ export function SettingsPage() {
           <Row testId="settings-about-row" title="Hoard" description={t("app.description", { version: VERSION })}>
             <div className="flex items-center gap-1">
               <Button data-testid="settings-update-action" variant={available ? "default" : "outline"} size="sm" disabled={checking || starting || downloading} onClick={() => { if (!available) void runCheck(); else if (transfer?.enabled) void runUpdate(); else open(`${REPO_URL}/releases`); }}>
-                {available && !ready ? <Download aria-hidden="true" /> : <RefreshCw aria-hidden="true" className={checking ? "animate-spin" : undefined} />}
+                {downloading
+                  ? <LoaderCircle aria-hidden="true" className="animate-spin motion-reduce:animate-none" />
+                  : available && !ready
+                    ? <Download aria-hidden="true" />
+                    : <RefreshCw aria-hidden="true" className={checking || (ready && starting) ? "animate-spin motion-reduce:animate-none" : undefined} />}
                 {t(!available ? "update.check" : ready ? "update.restart" : downloading ? "update.downloading" : failed ? "update.retry" : transfer?.enabled ? "update.download" : "update.manual")}
                 {downloading && transfer.total > 0 && <span className="tabular-nums">{Math.min(100, Math.floor(transfer.downloaded / transfer.total * 100))}%</span>}
               </Button>

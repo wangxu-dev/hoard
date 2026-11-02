@@ -26,7 +26,7 @@
       "BAD_RESPONSE": "暂时无法获取版本信息"
     },
     "ready": "重启后使用新版本",
-    "downloading": "正在准备更新",
+    "downloading": "下载中",
     "downloadFailed": "更新下载或校验失败，请重试。",
     "restartFailed": "重启失败，请关闭并重新打开 Hoard。",
     "recommend": "下载更新，体验最新功能与改进。",
