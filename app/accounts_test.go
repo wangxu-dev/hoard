@@ -44,6 +44,7 @@ type fakeSession struct {
 type fakeAccountEngine struct {
 	mu             sync.Mutex
 	sessions       map[string]*fakeSession
+	currentSource  string
 	current        string
 	open, shown    bool
 	closes         int
@@ -52,6 +53,12 @@ type fakeAccountEngine struct {
 	releaseRequest chan struct{}
 }
 
+func (f *fakeAccountEngine) UseSourceSession(source, name string, show bool) error {
+	f.mu.Lock()
+	f.currentSource = source
+	f.mu.Unlock()
+	return f.UseSession(name, show)
+}
 func (f *fakeAccountEngine) UseSession(name string, show bool) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -143,7 +150,7 @@ func newAccountTestApp(t *testing.T) (*App, *Accounts, *fakeAccountEngine) {
 }
 func addTestAccount(t *testing.T, a *App, s *Accounts, f *fakeAccountEngine, remote string) Account {
 	t.Helper()
-	pending, err := s.Add()
+	pending, err := s.Add("douyin")
 	if err != nil {
 		t.Fatal(err)
 	}

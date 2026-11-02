@@ -26,22 +26,22 @@ export function App() {
     const active = accounts.find((account) => account.active && account.status === "active");
     if (!active) return;
     addingAccount.current = false;
-    setLibraryFilters({ scope: { source: "douyin", accountId: active.id } });
+    setLibraryFilters({ scope: { source: active.source, accountId: active.id } });
   }), []);
   // Showing the playing sound brings the library back from any page.
   useEffect(() => { if (music.locate) setPage("library"); }, [music.locate]);
-  const login = async (accountId?: string) => {
+  const login = async (accountId?: string, source: "douyin" | "bilibili" = "douyin") => {
     try {
       addingAccount.current = !accountId;
       if (accountId) await Accounts.switch(accountId);
-      else await Accounts.add();
+      else await Accounts.add(source);
       await BackendApp.showDouyin();
     } catch {
       addingAccount.current = false;
       toast.error(t("error.login"));
     }
   };
-  const content = page === "library" ? <LibraryPage scrolled={scrolled} onAddAccount={() => { void login(); }} onLogin={(accountId) => { void login(accountId); }} /> : <SettingsPage />;
+  const content = page === "library" ? <LibraryPage scrolled={scrolled} onAddAccount={(source) => { void login(undefined, source); }} onLogin={(accountId) => { void login(accountId); }} /> : <SettingsPage />;
 
   return (
     <div className="flex h-dvh min-w-0 overflow-hidden bg-background">

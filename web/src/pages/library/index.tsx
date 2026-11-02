@@ -18,7 +18,7 @@ const noStates: SyncState[] = [];
 const noCounts: LibraryCounts = { like: 0, favorite: 0, music: 0 };
 const noMonths: TimelineMonth[] = [];
 
-export function LibraryPage({ scrolled, onAddAccount, onLogin }: { scrolled: boolean; onAddAccount: () => void; onLogin: (accountId: string) => void }) {
+export function LibraryPage({ scrolled, onAddAccount, onLogin }: { scrolled: boolean; onAddAccount: (source: "douyin" | "bilibili") => void; onLogin: (accountId: string) => void }) {
   const { t } = useTranslation("library");
   const filters = useLibraryFilters();
   const ordering = useLibraryOrdering();

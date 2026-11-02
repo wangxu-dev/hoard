@@ -11,8 +11,8 @@ import (
 
 	"github.com/wangxu-dev/hoard/app"
 	"github.com/wangxu-dev/hoard/internal/covers"
-	"github.com/wangxu-dev/hoard/internal/douyin"
 	"github.com/wangxu-dev/hoard/internal/relay"
+	"github.com/wangxu-dev/hoard/internal/source"
 	"github.com/wangxu-dev/hoard/internal/store"
 )
 
@@ -28,7 +28,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	service := &app.App{Media: media, Engine: &douyin.Engine{}}
+	service := &app.App{Media: media, Engine: source.NewEngine()}
 	accounts := app.NewAccounts(service)
 	syncer := app.NewSync(service)
 	mygo.Bind(service, accounts, syncer, app.NewLibrary(service), app.NewPlayer(service), app.NewUpdates(), app.NewActions(service))

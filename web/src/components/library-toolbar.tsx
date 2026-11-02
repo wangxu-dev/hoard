@@ -6,7 +6,7 @@ import { SyncPill, useSyncVisible } from "@/components/sync-pill";
 import { ProgressLine } from "@/components/progress-line";
 import type { LibraryCounts, ListKind, SourceGroup, SyncState } from "@/lib/library";
 export function LibraryToolbar({ sources, kinds, counts, state, states, scrolled, onAddAccount, onLogin }: {
-  sources: SourceGroup[]; kinds: ListKind[]; counts: LibraryCounts; state?: SyncState; states: SyncState[]; scrolled: boolean; onAddAccount: () => void; onLogin: (accountId: string) => void;
+  sources: SourceGroup[]; kinds: ListKind[]; counts: LibraryCounts; state?: SyncState; states: SyncState[]; scrolled: boolean; onAddAccount: (source: "douyin" | "bilibili") => void; onLogin: (accountId: string) => void;
 }) {
   const toolbar = useRef<HTMLElement>(null);
   const [layout, setLayout] = useState({ width: 0, searchCompact: true, sourceCompact: true, pillCompact: true });

@@ -122,6 +122,9 @@ func (s *Sync) States() ([]SyncView, error) {
 	defer s.mu.Unlock()
 	out := []SyncView{}
 	for _, account := range accounts {
+		if account.Source != "douyin" {
+			continue
+		}
 		records, err := a.Store.SyncRecords(ctx, account.ID)
 		if err != nil {
 			return nil, errors.New("STORE_FAILED")
@@ -154,6 +157,9 @@ func (s *Sync) States() ([]SyncView, error) {
 
 // Start syncs the active account in the background. A running sync continues.
 func (s *Sync) Start() error {
+	if engine, ok := s.app.Engine.(interface{ Source() string }); ok && engine.Source() != "douyin" {
+		return errors.New("SYNC_UNAVAILABLE")
+	}
 	log.Print("[hoard:sync] start requested")
 	a := s.app
 	a.mu.Lock()

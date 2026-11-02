@@ -54,7 +54,7 @@ func (a *App) OpenDouyin() (douyin.Status, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.accountID == "" {
-		if _, err := a.addLocked(); err != nil {
+		if _, err := a.addLocked("douyin"); err != nil {
 			return douyin.Status{}, err
 		}
 	} else if a.sessionCtx == nil || a.sessionCtx.Err() != nil {

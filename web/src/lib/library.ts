@@ -64,10 +64,10 @@ function toState(view: SyncView): SyncState {
 const realSource: LibrarySource = {
   async sources() {
     const accounts = await Accounts.list();
-    return [{ id: "douyin", name: i18n.t("library:toolbar.source.douyin"), kinds: ["like", "favorite", "music"], accounts: accounts.filter((a) => a.status !== "pending").map((a) => ({
-      id: a.id, source: "douyin", nickname: a.nickname, avatarUrl: a.avatar,
+    return ["douyin", "bilibili"].map((source): SourceGroup => ({ id: source, name: i18n.t(`library:toolbar.source.${source}`), kinds: source === "douyin" ? ["like", "favorite", "music"] : ["favorite"], accounts: accounts.filter((a) => a.source === source && a.status !== "pending").map((a) => ({
+      id: a.id, source: a.source, nickname: a.nickname, avatarUrl: a.avatar,
       status: a.status === "signed_out" ? "signed_out" : a.status === "pending" ? "pending" : "active", syncing: false,
-    })) }];
+    })) })).filter((group) => group.accounts.length > 0);
   },
   async counts(scope) {
     return Library.counts(scope.accountId ?? "", scope.source ?? "");
