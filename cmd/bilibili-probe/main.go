@@ -29,6 +29,7 @@ func main() {
 	defer cancel()
 	mygo.App.WhenReady(func() {
 		win := mygo.NewWindow(mygo.WindowOptions{Title: "Hoard · B站登录验证", Width: 1100, Height: 800, URL: "about:blank", Page: mygo.PageOptions{Untrusted: true, Session: mygo.NewSession("hoard-bilibili-probe")}})
+		win.Page().SetUserAgent(win.Page().UserAgent() + " Version/27.0 Safari/605.1.15")
 		win.Page().OnWillNavigate(func(event *mygo.NavigateEvent) {
 			u, err := url.Parse(event.URL)
 			if err != nil || u.Scheme != "https" || !(u.Hostname() == "bilibili.com" || strings.HasSuffix(u.Hostname(), ".bilibili.com")) {
@@ -44,7 +45,7 @@ func main() {
 			go func() {
 				c, stop := context.WithTimeout(ctx, 5*time.Second)
 				defer stop()
-				value, err := win.Page().EvalContext(c, `JSON.stringify({host:location.hostname,scheme:location.protocol,elements:document.body?.childElementCount||0,textLength:document.body?.innerText.length||0})`)
+				value, err := win.Page().EvalContext(c, `JSON.stringify({host:location.hostname,scheme:location.protocol,userAgent:navigator.userAgent,elements:document.body?.childElementCount||0,textLength:document.body?.innerText.length||0})`)
 				if err == nil {
 					log.Printf("[hoard:bilibili-probe] page shape %v", value)
 				}
