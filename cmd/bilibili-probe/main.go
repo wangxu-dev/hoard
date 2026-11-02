@@ -27,10 +27,12 @@ func main() {
 	defer cancel()
 	mygo.App.WhenReady(func() {
 		win := mygo.NewWindow(mygo.WindowOptions{Title: "Hoard · B站登录验证", Width: 1100, Height: 800, URL: "https://www.bilibili.com/", Page: mygo.PageOptions{Untrusted: true, Session: mygo.NewSession("hoard-bilibili-probe")}})
+		win.Page().OnDidFailLoad(func(err *mygo.LoadError) { log.Printf("[hoard:bilibili-probe] load failed code=%d", err.Code) })
+		win.Page().OnDidFinishLoad(func() { log.Print("[hoard:bilibili-probe] load finished") })
 		win.Page().SetAudioMuted(true)
 		win.OnClosed(func() { cancel(); mygo.App.Quit() })
 		var ready atomic.Bool
-		win.Page().OnDOMReady(func() { ready.Store(true) })
+		win.Page().OnDOMReady(func() { ready.Store(true); log.Print("[hoard:bilibili-probe] DOM ready") })
 		go func() {
 			ticker := time.NewTicker(5 * time.Second)
 			defer ticker.Stop()
