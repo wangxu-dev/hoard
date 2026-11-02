@@ -30,7 +30,7 @@ export function SourceSelect({ sources, onAddAccount, compact = false }: { sourc
     const selected = sources.flatMap((s) => s.accounts).find((a) => `account:${a.id}` === next);
     const request = ++selection.current;
     setLibraryFilters({ scope: selected ? { source: selected.source, accountId: selected.id } : next === "all" ? {} : { source: next.slice(7) } });
-    if (selected?.status === "active" && selected.id !== scope.accountId && selected.source === "douyin") {
+    if (selected?.status === "active" && selected.id !== scope.accountId) {
       const source = getLibrarySource();
       void source.syncStates().then((states) => {
         if (request !== selection.current) return;
@@ -62,13 +62,11 @@ export function SourceSelect({ sources, onAddAccount, compact = false }: { sourc
         <DropdownMenuItem className="h-8 min-w-0 flex-1 text-[13px]" onFocus={() => setExpanded(true)} onSelect={(event) => { event.preventDefault(); setExpanded(true); }} aria-expanded={expanded}>
           <Plus className="size-3.5" /><span>{t("toolbar.source.add")}</span>
         </DropdownMenuItem>
-        <div className="flex flex-row-reverse items-center">
-          {[...platforms].reverse().map((source) => <Tooltip key={source} delayDuration={0}><TooltipTrigger asChild>
-            <DropdownMenuItem aria-label={t("toolbar.source.addPlatform", { name: t(`toolbar.source.${source}`) })} onFocus={() => setExpanded(true)} onSelect={() => onAddAccount(source)}
-              className={`size-8 shrink-0 justify-center rounded-full bg-popover p-0 transition-[margin,transform] duration-(--duration-slow) ease-(--ease-out) motion-reduce:transition-none focus:bg-accent [&_svg]:text-foreground ${expanded ? "not-last:ml-1" : "not-last:-ml-6"}`}>
-              <SourceIcon source={source} className="size-4.5" />
-            </DropdownMenuItem>
-          </TooltipTrigger><TooltipContent>{t("toolbar.source.addPlatform", { name: t(`toolbar.source.${source}`) })}</TooltipContent></Tooltip>)}
+        <div className="flex w-17 shrink-0 items-center gap-1">
+          {platforms.map((source, index) => <DropdownMenuItem key={source} aria-label={t("toolbar.source.addPlatform", { name: t(`toolbar.source.${source}`) })} onFocus={() => setExpanded(true)} onSelect={() => onAddAccount(source)}
+              className="size-8 shrink-0 justify-center rounded-full bg-transparent p-0 focus:bg-transparent [&_svg]:text-foreground">
+              <span data-platform-icon className={`pointer-events-none flex size-8 items-center justify-center rounded-full bg-popover transition-transform duration-(--duration-slow) ease-(--ease-out) motion-reduce:transition-none ${index === 1 && !expanded ? "-translate-x-7" : "translate-x-0"}`}><SourceIcon source={source} className="size-4.5" /></span>
+            </DropdownMenuItem>)}
         </div>
       </div>
       {account?.status === "active" && <DropdownMenuItem className="h-8 text-[13px]" onSelect={() => { void Accounts.signOut(account.id).catch(() => toast.error(t("toolbar.source.signOutFailed"))); }}><LogOut className="size-3.5" />{t("toolbar.source.signOut")}</DropdownMenuItem>}

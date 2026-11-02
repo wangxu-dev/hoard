@@ -249,6 +249,17 @@ ON CONFLICT(id) DO UPDATE SET title=excluded.title,author=excluded.author,durati
 // CoverURLs returns the stored cover URLs of one work ("w"), music ("m"),
 // gallery image ("g", id:index) or work author avatar ("a") by remote id, best first.
 func (s *Store) CoverURLs(ctx context.Context, kind, remoteID string) ([]string, error) {
+	if kind == "account" {
+		var avatar string
+		err := s.read.QueryRowContext(ctx, `SELECT COALESCE(avatar_url,'') FROM accounts WHERE id=?`, remoteID).Scan(&avatar)
+		if err != nil || avatar == "" {
+			return nil, err
+		}
+		if strings.HasPrefix(avatar, "http://") {
+			avatar = "https://" + strings.TrimPrefix(avatar, "http://")
+		}
+		return []string{avatar}, nil
+	}
 	if kind == "a" {
 		var avatar string
 		err := s.read.QueryRowContext(ctx, `SELECT COALESCE(a.avatar_url,'') FROM works w JOIN authors a ON a.id=w.author_id WHERE w.remote_id=? LIMIT 1`, remoteID).Scan(&avatar)

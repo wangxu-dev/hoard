@@ -15,6 +15,7 @@
     },
     "kind": {
       "label": "列表",
+      "watch_later": "稍后再看",
       "like": "喜欢",
       "favorite": "收藏",
       "music": "音乐"
@@ -135,7 +136,7 @@
     "locate": "定位到正在播放"
   },
   "grid": {
-    "empty": "还没有内容，点右上角「同步」把抖音的内容拉进来",
+    "empty": "还没有内容",
     "emptySyncing": "正在同步，内容马上出现",
     "emptyFiltered": "没有符合条件的内容",
     "untitled": "无标题",

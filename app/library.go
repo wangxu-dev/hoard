@@ -58,9 +58,10 @@ type LibraryPage struct {
 
 // LibraryCounts is the size of each list in a scope.
 type LibraryCounts struct {
-	Like     int `json:"like"`
-	Favorite int `json:"favorite"`
-	Music    int `json:"music"`
+	Like       int `json:"like"`
+	Favorite   int `json:"favorite"`
+	Music      int `json:"music"`
+	WatchLater int `json:"watch_later"`
 }
 
 // List returns one page of a list, filtered and sorted.
@@ -153,5 +154,5 @@ func (l *Library) Counts(accountID, source string) (LibraryCounts, error) {
 	if err != nil {
 		return LibraryCounts{}, errors.New("STORE_FAILED")
 	}
-	return LibraryCounts{Like: c["like"], Favorite: c["favorite"], Music: c["music"]}, nil
+	return LibraryCounts{Like: c["like"], Favorite: c["favorite"], Music: c["music"], WatchLater: c["watch_later"]}, nil
 }

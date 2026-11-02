@@ -15,6 +15,7 @@
     },
     "kind": {
       "label": "List",
+      "watch_later": "Watch later",
       "like": "Likes",
       "favorite": "Favorites",
       "music": "Music"

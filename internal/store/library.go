@@ -282,7 +282,7 @@ func (s *Store) Timeline(ctx context.Context, q LibraryQuery) ([]TimelineMonth, 
 // LibraryCounts returns how many distinct items each list holds in a scope.
 func (s *Store) LibraryCounts(ctx context.Context, accountID, source string) (map[string]int, error) {
 	counts := map[string]int{"like": 0, "favorite": 0, "music": 0}
-	for _, kind := range []string{"like", "favorite", "music"} {
+	for _, kind := range []string{"like", "favorite", "music", "watch_later"} {
 		_, total, err := s.Library(ctx, LibraryQuery{AccountID: accountID, Source: source, Kind: kind, Type: "all", Limit: 1})
 		if err != nil {
 			return nil, err

@@ -9,6 +9,7 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/google/uuid"
+	"github.com/wangxu-dev/hoard/internal/covers"
 	"github.com/wangxu-dev/hoard/internal/douyin"
 	"github.com/wangxu-dev/hoard/internal/store"
 )
@@ -36,7 +37,11 @@ func NewAccounts(a *App) *Accounts {
 }
 
 func accountView(account store.Account, active string) Account {
-	return Account{ID: account.ID, Source: account.Source, Nickname: account.Nickname, Avatar: account.AvatarURL, Status: account.Status, Active: account.ID == active}
+	avatar := account.AvatarURL
+	if avatar != "" {
+		avatar = covers.URL("account", account.ID)
+	}
+	return Account{ID: account.ID, Source: account.Source, Nickname: account.Nickname, Avatar: avatar, Status: account.Status, Active: account.ID == active}
 }
 
 func accountContext() (context.Context, context.CancelFunc) {

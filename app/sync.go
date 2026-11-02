@@ -122,8 +122,9 @@ func (s *Sync) States() ([]SyncView, error) {
 	defer s.mu.Unlock()
 	out := []SyncView{}
 	for _, account := range accounts {
-		if account.Source != "douyin" {
-			continue
+		kinds := syncKinds
+		if account.Source == "bilibili" {
+			kinds = []string{"favorite", "watch_later"}
 		}
 		records, err := a.Store.SyncRecords(ctx, account.ID)
 		if err != nil {
@@ -133,7 +134,7 @@ func (s *Sync) States() ([]SyncView, error) {
 		for _, r := range records {
 			byKind[r.Kind] = r
 		}
-		for _, kind := range syncKinds {
+		for _, kind := range kinds {
 			if v, ok := s.views[viewKey(account.ID, kind)]; ok && (s.running == account.ID || v.Status == "blocked" || v.Status == "verifying") {
 				out = append(out, v)
 				continue
@@ -157,9 +158,6 @@ func (s *Sync) States() ([]SyncView, error) {
 
 // Start syncs the active account in the background. A running sync continues.
 func (s *Sync) Start() error {
-	if engine, ok := s.app.Engine.(interface{ Source() string }); ok && engine.Source() != "douyin" {
-		return errors.New("SYNC_UNAVAILABLE")
-	}
 	log.Print("[hoard:sync] start requested")
 	a := s.app
 	a.mu.Lock()
@@ -203,6 +201,14 @@ func (s *Sync) Start() error {
 			s.mu.Unlock()
 			log.Print("[hoard:sync] stopped")
 		}()
+		account, err := a.Store.Account(runCtx, accountID)
+		if err != nil {
+			return
+		}
+		if account.Source == "bilibili" {
+			s.runBilibili(runCtx, accountID)
+			return
+		}
 		s.run(runCtx, accountID)
 		if runCtx.Err() == nil && s.unfinished(accountID) {
 			time.AfterFunc(retryDelay, func() {

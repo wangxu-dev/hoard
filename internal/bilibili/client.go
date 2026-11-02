@@ -15,7 +15,10 @@ import (
 // The caller owns session isolation and serial request scheduling.
 type Read func(context.Context, string, map[string]string) ([]byte, error)
 
-type Client struct{ Read Read }
+type Client struct {
+	Read    Read
+	Changed func(string)
+}
 
 func (c Client) read(ctx context.Context, path string, params map[string]string) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
@@ -123,6 +126,9 @@ func (c Client) save(ctx context.Context, db *store.Store, accountID, kind strin
 		works = append(works, w)
 	}
 	_, err := db.SaveWorks(ctx, accountID, kind, head, works)
+	if err == nil && c.Changed != nil {
+		c.Changed(kind)
+	}
 	return err
 }
 

@@ -15,7 +15,7 @@ import { playMusic } from "@/lib/music";
 
 const noSources: SourceGroup[] = [];
 const noStates: SyncState[] = [];
-const noCounts: LibraryCounts = { like: 0, favorite: 0, music: 0 };
+const noCounts: LibraryCounts = { like: 0, favorite: 0, music: 0, watch_later: 0 };
 const noMonths: TimelineMonth[] = [];
 
 export function LibraryPage({ scrolled, onAddAccount, onLogin }: { scrolled: boolean; onAddAccount: (source: "douyin" | "bilibili") => void; onLogin: (accountId: string) => void }) {
@@ -30,7 +30,7 @@ export function LibraryPage({ scrolled, onAddAccount, onLogin }: { scrolled: boo
   const countsQuery = useQuery({ queryKey: queryKeys.counts(filters.scope), queryFn: () => source.counts(filters.scope), placeholderData: keepPreviousData });
   const sources = sourcesQuery.data ?? noSources;
   const states = statesQuery.data ?? noStates;
-  const counts = countsQuery.data ?? noCounts;
+  const counts = { ...noCounts, ...countsQuery.data };
   const error = (sourcesQuery.isError && !sourcesQuery.data) || (countsQuery.isError && !countsQuery.data);
   const reload = () => { void sourcesQuery.refetch(); void statesQuery.refetch(); void countsQuery.refetch(); };
   const version = useLibraryVersion();

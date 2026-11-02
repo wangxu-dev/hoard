@@ -544,7 +544,7 @@ export const LibraryGrid = memo(function LibraryGrid({ scope, kind, type, query,
   useEffect(() => { if (settled && measured) onGeometry?.({ columns: layout.columns, rowHeight, scrollMargin, count }); }, [settled, measured, layout.columns, rowHeight, scrollMargin, count, onGeometry]);
   useEffect(() => { onItemsChange(items); onTotalChange(total); }, [items, total, onItemsChange, onTotalChange]);
   if (error && !where.current.size) return <div role="alert" className="flex items-center gap-3 py-10 text-sm text-muted-foreground">{t("grid.loadFailed")}<Button variant="outline" size="sm" onClick={() => { setError(false); setRetry((n) => n + 1); }}>{t("grid.retry")}</Button></div>;
-  if (settled && !pending && count === 0) return <div data-testid="library-empty" className="flex items-center gap-2 py-16 text-sm text-muted-foreground">
+  if (settled && !pending && count === 0) return <div data-testid="library-empty" className="flex min-h-[calc(100dvh-8rem)] items-center justify-center gap-2 text-center text-sm text-muted-foreground">
     {syncing && <Spinner className="size-4" />}{query || type !== "all" ? t("grid.emptyFiltered") : syncing ? t("grid.emptySyncing") : t("grid.empty")}
   </div>;
   return <motion.div className="flex min-w-0 flex-col gap-2" initial={false} animate={{ opacity: pending && count > 0 ? 0.55 : 1 }} transition={pageTransition}>
