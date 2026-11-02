@@ -98,6 +98,12 @@ func TestAccountActions(t *testing.T) {
 			}
 			f := &actionFake{identity: tc.identity, timeout: tc.timeout, unknown: tc.unknown, mismatch: tc.mismatch}
 			a := &App{Store: db}
+			local := NewActions(a)
+			local.engine = func() actionEngine { t.Fatal("local state opened a platform session"); return nil }
+			cached, localErr := local.State("b", "123")
+			if localErr != nil || !cached.Liked || cached.Favorited {
+				t.Fatalf("local state: %+v %v", cached, localErr)
+			}
 			actions := &Actions{app: a, engine: func() actionEngine { return f }}
 			_, err = actions.Set("a", "123", tc.kind, tc.on)
 			if (err == nil) != (tc.wantErr == "") || err != nil && err.Error() != tc.wantErr {

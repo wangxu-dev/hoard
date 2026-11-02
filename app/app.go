@@ -33,6 +33,7 @@ type AccountEngine interface {
 type App struct {
 	mu             sync.Mutex
 	requestMu      sync.Mutex
+	actionMu       sync.Mutex
 	frontRequests  atomic.Int32
 	actionRevision atomic.Uint64
 	lastRequest    time.Time

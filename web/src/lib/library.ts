@@ -23,7 +23,7 @@ export interface SyncState {
 export interface LibraryCounts { like: number; favorite: number; music: number }
 export interface LibraryEntry {
   id: string; kind: "video" | "gallery" | "music"; title: string; author: string; cover: string; authorAvatar?: string;
-  publishedAt: number; durationMs: number; imageCount: number; accountIds?: string[];
+  publishedAt: number; durationMs: number; imageCount: number; accountIds?: string[]; likedAccountIds?: string[]; favoritedAccountIds?: string[];
 }
 export interface MediaImage { url: string; liveUrl?: string }
 export interface MediaResult { kind: "video" | "gallery" | "music"; videos: string[]; images: MediaImage[]; music: { title: string; author: string; url: string }; author: string; authorAvatar?: string; desc: string; publishedAt: number; complete?: boolean; expiresAt?: number }
@@ -77,7 +77,18 @@ const realSource: LibrarySource = {
   },
   onSyncProgress(fn) { return onSyncProgress((view) => fn(toState(view))); },
   async list(q) {
+    const started = Date.now();
     const page = await Library.list({ accountId: q.scope.accountId ?? "", source: q.scope.source ?? "", kind: q.kind, type: q.type, query: q.query, sort: q.sort, offset: q.offset, limit: q.limit });
+    const { queryClient } = await import("./query");
+    const accounts = queryClient.getQueryData<SourceGroup[]>(["sources"])?.flatMap((group) => group.accounts) ?? [];
+    for (const entry of page.items) {
+      if (entry.kind === "music") continue;
+      for (const account of accounts) {
+        const key = ["action-state", account.id, entry.id];
+        if (queryClient.isMutating({ mutationKey: ["work-action", account.id, entry.id] }) || (queryClient.getQueryState(key)?.dataUpdatedAt ?? 0) > started) continue;
+        queryClient.setQueryData(key, { liked: entry.likedAccountIds?.includes(account.id) ?? false, favorited: entry.favoritedAccountIds?.includes(account.id) ?? false });
+      }
+    }
     return { items: page.items as LibraryEntry[], total: page.total };
   },
   async timeline(q) {

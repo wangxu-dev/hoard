@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/wangxu-dev/hoard/internal/douyin"
+	"github.com/wangxu-dev/hoard/internal/store"
 )
 
 type actionEngine interface {
@@ -27,7 +28,24 @@ func NewActions(a *App) *Actions {
 }
 
 func (s *Actions) State(accountID, workID string) (douyin.ActionState, error) {
-	return s.run(accountID, workID, "", false)
+	returnState := douyin.ActionState{}
+	if s.app.Store == nil {
+		return returnState, errors.New("STORE_FAILED")
+	}
+	ctx, cancel := accountContext()
+	defer cancel()
+	for _, kind := range []string{"like", "favorite"} {
+		owners, err := s.app.Store.LibraryOwners(ctx, store.LibraryQuery{AccountID: accountID, Kind: kind}, []string{workID})
+		if err != nil {
+			return returnState, errors.New("STORE_FAILED")
+		}
+		if kind == "like" {
+			returnState.Liked = len(owners[workID]) > 0
+		} else {
+			returnState.Favorited = len(owners[workID]) > 0
+		}
+	}
+	return returnState, nil
 }
 func (s *Actions) Set(accountID, workID, kind string, on bool) (douyin.ActionState, error) {
 	if kind != "like" && kind != "favorite" {
@@ -47,14 +65,11 @@ func (s *Actions) run(accountID, workID, kind string, on bool) (result douyin.Ac
 		return empty, errors.New("INVALID_ARGUMENT")
 	}
 	a := s.app
-	// Use the same order as login verification: request gate, then account lock.
+	// Serialize platform operations without holding the application mutex during network waits.
 	a.frontRequests.Add(1)
 	defer a.frontRequests.Add(-1)
-	a.requestMu.Lock()
-	defer a.requestMu.Unlock()
-	a.mu.Lock()
-	log.Print("[hoard:actions] request gate acquired")
-	defer a.mu.Unlock()
+	a.actionMu.Lock()
+	defer a.actionMu.Unlock()
 	if a.Store == nil {
 		return empty, errors.New("STORE_FAILED")
 	}
@@ -81,7 +96,7 @@ func (s *Actions) run(accountID, workID, kind string, on bool) (result douyin.Ac
 		}
 	}
 	identity, err := engine.Identity(ctx)
-	a.lastRequest = time.Now()
+	lastRequest := time.Now()
 	if err != nil || !identity.LoggedIn {
 		return empty, errors.New("AUTH_REQUIRED")
 	}
@@ -89,11 +104,11 @@ func (s *Actions) run(accountID, workID, kind string, on bool) (result douyin.Ac
 		return empty, errors.New("IDENTITY_MISMATCH")
 	}
 	request := func(op douyin.Operation, params map[string]string) (douyin.PageReply, error) {
-		if delay := 1200*time.Millisecond - time.Since(a.lastRequest); delay > 0 && !wait(ctx, delay) {
+		if delay := 1200*time.Millisecond - time.Since(lastRequest); delay > 0 && !wait(ctx, delay) {
 			return douyin.PageReply{}, ctx.Err()
 		}
 		reply, err := engine.Request(ctx, op, params)
-		a.lastRequest = time.Now()
+		lastRequest = time.Now()
 		return reply, err
 	}
 	read := func() (douyin.ActionState, error) {
@@ -126,6 +141,10 @@ func (s *Actions) run(accountID, workID, kind string, on bool) (result douyin.Ac
 			op = douyin.OpSetFavorite
 			params = map[string]string{"aweme_id": workID, "action": value, "aweme_type": before.AwemeType}
 		}
+		accountNow, accountErr := a.Store.Account(ctx, accountID)
+		if accountErr != nil || accountNow.Status != "active" || accountNow.SessionName != account.SessionName || accountNow.RemoteID != account.RemoteID {
+			return empty, errors.New("ACCOUNT_CHANGED")
+		}
 		// Even a timed-out write may have succeeded. Never repeat it; verify by reading.
 		a.actionRevision.Add(1)
 		_, _ = request(op, params)
@@ -137,6 +156,12 @@ func (s *Actions) run(accountID, workID, kind string, on bool) (result douyin.Ac
 	confirmed := after.Liked
 	if kind == "favorite" {
 		confirmed = after.Favorited
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	accountNow, accountErr := a.Store.Account(ctx, accountID)
+	if accountErr != nil || accountNow.SessionName != account.SessionName || accountNow.Status != "active" {
+		return empty, errors.New("ACCOUNT_CHANGED")
 	}
 	if err := a.Store.ConfirmWorkAction(ctx, accountID, workID, kind, confirmed); err != nil {
 		return empty, errors.New("STORE_FAILED")

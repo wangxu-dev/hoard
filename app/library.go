@@ -36,16 +36,18 @@ type LibraryQuery struct {
 
 // LibraryItem is one card of the library grid.
 type LibraryItem struct {
-	ID           string   `json:"id"`
-	Kind         string   `json:"kind"`
-	Title        string   `json:"title"`
-	Author       string   `json:"author"`
-	Cover        string   `json:"cover"`
-	AuthorAvatar string   `json:"authorAvatar"` // cached author avatar; empty for sounds
-	PublishedAt  int64    `json:"publishedAt"`
-	DurationMS   int      `json:"durationMs"`
-	ImageCount   int      `json:"imageCount"`
-	AccountIDs   []string `json:"accountIds"`
+	ID                  string   `json:"id"`
+	Kind                string   `json:"kind"`
+	Title               string   `json:"title"`
+	Author              string   `json:"author"`
+	Cover               string   `json:"cover"`
+	AuthorAvatar        string   `json:"authorAvatar"` // cached author avatar; empty for sounds
+	PublishedAt         int64    `json:"publishedAt"`
+	DurationMS          int      `json:"durationMs"`
+	ImageCount          int      `json:"imageCount"`
+	AccountIDs          []string `json:"accountIds"`
+	LikedAccountIDs     []string `json:"likedAccountIds"`
+	FavoritedAccountIDs []string `json:"favoritedAccountIds"`
 }
 
 // LibraryPage is one page of a list and the number of matching items.
@@ -81,6 +83,17 @@ func (l *Library) List(q LibraryQuery) (LibraryPage, error) {
 	if err != nil {
 		return LibraryPage{}, errors.New("STORE_FAILED")
 	}
+	liked, favorited := map[string][]string{}, map[string][]string{}
+	if q.Kind != "music" {
+		liked, err = l.app.Store.LibraryOwners(ctx, store.LibraryQuery{Source: q.Source, Kind: "like"}, ids)
+		if err != nil {
+			return LibraryPage{}, errors.New("STORE_FAILED")
+		}
+		favorited, err = l.app.Store.LibraryOwners(ctx, store.LibraryQuery{Source: q.Source, Kind: "favorite"}, ids)
+		if err != nil {
+			return LibraryPage{}, errors.New("STORE_FAILED")
+		}
+	}
 	page := LibraryPage{Items: make([]LibraryItem, len(items)), Total: total}
 	for i, it := range items {
 		cover := it.CoverURL
@@ -91,7 +104,7 @@ func (l *Library) List(q LibraryQuery) (LibraryPage, error) {
 		if it.Kind != "music" && l.app.Covers != nil {
 			avatar = covers.URL("a", it.RemoteID)
 		}
-		page.Items[i] = LibraryItem{ID: it.RemoteID, Kind: it.Kind, Title: it.Title, Author: it.Author, Cover: cover, AuthorAvatar: avatar, PublishedAt: it.PublishedAt, DurationMS: it.DurationMS, ImageCount: it.ImageCount, AccountIDs: owners[it.RemoteID]}
+		page.Items[i] = LibraryItem{ID: it.RemoteID, Kind: it.Kind, Title: it.Title, Author: it.Author, Cover: cover, AuthorAvatar: avatar, PublishedAt: it.PublishedAt, DurationMS: it.DurationMS, ImageCount: it.ImageCount, AccountIDs: owners[it.RemoteID], LikedAccountIDs: liked[it.RemoteID], FavoritedAccountIDs: favorited[it.RemoteID]}
 	}
 	return page, nil
 }

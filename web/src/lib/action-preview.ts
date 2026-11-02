@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import type { ListKind } from "./library";
 
 export type ActionKind = ListKind;
-export interface ActionTarget { id: string; kind: ActionKind }
+export interface ActionTarget { id: string; kind: ActionKind; likedAccountIds?: string[]; favoritedAccountIds?: string[] }
 const overrides = new Map<string, readonly string[]>();
 const listeners = new Set<() => void>();
 const defaults = new Map<string, readonly string[]>();

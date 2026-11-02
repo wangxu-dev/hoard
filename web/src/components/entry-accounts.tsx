@@ -1,10 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getLibrarySource, type LibraryEntry } from "@/lib/library";
 import { usePreviewOwners } from "@/lib/action-preview";
 import { useLibraryFilters } from "@/lib/library-filters";
 import { fixtureName } from "@/lib/demo";
+import type { ActionState } from "@/lib/api";
 import { queryKeys } from "@/lib/query";
 
 export function EntryAccounts({ entry }: { entry: LibraryEntry }) {
@@ -13,7 +14,14 @@ export function EntryAccounts({ entry }: { entry: LibraryEntry }) {
   const { scope, kind } = useLibraryFilters();
   const preview = usePreviewOwners({ id: entry.id, kind });
   const ownerIds = fixtureName ? preview.filter((id) => !scope.accountId || id === scope.accountId) : entry.accountIds;
-  const accounts = data?.flatMap((source) => source.accounts).filter((account) => ownerIds?.includes(account.id)) ?? [];
+  const allAccounts = data?.flatMap((source) => source.accounts) ?? [];
+  const states = useQueries({ queries: allAccounts.map((account) => ({ queryKey: ["action-state", account.id, entry.id], enabled: false, queryFn: async (): Promise<ActionState> => ({ liked: false, favorited: false }) })) });
+  const accounts = allAccounts.filter((account, index) => {
+    if (scope.accountId && account.id !== scope.accountId) return false;
+    const state = states[index].data;
+    if (!fixtureName && state && kind !== "music") return kind === "like" ? state.liked : state.favorited;
+    return ownerIds?.includes(account.id);
+  });
   if (!accounts.length) return null;
   return <div data-entry-accounts role="group" tabIndex={0}
     aria-label={`${t("accounts.owners", { count: accounts.length })}: ${accounts.map((account) => account.nickname).join(", ")}`}
