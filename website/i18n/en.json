@@ -1,0 +1,135 @@
+{
+  "meta": {
+    "title": "Hoard — Your personal content library",
+    "description": "Revisit your Douyin and Bilibili favorites in one desktop library. Multiple accounts, search, filters, a timeline, video playback and galleries, with data stored locally."
+  },
+  "nav": {
+    "features": "Features",
+    "sources": "Platforms",
+    "download": "Download",
+    "github": "GitHub",
+    "home": "Back to home",
+    "skip": "Skip to content",
+    "preview": "Preview",
+    "faq": "FAQ",
+    "sections": "Page sections"
+  },
+  "controls": {
+    "language": "切换为中文",
+    "light": "Switch to light theme",
+    "dark": "Switch to dark theme"
+  },
+  "hero": {
+    "eyebrow": "FOR EVERYTHING YOU SAVED FOR LATER",
+    "line1": "Saved once.",
+    "line2": "Found again.",
+    "description": "Bring your likes and favorites together. Search, browse and rediscover the things worth revisiting.",
+    "download": "Download for free",
+    "github": "Explore on GitHub",
+    "note": "Open source · Local first · macOS / Windows / Linux",
+    "caption": "Keep what you love within reach."
+  },
+  "sources": {
+    "eyebrow": "DIFFERENT SOURCES. ONE LIBRARY.",
+    "title": "Your favorites, together at last.",
+    "description": "Connect your accounts. Sync your collection. Revisit it your way.",
+    "douyin": "Douyin",
+    "bilibili": "Bilibili",
+    "douyinItems": [
+      "Likes & favorites",
+      "Saved music",
+      "Videos & galleries"
+    ],
+    "biliItems": [
+      "Favorites",
+      "Watch later",
+      "Videos & galleries"
+    ],
+    "future": "More sources are being explored.",
+    "xiaohongshu": "Xiaohongshu",
+    "connected": "Available",
+    "exploring": "Exploring",
+    "statusNote": "Highlighted platforms are supported. More to follow."
+  },
+  "features": {
+    "eyebrow": "MADE FOR REDISCOVERY",
+    "title": "Your library",
+    "accent": "",
+    "searchTitle": "Find it without starting over.",
+    "searchBody": "Search by title or creator, then narrow things down with content types and sorting.",
+    "timelineTitle": "Follow the timeline back.",
+    "timelineBody": "Browse by publication date and jump to the month you have in mind.",
+    "accountsTitle": "Every account has its place.",
+    "accountsBody": "Browse each account separately, or explore your synced favorites together.",
+    "localTitle": "Your library stays on your device.",
+    "localBody": "Your collection index and login sessions stay on your device, ready when you return.",
+    "searchPlaceholder": "Search titles or creators",
+    "previewLabel": "Interactive Hoard library demo",
+    "collectionLabel": "Your collections come together in Hoard"
+  },
+  "download": {
+    "eyebrow": "A NEW HOME FOR YOUR FAVORITES",
+    "title": "Download Hoard",
+    "description": "Free to download. MIT licensed. Contributions and feedback are welcome.",
+    "mac": "macOS",
+    "windows": "Windows",
+    "linux": "Linux",
+    "apple": "Apple Silicon",
+    "intel": "Intel",
+    "x64": "x64",
+    "arm64": "ARM64",
+    "all": "All releases & changelog",
+    "versionLabel": "Current version"
+  },
+  "faq": {
+    "eyebrow": "BEFORE YOU START",
+    "title": "A few things to know",
+    "items": [
+      {
+        "q": "Is Hoard free?",
+        "a": "Yes. Hoard is open source under the MIT license. Use it, explore the code, report an issue or contribute."
+      },
+      {
+        "q": "Where are my accounts and data stored?",
+        "a": "Account sessions, collection indexes and caches are stored on your device. No extra Hoard account is needed."
+      },
+      {
+        "q": "How do I get started and update?",
+        "a": "Choose a download for your system, install it and connect a platform account. Your collection syncs automatically. Get future updates in the app settings."
+      }
+    ]
+  },
+  "footer": {
+    "tagline": "Keep what you love within reach.",
+    "privacy": "Privacy & data",
+    "license": "MIT license",
+    "issues": "Report an issue"
+  },
+  "privacy": {
+    "title": "Privacy & data",
+    "intro": "This notice covers the Hoard desktop application and this website.",
+    "sections": [
+      {
+        "title": "Data stored by the desktop app",
+        "body": "Hoard stores account information, synced content indexes, covers and other caches on your device. The system WebView stores login sessions separately for each account. Do not publish databases, credentials or logs containing personal data."
+      },
+      {
+        "title": "Network requests",
+        "body": "Login, sync and playback connect to the corresponding content platforms. Update checks and downloads connect to GitHub or acceleration services offered by the app. These services process requests and network information under their own policies."
+      },
+      {
+        "title": "This website",
+        "body": "The current website has no analytics, advertising or account system. Language is selected through the page URL and the theme preference is stored in your browser. The hosting provider and linked services such as GitHub may log requests under their own policies."
+      },
+      {
+        "title": "Removal and cleanup",
+        "body": "Signing out in the desktop app removes the corresponding local session and associated data through the account removal flow. To remove all application data, exit the app first and consult the project documentation for data locations and backup considerations."
+      },
+      {
+        "title": "Questions",
+        "body": "Contact the maintainers through GitHub Issues. Remove account details, cookies, tokens and other sensitive information before submitting a report."
+      }
+    ],
+    "metadata": "Privacy & data — Hoard"
+  }
+}

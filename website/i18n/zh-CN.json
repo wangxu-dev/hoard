@@ -1,0 +1,135 @@
+{
+  "meta": {
+    "title": "Hoard — 你的个人内容库",
+    "description": "用 Hoard 在桌面集中浏览抖音和哔哩哔哩的喜欢与收藏。支持多账号、搜索筛选、时间轴、视频播放与图文查看，数据保存在本机。"
+  },
+  "nav": {
+    "features": "功能",
+    "sources": "支持平台",
+    "download": "下载",
+    "github": "GitHub",
+    "home": "返回首页",
+    "skip": "跳至内容",
+    "preview": "预览",
+    "faq": "常见问题",
+    "sections": "页面导航"
+  },
+  "controls": {
+    "language": "Switch to English",
+    "light": "切换浅色主题",
+    "dark": "切换深色主题"
+  },
+  "hero": {
+    "eyebrow": "为每一次「以后再看」",
+    "line1": "收藏过的，",
+    "line2": "随时找回来。",
+    "description": "把不同平台的喜欢与收藏，汇成你的个人内容库。搜索、浏览，重新遇见值得回看的内容。",
+    "download": "免费下载",
+    "github": "在 GitHub 上探索",
+    "note": "开源 · 本地优先 · macOS / Windows / Linux",
+    "caption": "把喜欢，留给下一次相遇。"
+  },
+  "sources": {
+    "eyebrow": "不同来源，同一个收藏库",
+    "title": "不同平台的喜欢，在这里相遇。",
+    "description": "连接账号，自动同步。用熟悉的方式，回看自己的收藏。",
+    "douyin": "抖音",
+    "bilibili": "哔哩哔哩",
+    "douyinItems": [
+      "喜欢与收藏",
+      "收藏音乐",
+      "视频与图文"
+    ],
+    "biliItems": [
+      "收藏",
+      "稍后再看",
+      "视频与图文"
+    ],
+    "future": "更多来源，持续探索中。",
+    "xiaohongshu": "小红书",
+    "connected": "已支持",
+    "exploring": "探索中",
+    "statusNote": "亮色已支持，其余跟进中"
+  },
+  "features": {
+    "eyebrow": "为回看而整理",
+    "title": "你的收藏库",
+    "accent": "",
+    "searchTitle": "想找的，不必从头翻。",
+    "searchBody": "按标题或作者搜索，结合内容类型与排序，找到记忆中的那一条。",
+    "timelineTitle": "顺着时间，找回灵感。",
+    "timelineBody": "用发布时间轴浏览收藏，跨过一屏屏内容，回到你想看的月份。",
+    "accountsTitle": "多个账号，各得其所。",
+    "accountsBody": "切换账号分别浏览，也可以把已同步的收藏放在一起看。",
+    "localTitle": "你的内容库，留在本机。",
+    "localBody": "收藏索引与登录会话保存在自己的设备上，打开就能接着浏览。",
+    "searchPlaceholder": "搜索标题或作者",
+    "previewLabel": "Hoard 收藏库交互演示",
+    "collectionLabel": "各个平台的收藏汇入 Hoard"
+  },
+  "download": {
+    "eyebrow": "给收藏，一个新的入口",
+    "title": "免费下载",
+    "description": "免费下载。MIT 开源，欢迎使用、反馈与贡献。",
+    "mac": "macOS",
+    "windows": "Windows",
+    "linux": "Linux",
+    "apple": "Apple Silicon",
+    "intel": "Intel",
+    "x64": "x64",
+    "arm64": "ARM64",
+    "all": "所有版本与更新日志",
+    "versionLabel": "当前版本"
+  },
+  "faq": {
+    "eyebrow": "开始之前",
+    "title": "你可能想知道",
+    "items": [
+      {
+        "q": "Hoard 可以免费使用吗？",
+        "a": "可以。Hoard 采用 MIT 开源许可证，欢迎使用、查看源码、反馈问题与贡献代码。"
+      },
+      {
+        "q": "我的账号和数据存在哪里？",
+        "a": "账号会话、收藏索引与缓存保存在本机，无需额外注册 Hoard 账号。"
+      },
+      {
+        "q": "如何开始使用和更新？",
+        "a": "选择适合系统的安装包，安装后登录平台账号，收藏便会自动同步。后续版本可在应用设置中更新。"
+      }
+    ]
+  },
+  "footer": {
+    "tagline": "把喜欢，留给下一次相遇。",
+    "privacy": "隐私与数据",
+    "license": "MIT 许可证",
+    "issues": "反馈问题"
+  },
+  "privacy": {
+    "title": "隐私与数据",
+    "intro": "这份说明涵盖 Hoard 桌面应用与本官网。",
+    "sections": [
+      {
+        "title": "桌面应用保存在本机的数据",
+        "body": "Hoard 在本机保存账号资料、同步内容索引、封面与其他缓存。账号登录会话由系统 WebView 按账号分别保存。请勿公开真实数据库、登录信息或未脱敏的日志。"
+      },
+      {
+        "title": "网络访问",
+        "body": "登录、同步和播放会访问对应内容平台。检查更新与下载安装包会访问 GitHub 或应用提供的加速线路；这些服务按各自的政策处理请求与网络信息。"
+      },
+      {
+        "title": "本官网",
+        "body": "当前官网没有接入分析、广告或账号系统。语言通过页面路径选择，主题偏好保存在浏览器本地。部署平台及 GitHub 等外部网站可能按其政策记录访问请求。"
+      },
+      {
+        "title": "删除与清理",
+        "body": "桌面应用退出登录会按现有账号移除流程清理对应账号的本地会话和关联数据。需要完整删除应用数据时，请先退出应用，并参考项目说明确认数据目录与备份需求。"
+      },
+      {
+        "title": "反馈",
+        "body": "如有疑问，请通过 GitHub Issue 联系项目维护者。提交前请移除账号信息、Cookie、Token 和其他敏感内容。"
+      }
+    ],
+    "metadata": "隐私与数据 — Hoard"
+  }
+}

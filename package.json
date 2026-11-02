@@ -2,6 +2,7 @@
   "name": "hoard",
   "private": true,
   "type": "module",
+  "workspaces": ["website"],
   "scripts": {
     "dev": "mygo dev",
     "build": "bun scripts/build-release.ts",
@@ -9,7 +10,12 @@
     "generate": "mygo generate",
     "dev:web": "vite --host localhost",
     "build:web": "vite build",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "dev:site": "bun run --cwd website dev",
+    "build:site": "bun run --cwd website build",
+    "typecheck:site": "bun run --cwd website typecheck",
+    "typecheck:demo": "tsc -p website/demo/tsconfig.json",
+    "test:site": "bun test website/tests/"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",

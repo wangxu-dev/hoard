@@ -1,0 +1,5 @@
+@import "../../web/src/styles/globals.css";
+@source "../../web/src";
+
+html, body, [data-slot="sidebar-content"] { scrollbar-width: none; }
+html::-webkit-scrollbar, body::-webkit-scrollbar, [data-slot="sidebar-content"]::-webkit-scrollbar { display: none; }

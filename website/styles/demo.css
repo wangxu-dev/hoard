@@ -1,0 +1,5 @@
+@layer components {
+  .app-window-wrap { width: 85%; margin-inline: auto; }
+  .app-demo-viewport { height: min(calc(85vw * 7 / 12), calc(100svh - 240px)); overflow: hidden; }
+  .app-demo-content { display: block; width: 117.647059%; height: 117.647059%; transform: scale(.85); transform-origin: top left; }
+}

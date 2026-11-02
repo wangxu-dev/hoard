@@ -36,6 +36,14 @@ bun run generate
 bun run dev
 ```
 
+产品官网位于 `website/`，使用 Next.js，与桌面应用共用仓库和 Bun 锁文件。启动官网：
+
+```sh
+bun run dev:site
+```
+
+打开 http://127.0.0.1:3000。静态构建与部署说明见 [website/README.md](website/README.md)。
+
 只启动前端开发服务器：
 
 ```sh

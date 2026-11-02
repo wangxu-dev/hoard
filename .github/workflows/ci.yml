@@ -15,6 +15,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  website:
+    name: Website
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+      - run: bun install --frozen-lockfile
+      - run: bun run test:site
+      - run: bun run typecheck:site
+      - run: bun run build:site
+        env:
+          NEXT_PUBLIC_SITE_URL: https://hoard.example
+
   checks:
     name: Checks
     runs-on: macos-14
@@ -47,5 +63,7 @@ jobs:
         run: bun run generate
       - name: Check TypeScript
         run: bun run typecheck
+      - name: Check website APP demo types
+        run: bun run typecheck:demo
       - name: Verify frontend build
         run: bun run build:web

@@ -179,7 +179,7 @@ function Cover({ src, square }: { src: string; square: boolean }) {
   </div>;
 }
 
-const EntryCard = memo(function EntryCard({ entry, onOpen, fresh = false, playing }: { entry: LibraryEntry; onOpen: (entry: LibraryEntry) => void; fresh?: boolean; playing?: "playing" | "paused" }) {
+export const EntryCard = memo(function EntryCard({ entry, onOpen, fresh = false, playing }: { entry: LibraryEntry; onOpen: (entry: LibraryEntry) => void; fresh?: boolean; playing?: "playing" | "paused" }) {
   const { t } = useTranslation("library");
   const music = entry.kind === "music";
   const prefetchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
