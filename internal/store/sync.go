@@ -170,13 +170,22 @@ is_live=excluded.is_live,cover_url=excluded.cover_url,extra=excluded.extra,updat
 			id, source, work.RemoteID, work.Kind, work.Title, authorID, work.PublishedAt, work.DurationMS, work.Width, work.Height, work.ImageCount, work.IsLive, work.CoverURL, string(extra), now, work.Available, work.Available); err != nil {
 			return 0, fmt.Errorf("upsert work: %w", err)
 		}
+		relationSeq := seq
+		if work.AddedAt > 0 {
+			relationSeq = work.AddedAt
+		}
 		res, err := tx.ExecContext(ctx, `INSERT INTO relations(account_id,work_id,kind,seq,published_at,first_seen) VALUES(?,?,?,?,?,?)
-ON CONFLICT(account_id,kind,work_id) DO NOTHING`, accountID, id, kind, seq, work.PublishedAt, now)
+ON CONFLICT(account_id,kind,work_id) DO NOTHING`, accountID, id, kind, relationSeq, work.PublishedAt, now)
 		if err != nil {
 			return 0, fmt.Errorf("insert relation: %w", err)
 		}
 		if n, _ := res.RowsAffected(); n > 0 {
 			added++
+		}
+		if source == "bilibili" {
+			if _, err := tx.ExecContext(ctx, `UPDATE relations SET published_at=?,seq=CASE WHEN ?>0 THEN ? ELSE seq END WHERE account_id=? AND kind=? AND work_id=?`, work.PublishedAt, work.AddedAt, work.AddedAt, accountID, kind, id); err != nil {
+				return 0, fmt.Errorf("update relation metadata: %w", err)
+			}
 		}
 		seq--
 	}

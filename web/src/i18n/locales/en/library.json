@@ -34,7 +34,7 @@
     "sort": {
       "label": "Sort",
       "published": "Published date",
-      "recent": "Recently liked",
+      "recent": "Recently added",
       "music": "Saved date",
       "unavailable_music": "Music has no published date"
     },

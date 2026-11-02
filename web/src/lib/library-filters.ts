@@ -42,7 +42,7 @@ export function useLibraryOrdering() {
   const { kind, sort } = useLibraryFilters();
   const options = sortOptions.map((option) => ({
     ...option,
-    label: option.value === "recent" && kind === "music" ? "toolbar.sort.music" : option.label,
+    label: option.label,
     disabled: kind === "music" && option.value === "published",
     reason: "toolbar.sort.unavailable_music",
   }));

@@ -139,7 +139,7 @@ func (c Client) save(ctx context.Context, db *store.Store, accountID, kind strin
 		if err != nil {
 			return err
 		}
-		w := store.Work{Extra: extra, RemoteID: v.ID, Kind: "video", Title: v.Title, CoverURL: v.Cover, PublishedAt: v.PublishedAt, DurationMS: v.DurationMS, Available: &v.Available}
+		w := store.Work{AddedAt: v.FavoritedAt, Extra: extra, RemoteID: v.ID, Kind: "video", Title: v.Title, CoverURL: v.Cover, PublishedAt: v.PublishedAt, DurationMS: v.DurationMS, Available: &v.Available}
 		if v.AuthorID != "" {
 			w.Author = &store.Author{RemoteID: v.AuthorID, Nickname: v.Author, AvatarURL: v.Avatar}
 		}

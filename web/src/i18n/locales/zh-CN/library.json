@@ -34,7 +34,7 @@
     "sort": {
       "label": "排序",
       "published": "发布时间",
-      "recent": "最近喜欢",
+      "recent": "最近加入",
       "music": "收藏时间",
       "unavailable_music": "音乐没有发布时间"
     },

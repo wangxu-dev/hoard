@@ -37,6 +37,7 @@ type Work struct {
 	Available   *bool // nil preserves the stored availability; new works default to available
 	Extra       json.RawMessage
 	Seq         int64
+	AddedAt     int64 // Source-provided list addition time; zero keeps pagination order.
 }
 
 type WorkPage struct {
