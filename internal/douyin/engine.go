@@ -1,6 +1,7 @@
 package douyin
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/url"
@@ -68,12 +69,11 @@ func (a *Engine) openWindowLocked(show bool) Status {
 			Untrusted:       true,
 			PreloadScript:   `document.addEventListener('play', e => { if (e.target instanceof HTMLMediaElement) { e.target.muted = true; e.target.pause(); } }, true);`,
 			Session:         a.sess,
-			UserAgentSuffix: "Hoard/0.1",
 			SwipeNavigation: true,
 		},
 	})
 	win.Page().OnRenderProcessGone(func(_ string) { log.Print("[hoard:douyin] web content process exited") })
-	win.Page().OnDidNavigate(func(_ string) { log.Print("[hoard:douyin] navigation committed") })
+	win.Page().OnDidNavigate(func(raw string) { log.Printf("[hoard:douyin] navigation committed page=%s", loginPageClass(raw)) })
 	win.Page().OnDidFinishLoad(func() { log.Print("[hoard:douyin] page load finished") })
 	win.Page().OnDidFailLoad(func(err *mygo.LoadError) { log.Printf("[hoard:douyin] page load failed code=%d", err.Code) })
 	win.Page().SetAudioMuted(true)
@@ -114,9 +114,46 @@ func (a *Engine) openWindowLocked(show bool) Status {
 		if !current {
 			return
 		}
-		log.Printf("[hoard:douyin] navigation checkpoint ready=%t loading=%t", ready, win.Page().IsLoading())
+		log.Printf("[hoard:douyin] navigation checkpoint ready=%t loading=%t page=%s", ready, win.Page().IsLoading(), loginPageClass(win.Page().URL()))
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		value, err := win.Page().EvalContext(ctx, `(()=>({elements:document.body?.children.length||0,textLength:document.body?.innerText.length||0,verification:!!document.querySelector('[role="slider"],iframe[src*="captcha"],iframe[src*="verify"]')}))()`)
+		if err != nil {
+			log.Print("[hoard:douyin] page inspection failed")
+			return
+		}
+		type inspection struct {
+			Elements     int  `json:"elements"`
+			TextLength   int  `json:"textLength"`
+			Verification bool `json:"verification"`
+		}
+		result, err := decode[inspection](value)
+		if err == nil {
+			log.Printf("[hoard:douyin] page inspection elements=%d text_length=%d verification=%t", result.Elements, result.TextLength, result.Verification)
+		}
 	}()
 	return a.statusLocked()
+}
+
+// loginPageClass records only a fixed category, never account paths or query values.
+func loginPageClass(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "invalid"
+	}
+	if u.Scheme == "about" {
+		return "blank"
+	}
+	if u.Scheme != "https" || (u.Hostname() != "douyin.com" && !strings.HasSuffix(u.Hostname(), ".douyin.com")) {
+		return "external"
+	}
+	switch u.Path {
+	case "/":
+		return "home"
+	case "/user/self":
+		return "self"
+	}
+	return "douyin_other"
 }
 
 func (a *Engine) OpenDouyin() (Status, error) {
