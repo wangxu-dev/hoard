@@ -14,9 +14,11 @@ import (
 const opusFeed = "/x/polymer/web-dynamic/v1/opus/feed/fav"
 
 type Opus struct {
-	ID     string
-	Text   string
-	Images []string
+	ID          string
+	Text        string
+	Images      []string
+	Author      *store.Author
+	PublishedAt int64
 }
 
 func ParseOpusPage(body []byte) ([]store.Work, bool, error) {
@@ -29,6 +31,7 @@ func ParseOpusPage(body []byte) ([]store.Work, bool, error) {
 		Items   []struct {
 			ID      string `json:"opus_id"`
 			Content string `json:"content"`
+			AddedAt int64  `json:"fav_time"`
 			Cover   struct {
 				URL string `json:"url"`
 			} `json:"cover"`
@@ -42,9 +45,38 @@ func ParseOpusPage(body []byte) ([]store.Work, bool, error) {
 		if !numericID.MatchString(v.ID) || v.ID == "0" {
 			return nil, false, ErrInvalid
 		}
-		works = append(works, store.Work{RemoteID: "opus:" + v.ID, Kind: "gallery", Title: v.Content, CoverURL: image(v.Cover.URL)})
+		works = append(works, store.Work{AddedAt: v.AddedAt, RemoteID: "opus:" + v.ID, Kind: "gallery", Title: v.Content, CoverURL: image(v.Cover.URL)})
 	}
 	return works, *raw.HasMore, nil
+}
+
+type opusText struct {
+	Nodes []struct {
+		Word struct {
+			Words string `json:"words"`
+		} `json:"word"`
+		Rich struct {
+			Text     string `json:"text"`
+			Original string `json:"orig_text"`
+		} `json:"rich"`
+		Formula struct {
+			Text string `json:"latex_content"`
+		} `json:"formula"`
+	} `json:"nodes"`
+}
+
+func (t opusText) text() string {
+	var out strings.Builder
+	for _, n := range t.Nodes {
+		out.WriteString(n.Word.Words)
+		if n.Rich.Text != "" {
+			out.WriteString(n.Rich.Text)
+		} else {
+			out.WriteString(n.Rich.Original)
+		}
+		out.WriteString(n.Formula.Text)
+	}
+	return out.String()
 }
 
 func ParseOpus(body []byte) (Opus, error) {
@@ -62,15 +94,21 @@ func ParseOpus(body []byte) (Opus, error) {
 				Title string `json:"title"`
 			} `json:"basic"`
 			Modules []struct {
+				Author struct {
+					ID          json.Number `json:"mid"`
+					Name        string      `json:"name"`
+					Face        string      `json:"face"`
+					PublishedAt int64       `json:"pub_ts"`
+				} `json:"module_author"`
 				Content struct {
 					Paragraphs []struct {
-						Text struct {
-							Nodes []struct {
-								Word struct {
-									Words string `json:"words"`
-								} `json:"word"`
-							} `json:"nodes"`
-						} `json:"text"`
+						Text opusText `json:"text"`
+						List struct {
+							Items []opusText `json:"items"`
+						} `json:"list"`
+						Code struct {
+							Content string `json:"content"`
+						} `json:"code"`
 						Pic struct {
 							Pics []picture `json:"pics"`
 						} `json:"pic"`
@@ -100,14 +138,22 @@ func ParseOpus(body []byte) (Opus, error) {
 		}
 	}
 	for _, m := range raw.Item.Modules {
+		if authorID, err := id(m.Author.ID); err == nil {
+			out.Author = &store.Author{RemoteID: authorID, Nickname: m.Author.Name, AvatarURL: image(m.Author.Face)}
+			out.PublishedAt = m.Author.PublishedAt
+		}
 		add(m.Top.Display.Album.Pics)
 		for _, p := range m.Content.Paragraphs {
-			var line strings.Builder
-			for _, n := range p.Text.Nodes {
-				line.WriteString(n.Word.Words)
+			if text := p.Text.text(); text != "" {
+				out.Text += "\n" + text
 			}
-			if line.Len() > 0 {
-				out.Text += "\n" + line.String()
+			for _, item := range p.List.Items {
+				if text := item.text(); text != "" {
+					out.Text += "\n" + text
+				}
+			}
+			if p.Code.Content != "" {
+				out.Text += "\n" + p.Code.Content
 			}
 			add(p.Pic.Pics)
 		}
@@ -135,6 +181,24 @@ func (c Client) indexOpus(ctx context.Context, db *store.Store, accountID string
 			return fmt.Errorf("opus pagination stalled")
 		}
 		seen[key] = true
+		for i := range works {
+			body, err := c.read(ctx, "/x/polymer/web-dynamic/v1/opus/detail", map[string]string{"id": strings.TrimPrefix(works[i].RemoteID, "opus:"), "features": "htmlNewStyle"})
+			if err != nil {
+				return err
+			}
+			detail, err := ParseOpus(body)
+			if err != nil {
+				return err
+			}
+			if "opus:"+detail.ID != works[i].RemoteID {
+				return ErrInvalid
+			}
+			works[i].Title, works[i].Author, works[i].PublishedAt = detail.Text, detail.Author, detail.PublishedAt
+			works[i].ImageCount = len(detail.Images)
+			if len(detail.Images) > 0 {
+				works[i].CoverURL = detail.Images[0]
+			}
+		}
 		if _, err = db.SaveWorks(ctx, accountID, "favorite", false, works); err != nil {
 			return err
 		}

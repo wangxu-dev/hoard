@@ -53,7 +53,11 @@ func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord) (Medi
 		if err != nil || opus.ID != strings.TrimPrefix(rec.RemoteID, "opus:") {
 			return MediaResult{}, errors.New("UNAVAILABLE")
 		}
-		out := MediaResult{Kind: "gallery", Author: rec.Author, Desc: opus.Text, PublishedAt: rec.PublishedAt, Complete: true}
+		out := MediaResult{Kind: "gallery", Author: rec.Author, Desc: opus.Text, PublishedAt: opus.PublishedAt, Complete: true}
+		if opus.Author != nil {
+			out.Author = opus.Author.Nickname
+			out.AuthorAvatar = p.app.Media.Register(opus.Author.AvatarURL)
+		}
 		for _, raw := range opus.Images {
 			if u := p.app.Media.Register(raw); u != "" {
 				out.Images = append(out.Images, MediaImage{URL: u})
