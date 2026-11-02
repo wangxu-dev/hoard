@@ -122,7 +122,7 @@ func (s *Store) KnownWorks(ctx context.Context, accountID, kind string, remoteID
 // SaveWorks adds works to a list. Head pages go above every saved item,
 // backfill pages below, so seq DESC is always the list's own order.
 func (s *Store) SaveWorks(ctx context.Context, accountID, kind string, head bool, works []Work) (int, error) {
-	if kind != "like" && kind != "favorite" {
+	if kind != "like" && kind != "favorite" && kind != "watch_later" {
 		return 0, fmt.Errorf("invalid work relation kind")
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -162,12 +162,12 @@ ON CONFLICT(id) DO UPDATE SET nickname=excluded.nickname,avatar_url=excluded.ava
 			}
 		}
 		id := source + ":" + work.RemoteID
-		if _, err := tx.ExecContext(ctx, `INSERT INTO works(id,source,remote_id,kind,title,author_id,published_at,duration_ms,width,height,image_count,is_live,cover_url,extra,updated_at)
-VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+		if _, err := tx.ExecContext(ctx, `INSERT INTO works(id,source,remote_id,kind,title,author_id,published_at,duration_ms,width,height,image_count,is_live,cover_url,extra,updated_at,available)
+VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(?,1)) ON CONFLICT(id) DO UPDATE SET
 kind=excluded.kind,title=excluded.title,author_id=excluded.author_id,published_at=excluded.published_at,
 duration_ms=excluded.duration_ms,width=excluded.width,height=excluded.height,image_count=excluded.image_count,
-is_live=excluded.is_live,cover_url=excluded.cover_url,extra=excluded.extra,updated_at=excluded.updated_at`,
-			id, source, work.RemoteID, work.Kind, work.Title, authorID, work.PublishedAt, work.DurationMS, work.Width, work.Height, work.ImageCount, work.IsLive, work.CoverURL, string(extra), now); err != nil {
+is_live=excluded.is_live,cover_url=excluded.cover_url,extra=excluded.extra,updated_at=excluded.updated_at,available=COALESCE(?,works.available)`,
+			id, source, work.RemoteID, work.Kind, work.Title, authorID, work.PublishedAt, work.DurationMS, work.Width, work.Height, work.ImageCount, work.IsLive, work.CoverURL, string(extra), now, work.Available, work.Available); err != nil {
 			return 0, fmt.Errorf("upsert work: %w", err)
 		}
 		res, err := tx.ExecContext(ctx, `INSERT INTO relations(account_id,work_id,kind,seq,published_at,first_seen) VALUES(?,?,?,?,?,?)

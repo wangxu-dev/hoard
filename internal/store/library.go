@@ -11,7 +11,8 @@ import (
 type LibraryQuery struct {
 	AccountID string
 	Source    string
-	Kind      string // like | favorite | music
+	FolderID  string
+	Kind      string // like | favorite | watch_later | music
 	Type      string // all | video | gallery
 	Query     string
 	Sort      string // published | recent
@@ -106,7 +107,7 @@ func (s *Store) Library(ctx context.Context, q LibraryQuery) ([]LibraryItem, int
 // order. Without a type or search filter the works are joined only for the rows returned,
 // so pages far down cost about as little as the first.
 func relationsOnly(q LibraryQuery) (where string, args []any, order string, ok bool) {
-	if q.AccountID == "" || (q.Kind != "like" && q.Kind != "favorite") {
+	if q.FolderID != "" || q.AccountID == "" || (q.Kind != "like" && q.Kind != "favorite" && q.Kind != "watch_later") {
 		return "", nil, "", false
 	}
 	where, args = "r.account_id=? AND r.kind=?", []any{q.AccountID, q.Kind}
@@ -166,6 +167,9 @@ FROM r JOIN works w ON w.id=r.work_id LEFT JOIN authors a ON a.id=w.author_id OR
 // query over it so they always agree on what the list holds.
 func listFilter(q LibraryQuery) (from, filter, order string, args []any, err error) {
 	where := []string{}
+	if q.FolderID != "" && (q.Kind != "favorite" || q.AccountID == "") {
+		return "", "", "", nil, fmt.Errorf("folder requires an account favorite list")
+	}
 	args = []any{}
 	single := q.AccountID != ""
 	if q.Kind == "music" {
@@ -185,11 +189,15 @@ func listFilter(q LibraryQuery) (from, filter, order string, args []any, err err
 			order = "MAX(r.seq) DESC"
 		}
 	} else {
-		if q.Kind != "like" && q.Kind != "favorite" {
+		if q.Kind != "like" && q.Kind != "favorite" && q.Kind != "watch_later" {
 			return "", "", "", nil, fmt.Errorf("invalid list kind")
 		}
 		from = `FROM relations r JOIN works w ON w.id=r.work_id LEFT JOIN authors a ON a.id=w.author_id`
 		where, args = append(where, "r.kind=?"), append(args, q.Kind)
+		if q.FolderID != "" {
+			where = append(where, "EXISTS (SELECT 1 FROM folder_works f WHERE f.account_id=r.account_id AND f.work_id=r.work_id AND f.folder_id=?)")
+			args = append(args, q.FolderID)
+		}
 		if single {
 			where, args = append(where, "r.account_id=?"), append(args, q.AccountID)
 		}
