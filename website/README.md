@@ -6,6 +6,14 @@ Run `bun run dev:site` at the repository root and open http://127.0.0.1:3000. Th
 
 Validation: `bun run test:site`, `bun run typecheck:site`, `bun run build:site`. After `bun run generate`, run `bun run typecheck:demo` to typecheck the demo together with the original APP components and generated API types.
 
+## Cloudflare Workers deployment
+
+Connect the GitHub repository in Workers Builds. Use production branch `main`, repository root `/`, build command `bun install --frozen-lockfile && bun run build:site`, deployment command `bunx wrangler deploy`, and preview command `bunx wrangler versions upload`. Preview builds can stay disabled. Set build variables `BUN_VERSION=1.3.11` and `NODE_VERSION=22`.
+
+The root `wrangler.jsonc` defines `hoard-website`, the static asset directory `website/out`, 404 routing and a fixed compatibility date. That date selects Cloudflare runtime behavior and does not change with APP releases or deployment dates. No Worker server script is required. `bun run --cwd website deploy:check` validates the deployment locally without account access; CI runs it after the website build.
+
+Set `NEXT_PUBLIC_SITE_URL` to the final HTTPS origin without a path before the production build. Until then, preview builds disable indexing. Website HTML is already statically prerendered, including its SEO metadata; SSR is not required for the current content.
+
 ## Static deployment
 
 Set `NEXT_PUBLIC_SITE_URL` to the final HTTPS origin without a path and run `bun run build:site`. Deploy `website/out/` to a static host. No Next.js server is required. Without this variable, preview builds disable indexing and omit canonical URLs. The build environment owns this setting; local environment files are not committed.

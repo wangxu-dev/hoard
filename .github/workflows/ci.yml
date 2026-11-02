@@ -30,6 +30,7 @@ jobs:
       - run: bun run build:site
         env:
           NEXT_PUBLIC_SITE_URL: https://hoard.example
+      - run: bun run --cwd website deploy:check
 
   checks:
     name: Checks
