@@ -23,7 +23,7 @@ const (
 	// RepoURL is where Hoard's source, releases and issues live.
 	RepoURL          = "https://github.com/wangxu-dev/hoard"
 	latestReleaseURL = "https://api.github.com/repos/wangxu-dev/hoard/releases/latest"
-	checkEvery       = 24 * time.Hour
+	checkEvery       = time.Hour
 	retryUpdateAfter = 5 * time.Minute
 	updateProxy      = "https://gh-proxy.com/"
 	maxNotes         = 20000
@@ -62,7 +62,8 @@ type UpdateInfo struct {
 	Notes   string `json:"notes"`
 	URL     string `json:"url"`
 	// CheckedAt is when GitHub last answered, in Unix milliseconds; 0 if never.
-	CheckedAt int64 `json:"checkedAt"`
+	CheckedAt   int64 `json:"checkedAt"`
+	NextCheckAt int64 `json:"nextCheckAt"`
 	// Error is why this check could not reach GitHub: OFFLINE, RATE_LIMITED, NOT_FOUND or BAD_RESPONSE.
 	Error string `json:"error"`
 }
@@ -83,7 +84,7 @@ type updateState struct {
 }
 
 // Check compares current with the latest release. Without force, a check made
-// in the last day answers from what it found then.
+// in the last hour answers from what it found then.
 func (u *Updates) Check(current string, force bool) (UpdateInfo, error) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
@@ -186,7 +187,11 @@ func (u *Updates) fetchFrom(endpoint string) (*releaseInfo, string) {
 }
 
 func describe(current string, state updateState, failure string) UpdateInfo {
-	info := UpdateInfo{Status: "unknown", Current: current, CheckedAt: state.CheckedAt, Error: failure}
+	delay := checkEvery
+	if failure != "" {
+		delay = retryUpdateAfter
+	}
+	info := UpdateInfo{Status: "unknown", Current: current, CheckedAt: state.CheckedAt, NextCheckAt: time.UnixMilli(state.AttemptedAt).Add(delay).UnixMilli(), Error: failure}
 	if state.Release == nil {
 		return info
 	}

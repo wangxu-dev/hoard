@@ -70,7 +70,7 @@ func TestUpdatesCheck(t *testing.T) {
 	}
 }
 
-func TestUpdatesCheckOncePerDay(t *testing.T) {
+func TestUpdatesCheckOncePerHour(t *testing.T) {
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests.Add(1)
@@ -81,20 +81,27 @@ func TestUpdatesCheckOncePerDay(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0)
 	u.now = func() time.Time { return now }
 	first, _ := u.Check("0.1.0", false)
+	if first.NextCheckAt != now.Add(time.Hour).UnixMilli() {
+		t.Fatalf("hourly deadline: %+v", first)
+	}
 	if first.Status != "available" || first.URL != RepoURL+"/releases" {
 		t.Fatalf("first check %+v", first)
 	}
-	now = now.Add(23 * time.Hour)
+	now = now.Add(59 * time.Minute)
 	cached, _ := u.Check("0.1.0", false)
 	if requests.Load() != 1 || cached.Status != "available" {
-		t.Fatalf("a check within a day asked again: %d requests, %+v", requests.Load(), cached)
+		t.Fatalf("a check within an hour asked again: %d requests, %+v", requests.Load(), cached)
 	}
-	if _, _ = u.Check("0.1.0", true); requests.Load() != 2 {
+	now = now.Add(time.Minute)
+	if _, _ = u.Check("0.1.0", false); requests.Load() != 2 {
+		t.Fatalf("check did not run at the hourly boundary: %d", requests.Load())
+	}
+	if _, _ = u.Check("0.1.0", true); requests.Load() != 3 {
 		t.Fatalf("a manual check did not ask: %d requests", requests.Load())
 	}
-	now = now.Add(25 * time.Hour)
-	if _, _ = u.Check("0.1.0", false); requests.Load() != 3 {
-		t.Fatalf("a check a day later did not ask: %d requests", requests.Load())
+	now = now.Add(time.Hour)
+	if _, _ = u.Check("0.1.0", false); requests.Load() != 4 {
+		t.Fatalf("a check an hour later did not ask: %d requests", requests.Load())
 	}
 }
 

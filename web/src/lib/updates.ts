@@ -8,13 +8,23 @@ const key = ["update"] as const;
 
 // ?update=1 shows an available release in the browser, where there is no Go side.
 const demo: UpdateInfo | undefined = import.meta.env.DEV && new URLSearchParams(window.location.search).has("update")
-  ? { status: "available", current: VERSION, latest: "v0.2.0", name: "v0.2.0", notes: "- Faster timeline\n- Fixes for live photos", url: `${REPO_URL}/releases/latest`, checkedAt: Date.now(), error: "" }
+  ? { status: "available", current: VERSION, latest: "v0.2.0", name: "v0.2.0", notes: "- Faster timeline\n- Fixes for live photos", url: `${REPO_URL}/releases/latest`, checkedAt: Date.now(), nextCheckAt: Date.now() + 60 * 60_000, error: "" }
   : undefined;
 
-/** The daily check runs once at launch; the backend answers from its record when one was made today. */
+/** The backend supplies the next hourly check or five-minute retry deadline. */
 export function useUpdate() {
   const client = useQueryClient();
-  const { data } = useQuery({ queryKey: key, queryFn: () => demo ?? Updates.check(VERSION, false), staleTime: Infinity });
+  const { data } = useQuery({
+    queryKey: key,
+    queryFn: () => demo ?? Updates.check(VERSION, false),
+    staleTime: 0,
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: "always",
+    refetchInterval: (query) => demo ? false : Math.max(1000, (query.state.data?.nextCheckAt ?? Date.now() + 5 * 60_000) - Date.now()),
+    refetchIntervalInBackground: true,
+    retry: true,
+    retryDelay: 5 * 60_000,
+  });
   const check = async () => {
     const info = demo ?? await Updates.check(VERSION, true);
     client.setQueryData(key, info);
