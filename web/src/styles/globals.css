@@ -139,6 +139,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  [data-testid="library-card"] { scale: 1 !important; }
   *,
   *::before,
   *::after {

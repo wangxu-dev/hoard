@@ -149,5 +149,36 @@
   "timeline": {
     "label": "Timeline",
     "undated": "No date"
+  },
+  "accounts": {
+    "owners": "Linked accounts ({{count}})"
+  },
+  "actions": {
+    "choose": "Choose an account",
+    "preview": "Interaction preview · No platform changes",
+    "more": "More actions",
+    "label": {
+      "like": "Like",
+      "favorite": "Save",
+      "music": "Save music"
+    },
+    "add": {
+      "like": "Like",
+      "favorite": "Save",
+      "music": "Save music"
+    },
+    "remove": {
+      "like": "Unlike",
+      "favorite": "Unsave",
+      "music": "Unsave music"
+    },
+    "saved": "Updated",
+    "unknown": "Result not confirmed. Reload the state before trying again.",
+    "failed": "Unable to load or update. Close and retry.",
+    "login": "Sign in first",
+    "saving": "Confirming…",
+    "loading": "Loading state…",
+    "musicUnavailable": "Music saving is not available yet",
+    "retry": "Retry loading state"
   }
 }

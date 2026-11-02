@@ -46,7 +46,8 @@ const sources: SourceGroup[] = [{ id: "douyin", name: "抖音", kinds: ["like", 
       const items = Array.from({ length: Math.max(0, Math.min(q.limit, total - q.offset)) }, (_, i) => {
         const n = q.offset + i;
         return { id: `demo-${q.kind}-${n}`, kind: q.kind === "music" ? "music" as const : n % 4 === 0 ? "gallery" as const : "video" as const,
-          title: `示例作品 ${n + 1}`, author: `作者 ${(n % 9) + 1}`, cover: avatar(String((n % 9) + 1)), publishedAt: 1767000000 - n * 3600, durationMs: 15000 + n * 1000, imageCount: n % 4 === 0 ? 3 : 0 };
+          accountIds: q.scope.accountId ? [q.scope.accountId] : n % 3 === 0 ? ["demo-a", "demo-b"] : ["demo-a"],
+          title: `示例作品 ${n + 1}`, author: `作者 ${(n % 9) + 1}`, authorAvatar: q.kind === "music" ? undefined : avatar(String((n % 9) + 1)), cover: avatar(String((n % 9) + 1)), publishedAt: 1767000000 - n * 3600, durationMs: 15000 + n * 1000, imageCount: n % 4 === 0 ? 3 : 0 };
       });
       return { items, total };
     },
@@ -63,7 +64,7 @@ const sources: SourceGroup[] = [{ id: "douyin", name: "抖音", kinds: ["like", 
       return months;
     },
     onLibraryChanged() { return () => {}; },
-    async media(kind, id) { return { kind: kind as "video", videos: kind === "music" ? [] : [avatar(id)], images: kind === "gallery" ? [{ url: avatar(id) }] : [], music: { title: "示例配乐", author: "示例作者", url: "" }, author: "示例作者", desc: "示例文案", publishedAt: 1767000000 }; },
+    async media(kind, id) { return { kind: kind as "video", videos: kind === "music" ? [] : [avatar(id)], images: kind === "gallery" ? [0, 1, 2].map((n) => ({ url: avatar(String(n + 1)) })) : [], music: { title: "示例配乐", author: "示例作者", url: "" }, author: "示例作者", desc: "示例文案", publishedAt: 1767000000 }; },
     warm() { return Promise.resolve(); },
     playMode() { return Promise.resolve("list" as const); },
     setPlayMode() { return Promise.resolve(); },

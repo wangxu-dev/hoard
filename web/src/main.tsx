@@ -12,8 +12,8 @@ import { initializeDemoTheme } from "./lib/demo";
 initializeDemoTheme();
 
 // The default WebKit menu (Reload, Inspect, Look Up…) belongs to web pages;
-// fields keep theirs for copy and paste, and development builds keep it all.
-if (!import.meta.env.DEV) document.addEventListener("contextmenu", (event) => {
+// fields keep editing actions; the native shell filters browser-only commands.
+document.addEventListener("contextmenu", (event) => {
   if (!(event.target instanceof Element && event.target.closest("input, textarea, [contenteditable=true], .select-text"))) event.preventDefault();
 });
 // Focus rings answer the keyboard: pointer use hides them until a key is pressed.

@@ -31,21 +31,23 @@ type AccountEngine interface {
 }
 
 type App struct {
-	mu            sync.Mutex
-	requestMu     sync.Mutex
-	frontRequests atomic.Int32
-	lastRequest   time.Time
-	sessionCtx    context.Context
-	cancelSession context.CancelFunc
-	changed       func([]Account)
-	loggedIn      func()
-	Engine        AccountEngine
-	Media         *relay.Relay
-	Covers        *covers.Cache
-	Store         *store.Store
-	uid           string
-	nickname      string
-	accountID     string
+	mu             sync.Mutex
+	requestMu      sync.Mutex
+	actionMu       sync.Mutex
+	frontRequests  atomic.Int32
+	actionRevision atomic.Uint64
+	lastRequest    time.Time
+	sessionCtx     context.Context
+	cancelSession  context.CancelFunc
+	changed        func([]Account)
+	loggedIn       func()
+	Engine         AccountEngine
+	Media          *relay.Relay
+	Covers         *covers.Cache
+	Store          *store.Store
+	uid            string
+	nickname       string
+	accountID      string
 }
 
 func (a *App) OpenDouyin() (douyin.Status, error) {

@@ -3,11 +3,14 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { motion, useReducedMotion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { ArrowUp, Images, Music } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { EntryActionMenu } from "@/components/entry-actions";
+import { EntryAccounts } from "@/components/entry-accounts";
 import { LibraryNumber } from "@/components/library-number";
 import { pageTransition } from "@/lib/motion";
 import { getLibrarySource, type LibraryEntry, type ListKind, type Scope, type SortKey, type WorkType } from "@/lib/library";
@@ -179,18 +182,27 @@ function Cover({ src, square }: { src: string; square: boolean }) {
 const EntryCard = memo(function EntryCard({ entry, onOpen, fresh = false, playing }: { entry: LibraryEntry; onOpen: (entry: LibraryEntry) => void; fresh?: boolean; playing?: "playing" | "paused" }) {
   const { t } = useTranslation("library");
   const music = entry.kind === "music";
-  return <Card data-testid="library-card" data-entry={`${entry.kind}:${entry.id}`} tabIndex={0} onClick={() => onOpen(entry)} onKeyDown={(event) => { if (event.key === "Enter") onOpen(entry); }} className={`group relative gap-0 overflow-hidden rounded-md py-0 shadow-none transition-[transform,box-shadow] duration-150 ease-out hover:z-10 hover:scale-[1.025] hover:shadow-md motion-reduce:transition-none motion-reduce:hover:scale-100${fresh ? " animate-in fade-in-0 zoom-in-95 duration-500 motion-reduce:animate-none" : ""}`}>
+  return <EntryActionMenu entry={entry} onPlay={() => onOpen(entry)}><Card data-testid="library-card" data-entry={`${entry.kind}:${entry.id}`} tabIndex={0} onClick={() => onOpen(entry)} onKeyDown={(event) => { if (event.key === "Enter") onOpen(entry); }} className={`group group/entry relative gap-0 overflow-hidden rounded-md py-0 shadow-none transition-[transform,scale,box-shadow] duration-(--duration-slow) ease-(--ease-out) hover:z-10 hover:scale-[1.015] hover:shadow-sm motion-reduce:transition-none motion-reduce:hover:scale-100!${fresh ? " animate-in fade-in-0 zoom-in-95 duration-500 motion-reduce:animate-none" : ""}`}>
       <div className="relative">
         <Cover src={coverOf(entry)} square={music} />
+        <div className="absolute top-1.5 left-1.5"><EntryAccounts entry={entry} /></div>
         {playing && <NowPlaying paused={playing === "paused"} />}
-        {entry.kind === "gallery" ? <Badge variant="secondary" className="absolute top-1.5 left-1.5"><Images />{t("grid.gallery", { count: entry.imageCount })}</Badge>
-          : entry.durationMs > 0 ? <Badge variant="secondary" className="absolute right-1.5 bottom-1.5 tabular-nums">{duration(entry.durationMs)}</Badge> : null}
+        {entry.kind !== "gallery" && entry.durationMs > 0 ? <Badge variant="secondary" className="absolute right-1.5 bottom-1.5 tabular-nums">{duration(entry.durationMs)}</Badge> : null}
       </div>
     <CardContent className="flex h-[62px] min-w-0 flex-col gap-0.5 px-2 py-1.5">
       <p className="line-clamp-2 min-h-8 text-xs leading-4">{entry.title.trim() || t("grid.untitled")}</p>
-      <p className="truncate text-[11px] leading-4 text-muted-foreground">{entry.author}</p>
+      <div className="flex min-w-0 items-center gap-1 text-[11px] leading-4 text-muted-foreground">
+        {!music && <Avatar className="size-4 shrink-0 after:hidden">
+          <AvatarImage src={entry.authorAvatar} alt="" />
+          <AvatarFallback className="text-[10px]">{entry.author.slice(0, 1)}</AvatarFallback>
+        </Avatar>}
+        <span className="min-w-0 flex-1 truncate">{entry.author}</span>
+        {entry.kind === "gallery" && <span data-gallery-count className="flex shrink-0 items-center gap-1 tabular-nums" aria-label={t("grid.gallery", { count: entry.imageCount })}>
+          {entry.imageCount}<Images className="size-3" aria-hidden="true" />
+        </span>}
+      </div>
     </CardContent>
-  </Card>;
+  </Card></EntryActionMenu>;
 });
 
 function indexIds(items: Slot[]) {

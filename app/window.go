@@ -12,6 +12,19 @@ func NewWindow() *mygo.Window {
 		URL:       "/",
 		StateKey:  "main",
 	})
+	win.Page().OnContextMenu(func(event *mygo.ContextMenuEvent) {
+		if !event.Editable && event.SelectionText == "" {
+			event.PreventDefault()
+			return
+		}
+		for _, item := range event.Menu.Items() {
+			switch item.ID {
+			case mygo.ContextMenuUndo, mygo.ContextMenuRedo, mygo.ContextMenuCut, mygo.ContextMenuCopy, mygo.ContextMenuPaste, mygo.ContextMenuPasteAndMatchStyle, mygo.ContextMenuDelete, mygo.ContextMenuSelectAll:
+			default:
+				item.Hidden = true
+			}
+		}
+	})
 	win.OnClosed(mygo.App.Quit)
 	return win
 }

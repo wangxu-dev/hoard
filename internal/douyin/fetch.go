@@ -12,11 +12,13 @@ import (
 type Operation string
 
 const (
-	OpSelf      Operation = "self"
-	OpLikes     Operation = "likes"
-	OpFavorites Operation = "favorites"
-	OpMusic     Operation = "music"
-	OpDetail    Operation = "detail"
+	OpSelf        Operation = "self"
+	OpLikes       Operation = "likes"
+	OpFavorites   Operation = "favorites"
+	OpMusic       Operation = "music"
+	OpDetail      Operation = "detail"
+	OpSetLike     Operation = "setLike"
+	OpSetFavorite Operation = "setFavorite"
 )
 
 // PageReply is the raw answer of one in-page request.
@@ -69,7 +71,9 @@ const pageRequestScript = `(async (job) => {
     likes: { path: '/aweme/v1/web/aweme/favorite/' },
     favorites: { path: '/aweme/v1/web/aweme/listcollection/', shelf: true, form: true },
     music: { path: '/aweme/v1/web/music/listcollection/', shelf: true },
-    detail: { path: '/aweme/v1/web/aweme/detail/' }
+    detail: { path: '/aweme/v1/web/aweme/detail/' },
+    setLike: { path: '/aweme/v1/web/commit/item/digg/', form: true, write: true },
+    setFavorite: { path: '/aweme/v1/web/aweme/collect/', form: true, write: true }
   };
   const route = routes[job.op];
   const args = job.params || {};
@@ -108,7 +112,7 @@ const pageRequestScript = `(async (job) => {
   const deadline = setTimeout(() => stop.abort(), 12000);
   const init = { method: route.form ? 'POST' : 'GET', credentials: 'include', cache: 'no-store', signal: stop.signal, headers };
   if (route.shelf) init.referrer = 'https://www.douyin.com/user/self?from_tab_name=main&showTab=favorite_collection';
-  if (route.form) init.body = new URLSearchParams([['cursor', args.cursor || '0'], ['count', args.count || '20']]).toString();
+  if (route.form) init.body = route.write ? new URLSearchParams(args).toString() : new URLSearchParams([['cursor', args.cursor || '0'], ['count', args.count || '20']]).toString();
   try {
     const reply = await fetch('https://www.douyin.com' + route.path + '?' + query, init);
     if (Number(reply.headers.get('content-length') || 0) > 16 * 1024 * 1024) return { status: reply.status, body: '', error: 'TOO_LARGE' };
@@ -193,8 +197,20 @@ type PageState struct {
 	Captcha bool `json:"captcha"`
 }
 
-// Request runs one signed read request in the account's hidden page.
+// Request runs one request without replaying a write.
 func (a *Engine) Request(ctx context.Context, op Operation, params map[string]string) (PageReply, error) {
+	if op == OpSetLike || op == OpSetFavorite {
+		if !ValidWorkID(params["aweme_id"]) {
+			return PageReply{}, errors.New("INVALID_ARGUMENT")
+		}
+		key := "type"
+		if op == OpSetFavorite {
+			key = "action"
+		}
+		if params[key] != "0" && params[key] != "1" {
+			return PageReply{}, errors.New("INVALID_ARGUMENT")
+		}
+	}
 	page, err := a.readyPage(ctx)
 	if err != nil {
 		return PageReply{}, err
