@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"flag"
 	"log"
+	"net/url"
 	"os"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -26,13 +28,35 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 	mygo.App.WhenReady(func() {
-		win := mygo.NewWindow(mygo.WindowOptions{Title: "Hoard · B站登录验证", Width: 1100, Height: 800, URL: "https://www.bilibili.com/", Page: mygo.PageOptions{Untrusted: true, Session: mygo.NewSession("hoard-bilibili-probe")}})
+		win := mygo.NewWindow(mygo.WindowOptions{Title: "Hoard · B站登录验证", Width: 1100, Height: 800, URL: "about:blank", Page: mygo.PageOptions{Untrusted: true, Session: mygo.NewSession("hoard-bilibili-probe")}})
+		win.Page().OnWillNavigate(func(event *mygo.NavigateEvent) {
+			u, err := url.Parse(event.URL)
+			if err != nil || u.Scheme != "https" || !(u.Hostname() == "bilibili.com" || strings.HasSuffix(u.Hostname(), ".bilibili.com")) {
+				event.PreventDefault()
+				log.Print("[hoard:bilibili-probe] navigation blocked")
+				return
+			}
+			log.Printf("[hoard:bilibili-probe] navigating host=%s", u.Hostname())
+		})
 		win.Page().OnDidFailLoad(func(err *mygo.LoadError) { log.Printf("[hoard:bilibili-probe] load failed code=%d", err.Code) })
-		win.Page().OnDidFinishLoad(func() { log.Print("[hoard:bilibili-probe] load finished") })
+		win.Page().OnDidFinishLoad(func() {
+			log.Print("[hoard:bilibili-probe] load finished")
+			go func() {
+				c, stop := context.WithTimeout(ctx, 5*time.Second)
+				defer stop()
+				value, err := win.Page().EvalContext(c, `JSON.stringify({host:location.hostname,scheme:location.protocol,elements:document.body?.childElementCount||0,textLength:document.body?.innerText.length||0})`)
+				if err == nil {
+					log.Printf("[hoard:bilibili-probe] page shape %v", value)
+				}
+			}()
+		})
 		win.Page().SetAudioMuted(true)
 		win.OnClosed(func() { cancel(); mygo.App.Quit() })
 		var ready atomic.Bool
 		win.Page().OnDOMReady(func() { ready.Store(true); log.Print("[hoard:bilibili-probe] DOM ready") })
+		if err := win.Page().LoadURL("https://www.bilibili.com/"); err != nil {
+			log.Print("[hoard:bilibili-probe] login navigation failed")
+		}
 		go func() {
 			ticker := time.NewTicker(5 * time.Second)
 			defer ticker.Stop()
@@ -106,6 +130,7 @@ type probeResult struct {
 }
 
 const probeScript = `(async () => {
+if (location.hostname !== 'www.bilibili.com') return {state:'waiting',results:[]};
  const results = [];
  const read = async (kind, path, params = {}) => {
   const stop = new AbortController();
@@ -121,7 +146,18 @@ const probeScript = `(async () => {
   } catch { return {data:null, summary}; } finally { clearTimeout(timer); }
  };
  const identity = await read('identity','/x/web-interface/nav');
- if (identity.summary.code === -101 || (identity.summary.code === 0 && !identity.data?.isLogin)) return {state:'waiting',results:[]};
+ if (identity.summary.code === -101 || (identity.summary.code === 0 && !identity.data?.isLogin)) {
+  if (!window.__hoardLoginOpened && !document.querySelector('.bili-mini-login-right-wp')) {
+   const entry = document.querySelector('.header-avatar-unlogin-entry');
+   if (entry) {
+    entry.dispatchEvent(new MouseEvent('mouseenter', {bubbles:true}));
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const button = document.querySelector('.login-btn');
+    if (button && button.textContent.trim() === '立即登录') {button.click();window.__hoardLoginOpened=true;}
+   }
+  }
+  return {state:'waiting',results:[]};
+ }
  if (identity.summary.code !== 0 || !identity.data?.mid) return {state:'failed',results};
  const folders = await read('folders','/x/v3/fav/folder/created/list-all',{up_mid:String(identity.data.mid)});
  if (folders.summary.code !== 0) return {state:'failed',results};
