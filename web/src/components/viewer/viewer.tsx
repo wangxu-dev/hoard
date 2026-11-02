@@ -209,7 +209,7 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
           {entry && <motion.div key={key} custom={dir} variants={slide} initial="enter" animate="center" exit="exit"
             transition={{ duration: 0.42, ease: slideEase }} className="absolute inset-0">
             {isGallery
-              ? <GalleryStage entry={entry} media={media} chrome={shown} badgeSlot={badgeSlot} onElement={onElement} onHandle={setGallery} onSlide={onSlide} onExpired={refresh} />
+              ? <GalleryStage entry={entry} media={media} badgeSlot={badgeSlot} onElement={onElement} onHandle={setGallery} onSlide={onSlide} onExpired={refresh} />
               : <VideoStage entry={entry} media={media} onElement={onElement} onExhausted={refresh} onDoubleClick={() => toggleFullscreen(root.current)} />}
           </motion.div>}
         </AnimatePresence>
@@ -232,7 +232,7 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
           </ControlButton>
         </div>
 
-        {/* The item pair ends on the center line, so a gallery's next-image arrow sits just below it. */}
+        {/* Item navigation stays above the center line; actions stay below. */}
         <div onPointerEnter={() => setOverControls(true)} onPointerLeave={() => setOverControls(false)} className={cn("absolute right-4 bottom-[calc(50%+8px)] flex flex-col gap-2", fade)}>
           <ControlButton data-testid="viewer-prev" label={t("viewer.previousItem")} hint="↑" side="left" onClick={() => move(-1)} disabled={index === 0} className="size-10 bg-viewer-control backdrop-blur-md disabled:opacity-30"><ChevronUp className="size-5" /></ControlButton>
           <ControlButton data-testid="viewer-next" label={t("viewer.nextItem")} hint="↓" side="left" onClick={() => move(1)} disabled={index >= total - 1} className="size-10 bg-viewer-control backdrop-blur-md disabled:opacity-30"><ChevronDown className="size-5" /></ControlButton>

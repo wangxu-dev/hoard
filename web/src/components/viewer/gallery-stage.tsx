@@ -2,21 +2,19 @@ import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useIsPresent } from "motion/react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 import type { LibraryEntry, MediaResult } from "@/lib/library";
 import { claimPlayback, releaseMedia, useApplySound } from "@/lib/player";
 import { warmImage } from "@/lib/library-cursor";
-import { ControlButton } from "./controls";
 
 const AUTOPLAY_MS = 3000;
 
 export interface GalleryHandle { move: (delta: number) => void }
 
 /** GalleryStage shows the images of one gallery with its sound, advancing every 3 s until the viewer swipes. */
-export function GalleryStage({ entry, media, onElement, onHandle, onSlide, onExpired, chrome, badgeSlot }: {
-  entry: LibraryEntry; media: MediaResult | null; chrome: boolean;
+export function GalleryStage({ entry, media, onElement, onHandle, onSlide, onExpired, badgeSlot }: {
+  entry: LibraryEntry; media: MediaResult | null;
   /** Where the live photo switch goes: the viewer top bar, beside the item counter. */
   badgeSlot: HTMLElement | null;
   onElement: (element: HTMLAudioElement | null) => void; onHandle: (handle: GalleryHandle | null) => void;
@@ -82,12 +80,6 @@ export function GalleryStage({ entry, media, onElement, onHandle, onSlide, onExp
         </CarouselItem>)}
       </CarouselContent>
     </Carousel>
-    {images.length > 1 && <>
-      <ControlButton data-testid="image-prev" label={t("viewer.previousImage")} hint="←" side="right" onClick={() => move(-1)} disabled={selected === 0}
-        className={cn("absolute top-1/2 -translate-y-1/2 left-4 size-10 bg-viewer-control backdrop-blur-md transition-opacity disabled:opacity-0", chrome ? "opacity-100" : "pointer-events-none opacity-0")}><ChevronLeft className="size-5" /></ControlButton>
-      <ControlButton data-testid="image-next" label={t("viewer.nextImage")} hint="→" side="left" onClick={() => move(1)} disabled={selected === images.length - 1}
-        className={cn("absolute top-1/2 -translate-y-1/2 right-20 size-10 bg-viewer-control backdrop-blur-md transition-opacity disabled:opacity-0", chrome ? "opacity-100" : "pointer-events-none opacity-0")}><ChevronRight className="size-5" /></ControlButton>
-    </>}
     {media?.music.url && <audio ref={setAudio} src={media.music.url} loop preload="auto" className="hidden"
       onLoadedMetadata={(event) => { if (resume.current) { event.currentTarget.currentTime = resume.current; resume.current = 0; } }}
       onError={(event) => { resume.current = event.currentTarget.currentTime || resume.current; onExpired(); }} />}
