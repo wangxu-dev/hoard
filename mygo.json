@@ -1,7 +1,7 @@
 {
   "name": "Hoard",
   "identifier": "dev.wangxu.hoard",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "devUrl": "http://localhost:5173",
   "devCommand": "bun run dev:web",
   "buildCommand": "bun run build:web",
