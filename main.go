@@ -52,12 +52,18 @@ func main() {
 	}
 	mygo.App.WhenReady(func() {
 		if dir, err := mygo.App.Path(mygo.PathUserData); err == nil {
-			// Keep the current launch's diagnostics available in GUI builds.
+			// Preserve diagnostics across the old and new update processes.
 			if err := os.MkdirAll(dir, 0700); err == nil {
-				logFile, err = os.OpenFile(filepath.Join(dir, "hoard.log"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+				logPath := filepath.Join(dir, "hoard.log")
+				if info, statErr := os.Stat(logPath); statErr == nil && info.Size() > 2<<20 {
+					if rotateErr := os.Rename(logPath, logPath+".previous"); rotateErr != nil {
+						log.Print("[hoard:app] log rotation failed")
+					}
+				}
+				logFile, err = os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 				if err == nil {
 					log.SetOutput(io.MultiWriter(logFile, os.Stderr))
-					log.Print("[hoard:app] started")
+					log.Printf("[hoard:app] started version=%s", mygo.App.Version())
 				} else {
 					log.Print("[hoard:app] log file open failed")
 				}
