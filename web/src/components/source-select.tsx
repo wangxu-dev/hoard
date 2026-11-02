@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, LogOut, Plus, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -21,6 +21,13 @@ export function SourceSelect({ sources, onAddAccount, compact = false }: { sourc
   const selection = useRef(0);
   const [expanded, setExpanded] = useState(false);
   const pointerInAdd = useRef(false);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const changeExpanded = (next: boolean) => {
+    clearTimeout(hoverTimer.current);
+    const delay = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue(next ? "--duration-fast" : "--duration-base"));
+    hoverTimer.current = setTimeout(() => setExpanded(next), delay);
+  };
+  useEffect(() => () => clearTimeout(hoverTimer.current), []);
   const { scope } = useLibraryFilters();
   const group = sources.find((s) => s.id === scope.source);
   const account = sources.flatMap((s) => s.accounts).find((a) => a.id === scope.accountId);
@@ -39,7 +46,7 @@ export function SourceSelect({ sources, onAddAccount, compact = false }: { sourc
       }).catch(() => toast.error(t("sync.startFailed")));
     }
   };
-  return <DropdownMenu onOpenChange={(open) => { if (!open) { pointerInAdd.current = false; setExpanded(false); } }}>
+  return <DropdownMenu onOpenChange={(open) => { if (!open) { pointerInAdd.current = false; clearTimeout(hoverTimer.current); setExpanded(false); } }}>
     <Tooltip><TooltipTrigger asChild><DropdownMenuTrigger asChild>
       <Button variant="outline" data-control="source" data-compact={compact} className={`h-8 min-w-0 shrink-0 justify-between font-normal text-[13px] ${compact ? "w-12 gap-1 px-1" : "w-45 px-3"}`} aria-label={`${t("toolbar.source.label")}: ${label}`}>
         <span className="flex min-w-0 items-center gap-2">{account ? <AccountAvatar account={account} small /> : group ? <SourceIcon source={group.id} /> : <Users className="size-3.5" />}{!compact && <span className="truncate">{label}</span>}</span><ChevronDown className="size-4 shrink-0 opacity-50" />
@@ -58,14 +65,14 @@ export function SourceSelect({ sources, onAddAccount, compact = false }: { sourc
         </div>)}
       </DropdownMenuRadioGroup>
       <DropdownMenuSeparator />
-      <div data-testid="add-account-row" data-expanded={expanded} className="flex h-10 items-center gap-1" onPointerEnter={() => { pointerInAdd.current = true; setExpanded(true); }} onPointerLeave={(event) => { pointerInAdd.current = false; if (!event.currentTarget.contains(document.activeElement)) setExpanded(false); }} onBlur={(event) => { if (!pointerInAdd.current && !event.currentTarget.contains(event.relatedTarget)) setExpanded(false); }}>
-        <DropdownMenuItem className="h-8 min-w-0 flex-1 text-[13px]" onFocus={() => setExpanded(true)} onSelect={(event) => { event.preventDefault(); setExpanded(true); }} aria-expanded={expanded}>
+      <div data-testid="add-account-row" data-expanded={expanded} className="flex h-10 items-center gap-1" onPointerEnter={() => { pointerInAdd.current = true; changeExpanded(true); }} onPointerLeave={() => { pointerInAdd.current = false; changeExpanded(false); }} onBlur={(event) => { if (!pointerInAdd.current && !event.currentTarget.contains(event.relatedTarget)) changeExpanded(false); }}>
+        <DropdownMenuItem className="h-8 min-w-0 flex-1 text-[13px]" onFocus={() => changeExpanded(true)} onSelect={(event) => { event.preventDefault(); setExpanded(true); }} aria-expanded={expanded}>
           <Plus className="size-4" /><span>{t("toolbar.source.add")}</span>
         </DropdownMenuItem>
         <div className="flex w-17 shrink-0 items-center gap-1">
-          {platforms.map((source, index) => <DropdownMenuItem key={source} aria-label={t("toolbar.source.addPlatform", { name: t(`toolbar.source.${source}`) })} onFocus={() => setExpanded(true)} onSelect={() => onAddAccount(source)}
-              className="size-8 shrink-0 justify-center rounded-full bg-transparent p-0 focus:bg-transparent [&_svg]:text-foreground">
-              <span data-platform-icon className={`pointer-events-none flex size-8 items-center justify-center rounded-full bg-popover transition-transform duration-(--duration-slow) ease-(--ease-out) motion-reduce:transition-none ${index === 0 && !expanded ? "translate-x-7" : "translate-x-0"}`}><SourceIcon source={source} className="size-4.5" /></span>
+          {platforms.map((source, index) => <DropdownMenuItem key={source} aria-label={t("toolbar.source.addPlatform", { name: t(`toolbar.source.${source}`) })} onFocus={() => changeExpanded(true)} onSelect={() => onAddAccount(source)}
+              className="group/platform size-8 shrink-0 justify-center rounded-sm bg-transparent p-0 focus:bg-transparent [&_svg]:text-foreground">
+              <span data-platform-icon className={`pointer-events-none flex size-8 items-center justify-center rounded-sm bg-popover group-hover/platform:bg-accent group-focus/platform:bg-accent transition-transform duration-(--duration-slow) ease-(--ease-out) motion-reduce:transition-none ${index === 0 && !expanded ? "translate-x-4" : "translate-x-0"}`}><SourceIcon source={source} className="size-4.5" /></span>
             </DropdownMenuItem>)}
         </div>
       </div>
