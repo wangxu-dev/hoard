@@ -1,8 +1,6 @@
 package app
 
-import (
-	"github.com/egoist/mygo"
-)
+import "github.com/egoist/mygo"
 
 func NewWindow() *mygo.Window {
 	win := mygo.NewWindow(mygo.WindowOptions{
@@ -26,9 +24,6 @@ func NewWindow() *mygo.Window {
 				item.Hidden = true
 			}
 		}
-	})
-	win.OnReadyToShow(func() {
-		showUpdatedWindow(win)
 	})
 	win.OnClosed(mygo.App.Quit)
 	return win
