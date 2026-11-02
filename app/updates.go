@@ -9,12 +9,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/netproxy"
 )
 
 const (
@@ -22,25 +24,31 @@ const (
 	RepoURL          = "https://github.com/wangxu-dev/hoard"
 	latestReleaseURL = "https://api.github.com/repos/wangxu-dev/hoard/releases/latest"
 	checkEvery       = 24 * time.Hour
+	retryUpdateAfter = 5 * time.Minute
+	updateProxy      = "https://gh-proxy.com/"
 	maxNotes         = 20000
 )
 
-// Updates asks GitHub for the latest release, at most once a day unless asked
-// again by hand. It never downloads anything.
+// Updates checks releases and prepares signed updates for the next launch.
 type Updates struct {
-	mu     sync.Mutex
-	client *http.Client
-	url    string
-	dir    func() (string, error)
-	now    func() time.Time
+	transfer updateTransfer
+	mu       sync.Mutex
+	client   *http.Client
+	url      string
+	fallback string
+	platform string
+	dir      func() (string, error)
+	now      func() time.Time
 }
 
 func NewUpdates() *Updates {
 	return &Updates{
-		client: &http.Client{Timeout: 10 * time.Second},
-		url:    latestReleaseURL,
-		dir:    func() (string, error) { return mygo.App.Path(mygo.PathUserData) },
-		now:    time.Now,
+		client:   &http.Client{Timeout: 6 * time.Second, Transport: netproxy.Transport()},
+		url:      updateProxy + latestReleaseURL,
+		fallback: latestReleaseURL,
+		platform: runtime.GOOS + "-" + runtime.GOARCH,
+		dir:      func() (string, error) { return mygo.App.Path(mygo.PathUserData) },
+		now:      time.Now,
 	}
 }
 
@@ -71,6 +79,7 @@ type updateState struct {
 	AttemptedAt int64        `json:"attemptedAt"`
 	CheckedAt   int64        `json:"checkedAt"`
 	Release     *releaseInfo `json:"release,omitempty"`
+	Failure     string       `json:"failure,omitempty"`
 }
 
 // Check compares current with the latest release. Without force, a check made
@@ -80,11 +89,16 @@ func (u *Updates) Check(current string, force bool) (UpdateInfo, error) {
 	defer u.mu.Unlock()
 	state := u.load()
 	now := u.now()
-	if !force && state.AttemptedAt > 0 && now.Sub(time.UnixMilli(state.AttemptedAt)) < checkEvery {
-		return describe(current, state, ""), nil
+	delay := checkEvery
+	if state.Failure != "" {
+		delay = retryUpdateAfter
+	}
+	if !force && state.AttemptedAt > 0 && now.Sub(time.UnixMilli(state.AttemptedAt)) < delay {
+		return describe(current, state, state.Failure), nil
 	}
 	state.AttemptedAt = now.UnixMilli()
 	release, failure := u.fetch()
+	state.Failure = failure
 	if failure == "" {
 		state.CheckedAt = now.UnixMilli()
 		state.Release = release
@@ -96,16 +110,24 @@ func (u *Updates) Check(current string, force bool) (UpdateInfo, error) {
 
 // Open shows one of Hoard's GitHub pages in the browser; other addresses are refused.
 func (u *Updates) Open(url string) error {
-	if url != RepoURL && !strings.HasPrefix(url, RepoURL+"/") {
+	if !allowedUpdateLink(url) {
 		return errors.New("URL_REFUSED")
 	}
 	return mygo.Shell.OpenExternal(url)
 }
 
 func (u *Updates) fetch() (*releaseInfo, string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	release, failure := u.fetchFrom(u.url)
+	if failure != "" && u.fallback != "" {
+		return u.fetchFrom(u.fallback)
+	}
+	return release, failure
+}
+
+func (u *Updates) fetchFrom(endpoint string) (*releaseInfo, string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, "BAD_RESPONSE"
 	}
@@ -127,18 +149,34 @@ func (u *Updates) fetch() (*releaseInfo, string) {
 		return nil, "BAD_RESPONSE"
 	}
 	var body struct {
-		TagName string `json:"tag_name"`
-		Name    string `json:"name"`
-		Body    string `json:"body"`
-		HTMLURL string `json:"html_url"`
+		TagName    string `json:"tag_name"`
+		Name       string `json:"name"`
+		Body       string `json:"body"`
+		HTMLURL    string `json:"html_url"`
+		Draft      bool   `json:"draft"`
+		Prerelease bool   `json:"prerelease"`
+		Assets     []struct {
+			Name string `json:"name"`
+			URL  string `json:"browser_download_url"`
+		} `json:"assets"`
 	}
-	if err := json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&body); err != nil || parseVersion(body.TagName) == nil {
+	if err := json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&body); err != nil || parseVersion(body.TagName) == nil || body.Draft || body.Prerelease || len(parseVersion(body.TagName).pre) > 0 {
 		return nil, "BAD_RESPONSE"
 	}
 	// Only Hoard's own release pages open from the app.
 	page := body.HTMLURL
 	if !strings.HasPrefix(page, RepoURL+"/") {
 		page = RepoURL + "/releases"
+	}
+	name := releaseAssetName(strings.TrimPrefix(body.TagName, "v"), u.platform)
+	for _, asset := range body.Assets {
+		if name != "" && asset.Name == name && asset.URL == RepoURL+"/releases/download/"+body.TagName+"/"+name {
+			page = asset.URL
+			if strings.HasPrefix(endpoint, updateProxy) {
+				page = updateProxy + page
+			}
+			break
+		}
 	}
 	notes := body.Body
 	if len(notes) > maxNotes {

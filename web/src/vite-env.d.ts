@@ -2,6 +2,7 @@
 declare module "*.css";
 interface ImportMetaEnv {
   readonly HOARD_VERSION?: string;
+  readonly HOARD_RELEASE_NOTES?: string;
   readonly HOARD_FIXTURE?: string;
   readonly HOARD_THEME?: string;
 }

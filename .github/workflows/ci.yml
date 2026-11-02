@@ -41,6 +41,8 @@ jobs:
         run: go test ./...
       - name: Analyze Go packages
         run: go vet ./...
+      - name: Test release scripts
+        run: bun test scripts/
       - name: Generate frontend bindings
         run: bun run generate
       - name: Check TypeScript

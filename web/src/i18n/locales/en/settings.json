@@ -24,7 +24,21 @@
       "RATE_LIMITED": "Too many requests. Try again later.",
       "NOT_FOUND": "No release published yet",
       "BAD_RESPONSE": "Couldn't read version info right now"
-    }
+    },
+    "ready": "Restart to use the new version",
+    "downloading": "Downloading",
+    "downloadFailed": "Download or verification failed. Please retry.",
+    "restartFailed": "Could not restart. Close and reopen Hoard.",
+    "recommend": "Download the update for the latest features and improvements.",
+    "restart": "Restart now",
+    "retry": "Retry download",
+    "manual": "Open releases",
+    "disabled": "In-app updates are unavailable for this installation. Install the new version from the releases page.",
+    "view": "View update",
+    "newBadge": "New release",
+    "readyBadge": "Ready",
+    "currentVersion": "Current version {{version}}",
+    "version": "Version {{version}}"
   },
   "disclaimer": "For organizing and browsing your own account data, which stays on this device. Not affiliated with any third-party platform."
 }

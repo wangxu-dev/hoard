@@ -45,7 +45,7 @@ bun run build:web
 
 `gofmt -l .` 不应输出 Go 文件。涉及构建配置或应用打包时，再运行 `bun run build`。
 
-GitHub Actions 在提交到 `main` 的 PR 和 `main` 更新时运行 `Checks`：检查受 Git 跟踪的 Go 文件格式，运行 Go 测试与静态分析，再生成绑定、检查 TypeScript 并验证前端构建。CI 使用 macOS runner，不启动应用窗口，不生成安装包或发布 Release。真实账号登录和各系统桌面行为仍需人工验证。
+GitHub Actions 在提交到 `main` 的 PR 和 `main` 更新时运行 `Checks`：检查受 Git 跟踪的 Go 文件格式，运行 Go 测试、静态分析与发布脚本测试，再生成绑定、检查 TypeScript 并验证前端构建。推送 `v*` Tag 运行独立的 `Release` 工作流，生成安装包和 Release 草稿。真实账号登录和各系统桌面行为仍需人工验证。
 
 ## 分支与提交
 

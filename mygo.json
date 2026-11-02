@@ -10,7 +10,18 @@
   "out": "build",
   "linux": {
     "command": "hoard",
-    "categories": ["AudioVideo"],
-    "depends": ["gstreamer1.0-libav", "gstreamer1.0-plugins-good", "gstreamer1.0-plugins-bad"]
+    "categories": [
+      "AudioVideo"
+    ],
+    "depends": [
+      "gstreamer1.0-libav",
+      "gstreamer1.0-plugins-good",
+      "gstreamer1.0-plugins-bad"
+    ]
+  },
+  "updates": {
+    "publicKey": "h+LsuzkXiAYu8OoaXaXnBY9LUjHdtp3+EFwzuVFqThQ=",
+    "github": "wangxu-dev/hoard",
+    "deltas": 0
   }
 }

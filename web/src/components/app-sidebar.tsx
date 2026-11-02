@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Library, Settings } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -42,7 +43,17 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const [open, setOpen] = useState(() => localStorage.getItem("hoard-sidebar") !== "false");
   const isDark = resolvedTheme === "dark";
-  const { available } = useUpdate();
+  const { available, info } = useUpdate();
+  const { t: updateText } = useTranslation("settings");
+  const notified = useRef("");
+  useEffect(() => {
+    if (!available || !info || notified.current === info.latest) return;
+    notified.current = info.latest;
+    toast(updateText("update.available", { version: info.latest }), {
+      id: "available-update",
+      action: { label: updateText("update.view"), onClick: () => onPageChange("settings") },
+    });
+  }, [available, info, onPageChange, updateText]);
 
   const updateOpen = (next: boolean) => {
     setOpen(next);

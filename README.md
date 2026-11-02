@@ -52,7 +52,7 @@ go vet ./...
 bun run build:web
 ```
 
-PR 和 `main` 更新会触发 CI，执行格式、测试、类型与前端构建检查。CI 仅验证代码，不生成应用安装包或发布 Release。
+PR 和 `main` 更新会触发 `Checks`，执行格式、测试、类型与前端构建检查。推送 `v*` Tag 会另行触发 `Release`，生成各平台安装包和 GitHub Release 草稿。
 
 跨平台发布构建目前在 macOS 上执行：
 
