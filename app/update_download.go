@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -28,9 +27,8 @@ type updateInstaller interface {
 }
 
 type updateTransfer struct {
-	mu         sync.Mutex
-	state      UpdateDownload
-	restarting bool
+	mu    sync.Mutex
+	state UpdateDownload
 }
 
 func (u *Updates) DownloadStatus() UpdateDownload {
@@ -99,20 +97,8 @@ func (u *Updates) Restart() error {
 		u.transfer.mu.Unlock()
 		return errors.New("UPDATE_NOT_READY")
 	}
-	if u.transfer.restarting {
-		u.transfer.mu.Unlock()
-		return nil
-	}
-	version := u.transfer.state.Version
-	u.transfer.restarting = true
 	u.transfer.mu.Unlock()
-	if err := restartForUpdate(version); err != nil {
-		u.transfer.mu.Lock()
-		u.transfer.restarting = false
-		u.transfer.mu.Unlock()
-		log.Print("[hoard:update] restart helper could not start")
-		return errors.New("UPDATE_RESTART_FAILED")
-	}
+	mygo.App.Relaunch()
 	return nil
 }
 
