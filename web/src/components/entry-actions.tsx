@@ -78,8 +78,8 @@ export function EntryActionMenu({ entry, children }: { entry: LibraryEntry; chil
   if (!fixtureName) return <>{children}</>;
   const kinds: ActionKind[] = entry.kind === "music" ? ["music"] : ["like", "favorite"];
   return <ContextMenu>
-    <ContextMenuTrigger asChild><div className="relative min-w-0">{children}
-      <div className="absolute right-1 bottom-1" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+    <ContextMenuTrigger asChild><div className="group/card-menu relative min-w-0">{children}
+      <div className="absolute left-1.5 top-1.5 opacity-0 transition-opacity duration-base group-hover/card-menu:opacity-100 group-focus-within/card-menu:opacity-100 motion-reduce:transition-none" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
         <DropdownMenu><DropdownMenuTrigger asChild><Button variant="secondary" size="icon" className="size-6" aria-label={t("actions.more")}><MoreHorizontal /></Button></DropdownMenuTrigger>
           <DropdownMenuContent>{kinds.map((kind) => <DropdownMenuItem key={kind} onSelect={() => setAction(kind)}>{t(`actions.label.${kind}`)}</DropdownMenuItem>)}</DropdownMenuContent>
         </DropdownMenu>
