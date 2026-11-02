@@ -127,11 +127,11 @@ export function EntryActionMenu({ entry, children }: { entry: LibraryEntry; chil
     <ContextMenuTrigger asChild><div className="group/card-menu relative min-w-0">{children}
       {entry.kind === "music" && <div className="absolute right-1.5 top-1.5 opacity-0 transition-opacity duration-base group-hover/card-menu:opacity-100 group-focus-within/card-menu:opacity-100 motion-reduce:transition-none" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
         <DropdownMenu><DropdownMenuTrigger asChild><Button variant="secondary" size="icon" className="size-6" aria-label={t("actions.more")}><MoreHorizontal /></Button></DropdownMenuTrigger>
-          <DropdownMenuContent>{kinds.map((kind) => <DropdownMenuItem key={kind} onSelect={() => setAction(kind)}>{t(`actions.label.${kind}`)}</DropdownMenuItem>)}</DropdownMenuContent>
+          <DropdownMenuContent>{kinds.map((kind) => <DropdownMenuItem key={kind} onSelect={() => setAction(kind)}>{kind === "like" ? <Heart /> : kind === "favorite" ? <Star /> : <Music2 />}{t(`actions.label.${kind}`)}</DropdownMenuItem>)}</DropdownMenuContent>
         </DropdownMenu>
       </div>}
     </div></ContextMenuTrigger>
-    <ContextMenuContent>{kinds.map((kind) => <ContextMenuItem key={kind} onSelect={() => setAction(kind)}>{t(`actions.label.${kind}`)}</ContextMenuItem>)}</ContextMenuContent>
+    <ContextMenuContent>{kinds.map((kind) => <ContextMenuItem key={kind} onSelect={() => setAction(kind)}>{kind === "like" ? <Heart /> : kind === "favorite" ? <Star /> : <Music2 />}{t(`actions.label.${kind}`)}</ContextMenuItem>)}</ContextMenuContent>
     <Dialog open={action !== null} onOpenChange={(open) => { if (!open) setAction(null); }}>
       <DialogContent className="sm:max-w-sm">
         <DialogTitle>{t("actions.choose")}</DialogTitle><DialogDescription>{entry.title}{fixtureName ? ` · ${t("actions.preview")}` : ""}</DialogDescription>
