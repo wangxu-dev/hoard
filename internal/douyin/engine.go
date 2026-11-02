@@ -2,6 +2,7 @@ package douyin
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -54,6 +55,7 @@ func (a *Engine) openWindowLocked(show bool) Status {
 		}
 		return a.statusLocked()
 	}
+	log.Printf("[hoard:douyin] login window create visible=%t", show)
 	win := mygo.NewWindow(mygo.WindowOptions{
 		Title:     "抖音登录",
 		Width:     1100,
@@ -70,10 +72,14 @@ func (a *Engine) openWindowLocked(show bool) Status {
 			SwipeNavigation: true,
 		},
 	})
+	win.Page().OnDidNavigate(func(_ string) { log.Print("[hoard:douyin] navigation committed") })
+	win.Page().OnDidFinishLoad(func() { log.Print("[hoard:douyin] page load finished") })
+	win.Page().OnDidFailLoad(func(err *mygo.LoadError) { log.Printf("[hoard:douyin] page load failed code=%d", err.Code) })
 	win.Page().SetAudioMuted(true)
 	a.domReady = false
 	a.readyAt = time.Time{}
 	win.Page().OnDOMReady(func() {
+		log.Print("[hoard:douyin] DOM ready")
 		a.mu.Lock()
 		if a.douyin == win {
 			a.domReady = true
