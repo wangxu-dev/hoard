@@ -184,6 +184,52 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
     return () => { el.removeEventListener("wheel", onWheel); clearTimeout(quiet); };
   }, [move]);
 
+  // Lock each drag to its initial axis so gallery swipes never change works.
+  useEffect(() => {
+    const stage = root.current?.querySelector<HTMLElement>('[data-testid="viewer-stage"]');
+    if (!stage) return;
+    let gesture: { id: number; x: number; y: number; axis?: "x" | "y" } | undefined;
+    let suppressClick = false;
+    const down = (event: PointerEvent) => {
+      if (!event.isPrimary || event.button !== 0 || (event.target as Element).closest('button, a, input, [role="slider"], [data-preview-actions], [data-testid="viewer-controls"]')) return;
+      suppressClick = false;
+      gesture = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    };
+    const drag = (event: PointerEvent) => {
+      if (!gesture || gesture.id !== event.pointerId) return;
+      const x = event.clientX - gesture.x, y = event.clientY - gesture.y;
+      if (!gesture.axis && Math.max(Math.abs(x), Math.abs(y)) >= 12) gesture.axis = Math.abs(y) > Math.abs(x) * 1.2 ? "y" : "x";
+      if (gesture.axis === "y") {
+        stage.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      }
+    };
+    const end = (event: PointerEvent) => {
+      if (!gesture || gesture.id !== event.pointerId) return;
+      const y = event.clientY - gesture.y;
+      const vertical = gesture.axis === "y";
+      gesture = undefined;
+      if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
+      if (vertical && event.type === "pointerup" && Math.abs(y) >= 64) {
+        suppressClick = true;
+        move(y < 0 ? 1 : -1);
+      }
+    };
+    const click = (event: MouseEvent) => { if (suppressClick) { suppressClick = false; event.preventDefault(); event.stopPropagation(); } };
+    stage.addEventListener("pointerdown", down);
+    stage.addEventListener("pointermove", drag, { passive: false });
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+    stage.addEventListener("click", click, true);
+    return () => {
+      stage.removeEventListener("pointerdown", down);
+      stage.removeEventListener("pointermove", drag);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      stage.removeEventListener("click", click, true);
+    };
+  }, [move]);
+
   const onSlide = useCallback((n: number, count: number) => setSlideInfo({ index: n, count }), []);
   const onElement = useCallback((value: HTMLMediaElement | null) => setElement(value), []);
   const key = entry ? `${entry.kind}:${entry.id}` : "empty";
@@ -204,7 +250,7 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
         </motion.div>}
       </AnimatePresence>
 
-      <div data-testid="viewer-stage" className="relative min-w-0 flex-1 overflow-hidden">
+      <div data-testid="viewer-stage" className="relative min-w-0 flex-1 touch-none overflow-hidden">
         <AnimatePresence initial={false} custom={dir}>
           {entry && <motion.div key={key} custom={dir} variants={slide} initial="enter" animate="center" exit="exit"
             transition={{ duration: 0.42, ease: slideEase }} className="absolute inset-0">
