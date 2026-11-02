@@ -182,7 +182,7 @@ function Cover({ src, square }: { src: string; square: boolean }) {
 const EntryCard = memo(function EntryCard({ entry, onOpen, fresh = false, playing }: { entry: LibraryEntry; onOpen: (entry: LibraryEntry) => void; fresh?: boolean; playing?: "playing" | "paused" }) {
   const { t } = useTranslation("library");
   const music = entry.kind === "music";
-  return <EntryActionMenu entry={entry}><Card data-testid="library-card" data-entry={`${entry.kind}:${entry.id}`} tabIndex={0} onClick={() => onOpen(entry)} onKeyDown={(event) => { if (event.key === "Enter") onOpen(entry); }} className={`group group/entry relative gap-0 overflow-hidden rounded-md py-0 shadow-none transition-[transform,scale,box-shadow] duration-(--duration-slow) ease-(--ease-out) hover:z-10 hover:scale-[1.015] hover:shadow-sm motion-reduce:transition-none motion-reduce:hover:scale-100!${fresh ? " animate-in fade-in-0 zoom-in-95 duration-500 motion-reduce:animate-none" : ""}`}>
+  return <EntryActionMenu entry={entry} onPlay={() => onOpen(entry)}><Card data-testid="library-card" data-entry={`${entry.kind}:${entry.id}`} tabIndex={0} onClick={() => onOpen(entry)} onKeyDown={(event) => { if (event.key === "Enter") onOpen(entry); }} className={`group group/entry relative gap-0 overflow-hidden rounded-md py-0 shadow-none transition-[transform,scale,box-shadow] duration-(--duration-slow) ease-(--ease-out) hover:z-10 hover:scale-[1.015] hover:shadow-sm motion-reduce:transition-none motion-reduce:hover:scale-100!${fresh ? " animate-in fade-in-0 zoom-in-95 duration-500 motion-reduce:animate-none" : ""}`}>
       <div className="relative">
         <Cover src={coverOf(entry)} square={music} />
         <div className="absolute top-1.5 left-1.5"><EntryAccounts entry={entry} /></div>

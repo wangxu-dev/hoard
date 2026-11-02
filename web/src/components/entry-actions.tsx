@@ -1,16 +1,15 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Heart, Star, Music2, MoreHorizontal } from "lucide-react";
+import { Heart, Star, Music2, MoreHorizontal, Play } from "lucide-react";
 import { motion } from "motion/react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ControlButton } from "@/components/viewer/controls";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from "@/components/ui/context-menu";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent } from "@/components/ui/context-menu";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
 import { getLibrarySource, type LibraryEntry } from "@/lib/library";
 import { useLibraryFilters } from "@/lib/library-filters";
 import { usePreviewOwners, setPreviewRelation, type ActionTarget, type ActionKind } from "@/lib/action-preview";
@@ -144,25 +143,18 @@ function MenuActionLabel({ entry, kind }: { entry: LibraryEntry; kind: ActionKin
   return <><Icon className={on ? `fill-current ${activeColor(kind)}` : ""} />{t(`actions.${on ? "remove" : "label"}.${kind}`)}</>;
 }
 
-export function EntryActionMenu({ entry, children }: { entry: LibraryEntry; children: ReactNode }) {
+export function EntryActionMenu({ entry, children, onPlay }: { entry: LibraryEntry; children: ReactNode; onPlay: () => void }) {
   const { t } = useTranslation("library");
-  const [action, setAction] = useState<ActionKind | null>(null);
-  if (!fixtureName && entry.kind === "music") return <>{children}</>;
   const kinds: ActionKind[] = entry.kind === "music" ? ["music"] : ["like", "favorite"];
   return <ContextMenu>
     <ContextMenuTrigger asChild><div className="group/card-menu relative min-w-0">{children}
       {entry.kind === "music" && <div className="absolute right-1.5 top-1.5 opacity-0 transition-opacity duration-base group-hover/card-menu:opacity-100 group-focus-within/card-menu:opacity-100 motion-reduce:transition-none" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
         <DropdownMenu><DropdownMenuTrigger asChild><Button variant="secondary" size="icon" className="size-6" aria-label={t("actions.more")}><MoreHorizontal /></Button></DropdownMenuTrigger>
-          <DropdownMenuContent>{kinds.map((kind) => <DropdownMenuItem key={kind} onSelect={() => setAction(kind)}><MenuActionLabel entry={entry} kind={kind} /></DropdownMenuItem>)}</DropdownMenuContent>
+          <DropdownMenuContent>{entry.kind === "music" && <DropdownMenuItem onSelect={onPlay}><Play />{t("viewer.play")}</DropdownMenuItem>}{kinds.map((kind) => <DropdownMenuSub key={kind}><DropdownMenuSubTrigger><MenuActionLabel entry={entry} kind={kind} /></DropdownMenuSubTrigger><DropdownMenuSubContent className="p-3"><AccountChoices target={{ ...entry, kind }} /></DropdownMenuSubContent></DropdownMenuSub>)}</DropdownMenuContent>
         </DropdownMenu>
       </div>}
     </div></ContextMenuTrigger>
-    <ContextMenuContent>{kinds.map((kind) => <ContextMenuItem key={kind} onSelect={() => setAction(kind)}><MenuActionLabel entry={entry} kind={kind} /></ContextMenuItem>)}</ContextMenuContent>
-    <Dialog open={action !== null} onOpenChange={(open) => { if (!open) setAction(null); }}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogTitle>{t("actions.choose")}</DialogTitle><DialogDescription>{entry.title}{fixtureName ? ` · ${t("actions.preview")}` : ""}</DialogDescription>
-        {action && <AccountChoices target={{ ...entry, id: entry.id, kind: action }} />}
-      </DialogContent>
-    </Dialog>
+    <ContextMenuContent>{entry.kind === "music" && <ContextMenuItem onSelect={onPlay}><Play />{t("viewer.play")}</ContextMenuItem>}{kinds.map((kind) => <ContextMenuSub key={kind}><ContextMenuSubTrigger><MenuActionLabel entry={entry} kind={kind} /></ContextMenuSubTrigger><ContextMenuSubContent className="p-3"><AccountChoices target={{ ...entry, kind }} /></ContextMenuSubContent></ContextMenuSub>)}</ContextMenuContent>
+
   </ContextMenu>;
 }
