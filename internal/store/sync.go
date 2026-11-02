@@ -87,6 +87,10 @@ func (s *Store) KnownWorks(ctx context.Context, accountID, kind string, remoteID
 	if len(remoteIDs) == 0 {
 		return known, nil
 	}
+	var source string
+	if err := s.db.QueryRowContext(ctx, `SELECT source FROM accounts WHERE id=?`, accountID).Scan(&source); err != nil {
+		return nil, fmt.Errorf("read known account: %w", err)
+	}
 	table, column, kindFilter := "relations", "work_id", " AND kind=?"
 	if kind == "music" {
 		table, column, kindFilter = "music_relations", "music_id", ""
@@ -98,7 +102,7 @@ func (s *Store) KnownWorks(ctx context.Context, accountID, kind string, remoteID
 	marks := make([]string, len(remoteIDs))
 	for i, id := range remoteIDs {
 		marks[i] = "?"
-		args = append(args, "douyin:"+id)
+		args = append(args, source+":"+id)
 	}
 	rows, err := s.db.QueryContext(ctx, `SELECT `+column+` FROM `+table+` WHERE account_id=?`+kindFilter+` AND `+column+` IN (`+strings.Join(marks, ",")+`)`, args...)
 	if err != nil {
@@ -110,7 +114,7 @@ func (s *Store) KnownWorks(ctx context.Context, accountID, kind string, remoteID
 		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
-		known[strings.TrimPrefix(id, "douyin:")] = true
+		known[strings.TrimPrefix(id, source+":")] = true
 	}
 	return known, rows.Err()
 }

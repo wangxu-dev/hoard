@@ -26,6 +26,10 @@ func TestFolderMembershipIsolation(t *testing.T) {
 			}
 		}
 	}
+	known, err := s.KnownWorks(ctx, "b", "favorite", []string{"BV1abcdefghj", "missing"})
+	if err != nil || !known["BV1abcdefghj"] || known["missing"] {
+		t.Fatalf("source known: %v %v", known, err)
+	}
 	if err := s.SaveFolderMembership(ctx, "a", Folder{"one", "Example", 1}, []FolderWork{{"BV1abcdefghj", 200}}); err != nil {
 		t.Fatal(err)
 	}

@@ -15,6 +15,7 @@ import (
 
 type Account struct {
 	ID       string `json:"id"`
+	Source   string `json:"source"`
 	Nickname string `json:"nickname"`
 	Avatar   string `json:"avatar"`
 	Status   string `json:"status"`
@@ -35,7 +36,7 @@ func NewAccounts(a *App) *Accounts {
 }
 
 func accountView(account store.Account, active string) Account {
-	return Account{ID: account.ID, Nickname: account.Nickname, Avatar: account.AvatarURL, Status: account.Status, Active: account.ID == active}
+	return Account{ID: account.ID, Source: account.Source, Nickname: account.Nickname, Avatar: account.AvatarURL, Status: account.Status, Active: account.ID == active}
 }
 
 func accountContext() (context.Context, context.CancelFunc) {

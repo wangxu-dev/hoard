@@ -424,7 +424,7 @@ func TestCleanupDoesNotBlockOtherAccount(t *testing.T) {
 
 func TestAccountIPCShape(t *testing.T) {
 	typ := reflect.TypeOf(Account{})
-	want := []string{"id", "nickname", "avatar", "status", "active"}
+	want := []string{"id", "source", "nickname", "avatar", "status", "active"}
 	if typ.NumField() != len(want) {
 		t.Fatal("account field count changed")
 	}
