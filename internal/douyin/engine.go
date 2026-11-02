@@ -1,7 +1,6 @@
 package douyin
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/url"
@@ -111,33 +110,6 @@ func (a *Engine) openWindowLocked(show bool) Status {
 	} else {
 		log.Print("[hoard:douyin] initial navigation requested")
 	}
-	go func() {
-		time.Sleep(10 * time.Second)
-		a.mu.Lock()
-		current := a.douyin == win
-		ready := a.domReady
-		a.mu.Unlock()
-		if !current {
-			return
-		}
-		log.Printf("[hoard:douyin] navigation checkpoint ready=%t loading=%t page=%s", ready, win.Page().IsLoading(), loginPageClass(win.Page().URL()))
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		defer cancel()
-		value, err := win.Page().EvalContext(ctx, `(()=>({elements:document.body?.children.length||0,textLength:document.body?.innerText.length||0,verification:!!document.querySelector('[role="slider"],iframe[src*="captcha"],iframe[src*="verify"]')}))()`)
-		if err != nil {
-			log.Print("[hoard:douyin] page inspection failed")
-			return
-		}
-		type inspection struct {
-			Elements     int  `json:"elements"`
-			TextLength   int  `json:"textLength"`
-			Verification bool `json:"verification"`
-		}
-		result, err := decode[inspection](value)
-		if err == nil {
-			log.Printf("[hoard:douyin] page inspection elements=%d text_length=%d verification=%t", result.Elements, result.TextLength, result.Verification)
-		}
-	}()
 	return a.statusLocked()
 }
 
