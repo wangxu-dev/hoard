@@ -29,9 +29,9 @@ const (
 	maxNotes         = 20000
 )
 
-// Updates asks GitHub for the latest release, at most once a day unless asked
-// again by hand. It never downloads anything.
+// Updates checks releases and prepares signed updates for the next launch.
 type Updates struct {
+	transfer updateTransfer
 	mu       sync.Mutex
 	client   *http.Client
 	url      string

@@ -62,25 +62,6 @@ bun run build
 
 该命令将可运行的发布文件整理到 `release/`。`release/` 和 `build/` 已被 Git 忽略，不应提交到仓库。
 
-## 发布版本
-
-1. 在发布 PR 中更新 `mygo.json` 的 `version` 和 `CHANGELOG.md` 对应版本章节，合并到 `main`。
-2. 在该提交创建并推送版本 Tag，例如版本 `0.1.0` 对应 `v0.1.0`：
-
-   ```sh
-   git tag v0.1.0
-   git push origin v0.1.0
-   ```
-
-3. `Release` 工作流校验 Tag、版本号、更新日志及提交归属，检查代码后并行构建 macOS、Windows、Linux 的 amd64 / arm64 产物。
-4. 全部构建成功后，上传安装包、`SHA256SUMS` 和更新日志到 Release 草稿。核对产物后点击 **Publish release**；预发布版本保留 prerelease 标记。
-
-失败的构建可在 Actions 中重试；已正式发布的版本保持原样，修复使用新版本和新 Tag。当前 macOS 产物使用 ad-hoc 签名，Windows 产物使用未签名安装包；各平台分发证书需要另行配置。
-
-应用优先通过 `gh-proxy.com` 检查 GitHub 最新正式版本，失败时回退 GitHub 直连，并遵循系统代理。检查成功缓存 24 小时，失败缓存 5 分钟；手动检查立即重试。下载按钮按系统架构打开安装包链接，代理检查成功时使用同一代理下载。公共代理故障时也可在 GitHub Release 手动下载。
-
-当前版本的更新日志随应用打包，离线可在设置页查看；新版本日志来自 Release。当前提供更新检测和浏览器下载，下载完成后由用户安装。
-
 ## 发布文件
 
 macOS 构建会生成以下目标：

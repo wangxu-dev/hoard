@@ -6,9 +6,10 @@ export const releaseTargets = ["darwin-arm64", "darwin-amd64", "windows-amd64", 
 export function releaseFiles(version: string, target: string): string[] {
   if (!releaseTargets.some((value) => value === target)) throw new Error(`Unsupported target: ${target}`);
   const [os, arch] = target.split("-");
-  if (os === "darwin") return [`hoard-${version}-${arch}.dmg`];
-  if (os === "windows") return [`hoard-setup-${version}-${arch}.exe`];
-  return [`hoard-${version}-linux-${arch}.tar.gz`, `hoard_${version}_${arch}.deb`];
+  const updates = [`hoard-${version}-${target}.tar.gz`, `update-${target}.json`];
+  if (os === "darwin") return [`hoard-${version}-${arch}.dmg`, ...updates];
+  if (os === "windows") return [`hoard-setup-${version}-${arch}.exe`, ...updates];
+  return [...updates, `hoard_${version}_${arch}.deb`];
 }
 
 if (import.meta.main) {

@@ -1,11 +1,13 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import Markdown from "react-markdown";
 import { Download, MessageSquareWarning, RefreshCw } from "lucide-react";
 import { siGithub } from "simple-icons";
 import { toast } from "sonner";
 import { setLanguage } from "@/i18n";
 import { Updates } from "@/lib/api";
 import { RELEASE_NOTES, REPO_URL, VERSION, useUpdate } from "@/lib/updates";
+import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -44,7 +46,17 @@ function IconButton({ label, variant = "ghost", children, ...props }: { label: s
 // Laid out like the library: a 56px bar on top, then one centered column.
 export function SettingsPage() {
   const { t, i18n } = useTranslation("settings");
-  const { info, available, check } = useUpdate();
+  const { info, available, check, transfer, download, restart } = useUpdate();
+  const [starting, setStarting] = useState(false);
+  const downloading = transfer?.status === "downloading";
+  const ready = transfer?.status === "ready";
+  const failed = transfer?.status === "error";
+  const runUpdate = async () => {
+    setStarting(true);
+    try { if (ready) await restart(); else await download(); }
+    catch { toast.error(t(ready ? "update.restartFailed" : "update.downloadFailed")); }
+    finally { setStarting(false); }
+  };
   const [checking, setChecking] = useState(false);
   const open = (url: string) => { void Updates.open(url).catch(() => toast.error(t("update.openFailed"))); };
   const runCheck = async () => {
@@ -78,18 +90,36 @@ export function SettingsPage() {
       <section className="flex flex-col gap-2">
         <h2 className="px-1 text-xs font-medium text-muted-foreground">{t("about")}</h2>
         <div className="divide-y overflow-hidden rounded-lg border bg-card text-card-foreground">
-          <Row testId="settings-about-row" title="Hoard" description={available ? t("update.available", { version: info?.latest }) : t("app.description", { version: VERSION })}>
+          <Row testId="settings-about-row" title="Hoard" description={t("app.description", { version: VERSION })}>
             <div className="flex items-center gap-1">
-              <IconButton label={t("github")} onClick={() => open(REPO_URL)}><SiGithub /></IconButton>
-              <IconButton label={t("issues")} onClick={() => open(`${REPO_URL}/issues`)}><MessageSquareWarning /></IconButton>
-              {available
-                ? <IconButton label={t("update.download")} variant="default" onClick={() => open(info!.url)}><Download /></IconButton>
-                : <IconButton label={t("update.check")} disabled={checking} onClick={() => { void runCheck(); }}><RefreshCw className={checking ? "animate-spin" : undefined} /></IconButton>}
+              <Button variant="outline" size="sm" disabled={checking || downloading || ready} onClick={() => { void runCheck(); }}><RefreshCw className={checking ? "animate-spin" : undefined} />{t("update.check")}</Button>
             </div>
           </Row>
-          {(available ? info?.notes : RELEASE_NOTES) && <div data-testid="settings-update-notes" className="max-h-56 overflow-y-auto px-4 py-3 text-xs whitespace-pre-wrap text-muted-foreground">{available ? info?.notes : RELEASE_NOTES}</div>}
+
+          {available && <div data-testid="settings-update-panel" className="flex min-w-0 flex-col gap-3 px-4 py-3">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-medium">{t("update.version", { version: transfer?.version || info?.latest })}</span>
+              <span className="text-xs text-brand">{t(ready ? "update.readyBadge" : "update.newBadge")}</span>
+            </div>
+            <div data-testid="settings-update-notes" className="max-h-40 overflow-y-auto text-xs leading-relaxed text-muted-foreground [&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:font-medium [&_h3]:text-foreground [&_h3:first-child]:mt-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-4 [&_p]:mb-1">
+              <Markdown allowedElements={["p", "h3", "ul", "ol", "li", "strong", "em", "code", "br"]} unwrapDisallowed>{info?.notes || ""}</Markdown>
+            </div>
+            {downloading && <Progress aria-label={t("update.downloading")} aria-valuenow={transfer.total > 0 ? Math.min(100, transfer.downloaded / transfer.total * 100) : undefined} value={transfer.total > 0 ? Math.min(100, transfer.downloaded / transfer.total * 100) : null} />}
+            <div className="flex flex-wrap items-center gap-3">
+              {transfer?.enabled
+                ? <Button size="sm" disabled={starting || downloading} onClick={() => { void runUpdate(); }}>{ready ? <RefreshCw aria-hidden="true" /> : <Download aria-hidden="true" />}{t(ready ? "update.restart" : downloading ? "update.downloading" : failed ? "update.retry" : "update.download")}</Button>
+                : <Button size="sm" variant="secondary" onClick={() => open(`${REPO_URL}/releases`)}>{t("update.manual")}</Button>}
+              <span className="text-xs text-muted-foreground" role="status">{failed ? t("update.downloadFailed") : downloading && transfer.total > 0 ? `${Math.min(100, Math.floor(transfer.downloaded / transfer.total * 100))}%` : ""}</span>
+            </div>
+          </div>}
+          {!available && RELEASE_NOTES && <div data-testid="settings-update-notes" className="max-h-56 overflow-y-auto px-4 py-3 text-xs whitespace-pre-wrap text-muted-foreground">{RELEASE_NOTES}</div>}
+          <div data-testid="settings-about-footer" className="flex items-center justify-end gap-3 px-4 py-2">
+            <div className="flex shrink-0 items-center gap-1 text-muted-foreground">
+              <IconButton label={t("github")} onClick={() => open(REPO_URL)}><SiGithub /></IconButton>
+              <IconButton label={t("issues")} onClick={() => open(`${REPO_URL}/issues`)}><MessageSquareWarning /></IconButton>
+            </div>
+          </div>
         </div>
-        <p className="px-1 text-xs text-muted-foreground">{t("disclaimer")}</p>
       </section>
     </div>
   </main>;

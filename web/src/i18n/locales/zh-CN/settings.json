@@ -16,7 +16,7 @@
   "update": {
     "available": "新版本 {{version}} 可下载",
     "check": "检查更新",
-    "download": "去下载",
+    "download": "下载更新",
     "current": "已是最新版本",
     "openFailed": "无法打开浏览器",
     "error": {
@@ -24,7 +24,21 @@
       "RATE_LIMITED": "请求过于频繁，请稍后再试",
       "NOT_FOUND": "暂无已发布的版本",
       "BAD_RESPONSE": "暂时无法获取版本信息"
-    }
+    },
+    "ready": "重启后使用新版本",
+    "downloading": "正在准备更新",
+    "downloadFailed": "更新下载或校验失败，请重试。",
+    "restartFailed": "重启失败，请关闭并重新打开 Hoard。",
+    "recommend": "下载更新，体验最新功能与改进。",
+    "restart": "立即重启",
+    "retry": "重试下载",
+    "manual": "前往发布页",
+    "disabled": "当前安装方式暂不支持应用内更新，请前往发布页安装新版。",
+    "view": "查看更新",
+    "newBadge": "新版本",
+    "readyBadge": "已就绪",
+    "currentVersion": "当前版本 {{version}}",
+    "version": "版本 {{version}}"
   },
   "disclaimer": "仅用于整理和浏览你自己的账号数据，数据只保存在本机，与任何第三方平台无关联。"
 }
