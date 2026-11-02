@@ -1,6 +1,9 @@
 package app
 
-import "github.com/egoist/mygo"
+import (
+	"github.com/egoist/mygo"
+	"log"
+)
 
 func NewWindow() *mygo.Window {
 	win := mygo.NewWindow(mygo.WindowOptions{
@@ -25,6 +28,11 @@ func NewWindow() *mygo.Window {
 			}
 		}
 	})
+	win.OnReadyToShow(func() {
+		log.Printf("[hoard:window] main ready version=%s visible=%t minimized=%t", mygo.App.Version(), win.IsVisible(), win.IsMinimized())
+	})
+	win.OnShow(func() { log.Print("[hoard:window] main shown") })
+	win.OnFocus(func() { log.Print("[hoard:window] main focused") })
 	win.OnClosed(mygo.App.Quit)
 	return win
 }

@@ -140,12 +140,20 @@ func (a *Engine) CheckLogin() (LoginState, error) {
 }
 
 func (a *Engine) Identity(ctx context.Context) (Identity, error) {
-	page, err := a.readyPage(ctx)
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	page, err := a.page()
 	if err != nil {
 		return Identity{}, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
+	value, err := page.EvalContext(ctx, pageReadyScript)
+	if err != nil {
+		return Identity{}, err
+	}
+	readiness, err := decode[pageReadiness](value)
+	if err != nil || !readiness.ok() {
+		return Identity{}, fmt.Errorf("PAGE_NOT_READY")
+	}
 	v, err := page.EvalContext(ctx, `(async () => {
   const kit = `+pageKit+`;
   try {

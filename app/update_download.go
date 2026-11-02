@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -98,6 +99,7 @@ func (u *Updates) Restart() error {
 	if !ready {
 		return errors.New("UPDATE_NOT_READY")
 	}
+	log.Printf("[hoard:update] restart requested platform=%s version=%s", u.platform, mygo.App.Version())
 	mygo.App.Relaunch()
 	return nil
 }
