@@ -149,5 +149,28 @@
   "timeline": {
     "label": "Timeline",
     "undated": "No date"
+  },
+  "accounts": {
+    "owners": "Linked accounts ({{count}})"
+  },
+  "actions": {
+    "choose": "Choose an account",
+    "preview": "Interaction preview · No platform changes",
+    "more": "More actions",
+    "label": {
+      "like": "Like",
+      "favorite": "Save",
+      "music": "Save music"
+    },
+    "add": {
+      "like": "Like",
+      "favorite": "Save",
+      "music": "Save music"
+    },
+    "remove": {
+      "like": "Unlike",
+      "favorite": "Unsave",
+      "music": "Unsave music"
+    }
   }
 }

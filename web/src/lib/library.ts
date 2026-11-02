@@ -23,7 +23,7 @@ export interface SyncState {
 export interface LibraryCounts { like: number; favorite: number; music: number }
 export interface LibraryEntry {
   id: string; kind: "video" | "gallery" | "music"; title: string; author: string; cover: string; authorAvatar?: string;
-  publishedAt: number; durationMs: number; imageCount: number;
+  publishedAt: number; durationMs: number; imageCount: number; accountIds?: string[];
 }
 export interface MediaImage { url: string; liveUrl?: string }
 export interface MediaResult { kind: "video" | "gallery" | "music"; videos: string[]; images: MediaImage[]; music: { title: string; author: string; url: string }; author: string; authorAvatar?: string; desc: string; publishedAt: number; complete?: boolean; expiresAt?: number }

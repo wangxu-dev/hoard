@@ -149,5 +149,28 @@
   "timeline": {
     "label": "时间轴",
     "undated": "无日期"
+  },
+  "accounts": {
+    "owners": "关联账号（{{count}}）"
+  },
+  "actions": {
+    "choose": "选择操作账号",
+    "preview": "交互预览 · 不修改平台数据",
+    "more": "更多操作",
+    "label": {
+      "like": "喜欢",
+      "favorite": "收藏",
+      "music": "收藏音乐"
+    },
+    "add": {
+      "like": "点赞",
+      "favorite": "收藏",
+      "music": "收藏音乐"
+    },
+    "remove": {
+      "like": "取消点赞",
+      "favorite": "取消收藏",
+      "music": "取消收藏音乐"
+    }
   }
 }
