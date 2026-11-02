@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -124,7 +126,22 @@ func ParseOpus(body []byte) (Opus, error) {
 			} `json:"modules"`
 		} `json:"item"`
 	}
-	if json.Unmarshal(data, &raw) != nil || !numericID.MatchString(raw.Item.ID) {
+	if err := json.Unmarshal(data, &raw); err != nil {
+		var fieldErr *json.UnmarshalTypeError
+		if errors.As(err, &fieldErr) {
+			log.Printf("[hoard:bilibili] opus decode field=%s expected=%s actual=%s", fieldErr.Field, fieldErr.Type, strings.SplitN(fieldErr.Value, " ", 2)[0])
+		} else {
+			log.Print("[hoard:bilibili] opus decode malformed payload")
+		}
+		return Opus{}, ErrInvalid
+	}
+	if !numericID.MatchString(raw.Item.ID) {
+		var shape struct {
+			Item     json.RawMessage `json:"item"`
+			Fallback json.RawMessage `json:"fallback"`
+		}
+		_ = json.Unmarshal(data, &shape)
+		log.Printf("[hoard:bilibili] opus identity invalid item_present=%t fallback_present=%t", len(shape.Item) > 0, len(shape.Fallback) > 0)
 		return Opus{}, ErrInvalid
 	}
 	out := Opus{ID: raw.Item.ID, Text: raw.Item.Basic.Title}
