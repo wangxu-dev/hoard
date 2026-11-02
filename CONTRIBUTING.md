@@ -45,9 +45,13 @@ bun run build:web
 
 `gofmt -l .` 不应输出 Go 文件。涉及构建配置或应用打包时，再运行 `bun run build`。
 
+GitHub Actions 在提交到 `main` 的 PR 和 `main` 更新时运行 `Checks`：检查受 Git 跟踪的 Go 文件格式，运行 Go 测试与静态分析，再生成绑定、检查 TypeScript 并验证前端构建。CI 使用 macOS runner，不启动应用窗口，不生成安装包或发布 Release。真实账号登录和各系统桌面行为仍需人工验证。
+
 ## 分支与提交
 
-每个独立需求使用单独分支。提交信息使用 gitmoji 和 Conventional Commits，例如：
+每个独立需求从最新 `main` 创建单独分支，通过 Pull Request 合并。`main` 禁止直接推送、强制推送和删除。外部贡献者可以先 Fork 仓库，再从自己的分支提交 PR。
+
+提交信息使用 gitmoji 和 Conventional Commits，例如：
 
 ```text
 🐛 fix(sync): handle expired cursor

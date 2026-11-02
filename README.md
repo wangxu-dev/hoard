@@ -45,11 +45,14 @@ bun run dev:web
 ### 检查与构建
 
 ```sh
+bun run generate
 bun run typecheck
 go test ./...
 go vet ./...
 bun run build:web
 ```
+
+PR 和 `main` 更新会触发 CI，执行格式、测试、类型与前端构建检查。CI 仅验证代码，不生成应用安装包或发布 Release。
 
 跨平台发布构建目前在 macOS 上执行：
 
