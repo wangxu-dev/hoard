@@ -19,6 +19,7 @@ func TestOpusIndexAndCompletion(t *testing.T) {
 		t.Fatal(err)
 	}
 	completed := []string{}
+	detailCalls, feedCalls := 0, 0
 	c := Client{Completed: func(kind string) { completed = append(completed, kind) }, Read: func(_ context.Context, path string, params map[string]string) ([]byte, error) {
 		switch path {
 		case "/x/v2/history/toview":
@@ -26,8 +27,10 @@ func TestOpusIndexAndCompletion(t *testing.T) {
 		case "/x/v3/fav/folder/created/list-all":
 			return []byte(`{"code":0,"data":{"count":0,"list":[]}}`), nil
 		case "/x/polymer/web-dynamic/v1/opus/detail":
-			return []byte(fmt.Sprintf(`{"code":0,"data":{"item":{"id_str":"%s","basic":{"title":"Example"},"modules":[{"module_author":{"mid":42,"name":"Example author","pub_ts":1700000000}}]}}}`, params["id"])), nil
+			detailCalls++
+			return []byte(fmt.Sprintf(`{"code":0,"data":{"item":{"id_str":"%s","basic":{"title":"Example"},"modules":[{"module_author":{"mid":42,"name":"Example author","pub_ts":"1700000000"}}]}}}`, params["id"])), nil
 		case opusFeed:
+			feedCalls++
 			page := params["page"]
 			return []byte(fmt.Sprintf(`{"code":0,"data":{"has_more":%t,"items":[{"opus_id":"%s","content":"Example","cover":{"url":"https://i0.hdslb.com/example.jpg"}}]}}`, page == "1", page)), nil
 		}
@@ -55,5 +58,13 @@ func TestOpusIndexAndCompletion(t *testing.T) {
 		if w.Author == nil || w.Author.Nickname != "Example author" || w.PublishedAt != 1700000000 {
 			t.Fatalf("metadata missing: %+v", w)
 		}
+	}
+	c.Incremental = true
+	detailCalls, feedCalls = 0, 0
+	if _, err = c.Index(ctx, db, "test"); err != nil {
+		t.Fatal(err)
+	}
+	if detailCalls != 0 || feedCalls != 1 {
+		t.Fatalf("incremental detail=%d feed=%d", detailCalls, feedCalls)
 	}
 }

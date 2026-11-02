@@ -17,9 +17,10 @@ import (
 type Read func(context.Context, string, map[string]string) ([]byte, error)
 
 type Client struct {
-	Read      Read
-	Changed   func(string)
-	Completed func(string)
+	Read        Read
+	Changed     func(string)
+	Completed   func(string)
+	Incremental bool
 }
 
 func (c Client) read(ctx context.Context, path string, params map[string]string) ([]byte, error) {
@@ -70,6 +71,10 @@ func (c Client) Index(ctx context.Context, db *store.Store, accountID string) ([
 		seen[v.ID] = true
 	}
 	for _, f := range folders {
+		previous, err := db.FolderMembers(ctx, accountID, f.ID)
+		if err != nil {
+			return nil, err
+		}
 		folder := store.Folder{ID: f.ID, Title: f.Title, Count: f.Count}
 		if err = db.SaveFolderMembership(ctx, accountID, folder, nil); err != nil {
 			return nil, err
@@ -102,6 +107,13 @@ func (c Client) Index(ctx context.Context, db *store.Store, accountID string) ([
 				return nil, fmt.Errorf("favorite pagination stalled")
 			}
 			pagesSeen[key] = true
+			unchanged := c.Incremental && len(parsed.Videos) > 0
+			for _, v := range parsed.Videos {
+				at, ok := previous[v.ID]
+				if !ok || at != v.FavoritedAt {
+					unchanged = false
+				}
+			}
 			if err = c.save(ctx, db, accountID, "favorite", page == 1, parsed.Videos); err != nil {
 				return nil, err
 			}
@@ -116,7 +128,7 @@ func (c Client) Index(ctx context.Context, db *store.Store, accountID string) ([
 			if err = db.SaveFolderMembership(ctx, accountID, folder, members); err != nil {
 				return nil, err
 			}
-			if !parsed.HasMore {
+			if !parsed.HasMore || unchanged {
 				break
 			}
 		}

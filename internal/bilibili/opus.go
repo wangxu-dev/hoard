@@ -100,7 +100,7 @@ func ParseOpus(body []byte) (Opus, error) {
 					ID          json.Number `json:"mid"`
 					Name        string      `json:"name"`
 					Face        string      `json:"face"`
-					PublishedAt int64       `json:"pub_ts"`
+					PublishedAt json.Number `json:"pub_ts"`
 				} `json:"module_author"`
 				Content struct {
 					Paragraphs []struct {
@@ -157,7 +157,13 @@ func ParseOpus(body []byte) (Opus, error) {
 	for _, m := range raw.Item.Modules {
 		if authorID, err := id(m.Author.ID); err == nil {
 			out.Author = &store.Author{RemoteID: authorID, Nickname: m.Author.Name, AvatarURL: image(m.Author.Face)}
-			out.PublishedAt = m.Author.PublishedAt
+			if m.Author.PublishedAt != "" {
+				published, err := m.Author.PublishedAt.Int64()
+				if err != nil || published < 0 {
+					return Opus{}, ErrInvalid
+				}
+				out.PublishedAt = published
+			}
 		}
 		add(m.Top.Display.Album.Pics)
 		for _, p := range m.Content.Paragraphs {
@@ -198,7 +204,20 @@ func (c Client) indexOpus(ctx context.Context, db *store.Store, accountID string
 			return fmt.Errorf("opus pagination stalled")
 		}
 		seen[key] = true
+		known, err := db.KnownWorks(ctx, accountID, "favorite", ids)
+		if err != nil {
+			return err
+		}
+		unchanged := c.Incremental && len(works) > 0
+		enriched := make([]store.Work, 0, len(works))
 		for i := range works {
+			if c.Incremental && known[works[i].RemoteID] {
+				rec, err := db.MediaRecord(ctx, "gallery", works[i].RemoteID)
+				if err == nil && rec.PublishedAt > 0 && rec.Author != "" {
+					continue
+				}
+			}
+			unchanged = false
 			body, err := c.read(ctx, "/x/polymer/web-dynamic/v1/opus/detail", map[string]string{"id": strings.TrimPrefix(works[i].RemoteID, "opus:"), "features": "htmlNewStyle"})
 			if err != nil {
 				return err
@@ -215,14 +234,15 @@ func (c Client) indexOpus(ctx context.Context, db *store.Store, accountID string
 			if len(detail.Images) > 0 {
 				works[i].CoverURL = detail.Images[0]
 			}
+			enriched = append(enriched, works[i])
 		}
-		if _, err = db.SaveWorks(ctx, accountID, "favorite", false, works); err != nil {
+		if _, err = db.SaveWorks(ctx, accountID, "favorite", false, enriched); err != nil {
 			return err
 		}
 		if c.Changed != nil {
 			c.Changed("favorite")
 		}
-		if !more {
+		if !more || unchanged {
 			return nil
 		}
 	}

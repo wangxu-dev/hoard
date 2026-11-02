@@ -17,10 +17,26 @@ func (s *Sync) runBilibili(ctx context.Context, accountID string) {
 	if !ok {
 		return
 	}
+	previous, err := s.app.Store.SyncRecords(ctx, accountID)
+	if err != nil {
+		log.Print("[hoard:sync] Bilibili state read failed")
+		return
+	}
+	incremental := false
+	for _, r := range previous {
+		if r.Kind == "favorite" && r.LastFullAt != nil {
+			incremental = true
+		}
+	}
 	kinds := []string{"watch_later", "favorite"}
 	records := map[string]*store.SyncRecord{}
 	for _, kind := range kinds {
 		r := &store.SyncRecord{Kind: kind, Phase: "head", Status: "running"}
+		for _, old := range previous {
+			if old.Kind == kind {
+				r.LastFullAt = old.LastFullAt
+			}
+		}
 		records[kind] = r
 		s.save(accountID, r)
 	}
@@ -32,7 +48,7 @@ func (s *Sync) runBilibili(ctx context.Context, accountID string) {
 		return
 	}
 	lastPath := ""
-	client := bilibili.Client{Read: func(ctx context.Context, path string, params map[string]string) ([]byte, error) {
+	client := bilibili.Client{Incremental: incremental, Read: func(ctx context.Context, path string, params map[string]string) ([]byte, error) {
 		lastPath = path
 		for s.app.frontRequests.Load() > 0 {
 			if !wait(ctx, 20*time.Millisecond) {
