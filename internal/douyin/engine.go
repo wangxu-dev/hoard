@@ -63,7 +63,7 @@ func (a *Engine) openWindowLocked(show bool) Status {
 		MinWidth:  640,
 		MinHeight: 480,
 		Hidden:    !show,
-		URL:       "https://www.douyin.com/user/self?from_tab_name=main&showTab=like",
+		URL:       "about:blank",
 		Page: mygo.PageOptions{
 			Untrusted:       true,
 			PreloadScript:   `document.addEventListener('play', e => { if (e.target instanceof HTMLMediaElement) { e.target.muted = true; e.target.pause(); } }, true);`,
@@ -72,6 +72,7 @@ func (a *Engine) openWindowLocked(show bool) Status {
 			SwipeNavigation: true,
 		},
 	})
+	win.Page().OnRenderProcessGone(func(_ string) { log.Print("[hoard:douyin] web content process exited") })
 	win.Page().OnDidNavigate(func(_ string) { log.Print("[hoard:douyin] navigation committed") })
 	win.Page().OnDidFinishLoad(func() { log.Print("[hoard:douyin] page load finished") })
 	win.Page().OnDidFailLoad(func(err *mygo.LoadError) { log.Printf("[hoard:douyin] page load failed code=%d", err.Code) })
@@ -95,6 +96,22 @@ func (a *Engine) openWindowLocked(show bool) Status {
 		a.mu.Unlock()
 	})
 	a.douyin = win
+	if err := win.Page().LoadURL("https://www.douyin.com/user/self?from_tab_name=main&showTab=like"); err != nil {
+		log.Print("[hoard:douyin] initial navigation request failed")
+	} else {
+		log.Print("[hoard:douyin] initial navigation requested")
+	}
+	go func() {
+		time.Sleep(10 * time.Second)
+		a.mu.Lock()
+		current := a.douyin == win
+		ready := a.domReady
+		a.mu.Unlock()
+		if !current {
+			return
+		}
+		log.Printf("[hoard:douyin] navigation checkpoint ready=%t loading=%t", ready, win.Page().IsLoading())
+	}()
 	return a.statusLocked()
 }
 
