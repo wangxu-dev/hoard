@@ -1,4 +1,19 @@
 :root {
+  --window-control: oklch(0.3 0 0);
+  --window-close: oklch(0.67 0.21 27);
+  --window-minimize: oklch(0.82 0.17 80);
+  --window-maximize: oklch(0.72 0.19 145);
+  --site-text-2xs: 0.625rem;
+  --site-text-xs: 0.6875rem;
+  --site-text-sm: 0.75rem;
+  --site-text-base: 0.8125rem;
+  --site-text-md: 0.875rem;
+  --site-text-lg: 1.125rem;
+  --site-text-xl: 1.1875rem;
+  --site-heading: clamp(1.75rem, 2.5vw, 2.25rem);
+  --site-hero-heading: clamp(2.5rem, 4.3vw, 3.75rem);
+  --site-hero-body: clamp(0.875rem, 1.3vw, 1rem);
+  --site-pill: 999px;
   --background: oklch(0.985 0.005 90);
   --foreground: oklch(0.22 0.015 270);
   --card: oklch(1 0 0);
@@ -67,6 +82,21 @@
 }
 
 .dark {
+  --window-control: oklch(0.24 0 0);
+  --window-close: oklch(0.62 0.19 27);
+  --window-minimize: oklch(0.77 0.15 80);
+  --window-maximize: oklch(0.66 0.17 145);
+  --site-text-2xs: 0.625rem;
+  --site-text-xs: 0.6875rem;
+  --site-text-sm: 0.75rem;
+  --site-text-base: 0.8125rem;
+  --site-text-md: 0.875rem;
+  --site-text-lg: 1.125rem;
+  --site-text-xl: 1.1875rem;
+  --site-heading: clamp(1.75rem, 2.5vw, 2.25rem);
+  --site-hero-heading: clamp(2.5rem, 4.3vw, 3.75rem);
+  --site-hero-body: clamp(0.875rem, 1.3vw, 1rem);
+  --site-pill: 999px;
   --background: oklch(0.17 0.012 270);
   --foreground: oklch(0.94 0.008 90);
   --card: oklch(0.21 0.014 270);

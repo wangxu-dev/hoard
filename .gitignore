@@ -1,3 +1,8 @@
+/website/.next/
+/website/out/
+website/public/demo/
+/website/next-env.d.ts
+/website/*.tsbuildinfo
 node_modules/
 /dist/
 /build/

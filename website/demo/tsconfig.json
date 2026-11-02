@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.app.json",
+  "compilerOptions": {
+    "composite": false,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsc/site-demo.tsbuildinfo"
+  },
+  "include": ["main.tsx", "backend.ts", "../../web/src/vite-env.d.ts"]
+}
