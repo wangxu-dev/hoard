@@ -124,8 +124,13 @@ func (s *actionSession) request(ctx context.Context, call func() error) error {
 
 func (s *Actions) run(accountID, workID, kind string, on bool, folderIDs []string, change bool) (result ActionState, resultErr error) {
 	started := time.Now()
+	stage := "account"
 	defer func() {
-		log.Printf("[hoard:actions] request finished kind=%s elapsed=%s success=%t", kind, time.Since(started).Round(time.Millisecond), resultErr == nil)
+		code := "OK"
+		if resultErr != nil {
+			code = resultErr.Error()
+		}
+		log.Printf("[hoard:actions] request finished kind=%s stage=%s code=%s elapsed=%s success=%t", kind, stage, code, time.Since(started).Round(time.Millisecond), resultErr == nil)
 	}()
 	empty := ActionState{}
 	if accountID == "" {
@@ -159,10 +164,12 @@ func (s *Actions) run(accountID, workID, kind string, on bool, folderIDs []strin
 	} else {
 		return empty, errors.New("UNSUPPORTED_SOURCE")
 	}
+	stage = "work"
 	rec, err := a.Store.MediaRecord(ctx, "video", workID)
 	if err != nil || rec.Source != account.Source {
 		return empty, errors.New("UNAVAILABLE")
 	}
+	stage = "session"
 	engine := s.engine()
 	defer engine.Close()
 	if err := engine.UseSourceSession(account.Source, account.SessionName, false); err != nil {
@@ -173,6 +180,7 @@ func (s *Actions) run(accountID, workID, kind string, on bool, folderIDs []strin
 			return empty, errors.New("REQUEST_FAILED")
 		}
 	}
+	stage = "identity"
 	identity, err := engine.Identity(ctx)
 	if err != nil || !identity.LoggedIn {
 		return empty, errors.New("AUTH_REQUIRED")
@@ -181,6 +189,7 @@ func (s *Actions) run(accountID, workID, kind string, on bool, folderIDs []strin
 		return empty, errors.New("IDENTITY_MISMATCH")
 	}
 	session := actionSession{engine: engine, account: account, work: rec, lastRequest: time.Now()}
+	stage = "read_before"
 	before, err := session.read(ctx, kind)
 	if err != nil {
 		return empty, err
@@ -211,15 +220,21 @@ func (s *Actions) run(accountID, workID, kind string, on bool, folderIDs []strin
 	if changed {
 		a.actionRevision.Add(1)
 		// A timed-out write may have succeeded; read back without repeating it.
+		stage = "write"
 		writeErr := session.write(ctx, kind, on, folderIDs, before)
+		if writeErr != nil {
+			log.Print("[hoard:actions] write failed; checking remote state")
+		}
 		if errors.Is(writeErr, bilibili.ErrInvalid) {
 			return empty, errors.New("INVALID_ARGUMENT")
 		}
+		stage = "read_after"
 		after, err = session.read(ctx, kind)
 		if err != nil {
 			return empty, errors.New("ACTION_UNKNOWN")
 		}
 	}
+	stage = "confirm"
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if !accountValid() {
