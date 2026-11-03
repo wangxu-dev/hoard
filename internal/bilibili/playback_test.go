@@ -33,6 +33,9 @@ func TestPlayback(t *testing.T) {
 }
 
 func TestPaidPlaybackAndParts(t *testing.T) {
+	if _, err := ParsePlayback([]byte(`{"code":87008,"message":"87008"}`)); !errors.Is(err, ErrPaid) {
+		t.Fatalf("locked part: %v", err)
+	}
 	for _, tc := range []struct {
 		name, body string
 		paid       bool

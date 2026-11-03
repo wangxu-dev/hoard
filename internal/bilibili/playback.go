@@ -80,6 +80,12 @@ func ParseCID(body []byte) (string, error) {
 // ParsePlayback accepts a complete progressive file; segmented responses cannot
 // be treated as interchangeable fallback URLs.
 func ParsePlayback(body []byte) (Playback, error) {
+	var envelope struct {
+		Code int `json:"code"`
+	}
+	if json.Unmarshal(body, &envelope) == nil && envelope.Code == 87008 {
+		return Playback{}, ErrPaid
+	}
 	data, err := payload(body)
 	if err != nil {
 		return Playback{}, err

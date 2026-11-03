@@ -24,7 +24,13 @@ export function VideoStage({ entry, media, onElement, onExhausted, onDoubleClick
   useEffect(() => { if (present) onElement(element); }, [element, present, onElement]);
   useEffect(() => () => releaseMedia(element), [element]);
   useEffect(() => { if (!present) element?.pause(); }, [present, element]);
-  useEffect(() => { setCandidate(0); if (candidate === 0) element?.load(); }, [media]);
+  const partId = useRef(media?.partId);
+  useEffect(() => {
+    if (partId.current !== media?.partId) { resume.current = 0; setAudioOnly(false); }
+    partId.current = media?.partId;
+    setCandidate(0);
+    if (candidate === 0) element?.load();
+  }, [media]);
   const src = media?.videos[candidate];
   useEffect(() => {
     if (!element || !src || !present) return;

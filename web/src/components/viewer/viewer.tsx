@@ -263,7 +263,7 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
             transition={{ duration: 0.42, ease: slideEase }} className="absolute inset-0">
             {isGallery
               ? <GalleryStage entry={entry} media={media} badgeSlot={badgeSlot} onElement={onElement} onHandle={setGallery} onSlide={onSlide} onExpired={refresh} />
-              : <VideoStage key={media?.partId ?? key} entry={entry} media={media} onNextPart={nextPart} onElement={onElement} onExhausted={refresh} onDoubleClick={() => toggleFullscreen(root.current)} />}
+              : <VideoStage entry={entry} media={media} onNextPart={nextPart} onElement={onElement} onExhausted={refresh} onDoubleClick={() => toggleFullscreen(root.current)} />}
           </motion.div>}
         </AnimatePresence>
 
@@ -279,10 +279,6 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
         <div className={cn("absolute inset-x-0 top-0 flex h-16 items-center gap-2 bg-linear-to-b from-viewer-scrim to-transparent px-4", fade)}>
           <ControlButton label={t("viewer.close")} hint="Esc" side="bottom" onClick={close} className="bg-viewer-control backdrop-blur-md"><X /></ControlButton>
           <span data-testid="viewer-counter" className="ml-1 text-xs font-medium tabular-nums text-viewer-muted">{(index + 1).toLocaleString()} / {total.toLocaleString()}</span>
-          {parts.length > 1 && <Select value={media?.partId} onValueChange={(id) => setPart({ key: entryKey, id })}>
-            <SelectTrigger size="sm" aria-label={t("viewer.parts")} className="h-8 max-w-64 min-w-0 border-viewer-foreground/20 bg-viewer-control text-viewer-foreground"><SelectValue /></SelectTrigger>
-            <SelectContent position="popper" className="dark z-[80] max-h-80">{parts.map((item, index) => <SelectItem key={item.id} value={item.id}>{t("viewer.part", { number: index + 1, title: item.title })}</SelectItem>)}</SelectContent>
-          </Select>}
           <div ref={setBadgeSlot} className="flex items-center" />
           <div className="flex-1" />
           <ControlButton label={(wide ? info : sheet) ? t("viewer.hideInfo") : t("viewer.showInfo")} hint="I" side="bottom" onClick={() => wide ? setInfo(!info) : setSheet(!sheet)} className="bg-viewer-control backdrop-blur-md">
@@ -312,6 +308,10 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
               {slideInfo.count <= 12 && Array.from({ length: slideInfo.count }, (_, n) => <span key={n} className={cn("h-1 rounded-full transition-all duration-300", n === slideInfo.index ? "w-4 bg-viewer-foreground" : "w-1 bg-viewer-track")} />)}
               <span className="ml-1 text-xs font-medium tabular-nums text-viewer-muted">{slideInfo.index + 1} / {slideInfo.count}</span>
             </div>}
+            {parts.length > 1 && <Select value={media?.partId} onValueChange={(id) => setPart({ key: entryKey, id })}>
+              <SelectTrigger size="sm" aria-label={t("viewer.parts")} className="h-8 w-48 min-w-0 border-viewer-foreground/20 bg-viewer-control text-viewer-foreground"><SelectValue /></SelectTrigger>
+              <SelectContent position="popper" side="top" className="dark z-[80] max-h-80">{parts.map((item, index) => <SelectItem key={item.id} value={item.id}>{t("viewer.part", { number: index + 1, title: item.title })}</SelectItem>)}</SelectContent>
+            </Select>}
             {!isGallery && <SpeedMenu rate={state.rate} onRate={(rate) => { if (element) element.playbackRate = rate; }} />}
             {hasSound && <VolumeControl />}
             <ControlButton label={fullscreen ? t("viewer.exitFullscreen") : t("viewer.fullscreen")} hint="F" onClick={() => toggleFullscreen(root.current)}>{fullscreen ? <Minimize /> : <Maximize />}</ControlButton>

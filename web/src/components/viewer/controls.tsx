@@ -55,20 +55,22 @@ export function TimeLabel({ state }: { state: MediaState }) {
   return <span className="text-xs font-medium tabular-nums text-viewer-foreground/90">{formatClock(state.time)}<span className="text-viewer-muted"> / {formatClock(state.duration)}</span></span>;
 }
 
-/** VolumeControl is a mute button that opens a slim volume slider on hover. Both persist. */
+/** VolumeControl keeps its button fixed and opens the slider above it. */
 export function VolumeControl() {
   const { t } = useTranslation("library");
   const { volume, muted } = useSound();
   const level = muted ? 0 : volume;
   const Icon = level === 0 ? VolumeX : level < 0.34 ? Volume : level < 0.67 ? Volume1 : Volume2;
-  return <div data-testid="volume" className="group/volume flex items-center">
-    <ControlButton label={muted ? t("viewer.unmute") : t("viewer.mute")} hint="M" onClick={() => setSound({ muted: !muted, ...(muted && volume === 0 ? { volume: 0.5 } : {}) })}><Icon /></ControlButton>
-    <div className="w-0 overflow-hidden opacity-0 transition-[width,opacity] duration-200 ease-out group-focus-within/volume:w-24 group-focus-within/volume:opacity-100 group-hover/volume:w-24 group-hover/volume:opacity-100">
-      <Slider aria-label={t("viewer.volume")} min={0} max={1} step={0.01} value={[level]} onValueChange={([next]) => setSound({ volume: next, muted: next === 0 })}
-        className="ml-1 h-6 w-[84px] cursor-pointer"
-        trackClassName="bg-viewer-track data-[orientation=horizontal]:h-[3px]"
+  return <div data-testid="volume" className="group/volume relative flex items-center">
+    <Button variant="ghost" size="icon" aria-label={muted ? t("viewer.unmute") : t("viewer.mute")} className="size-9 shrink-0 rounded-full text-viewer-foreground hover:bg-viewer-control-hover hover:text-viewer-foreground focus-visible:ring-viewer-foreground/30" onClick={() => setSound({ muted: !muted, ...(muted && volume === 0 ? { volume: 0.5 } : {}) })}><Icon className="size-4.5" /></Button>
+    <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 pb-2 opacity-0 transition-opacity duration-(--duration-fast) group-focus-within/volume:pointer-events-auto group-focus-within/volume:opacity-100 group-hover/volume:pointer-events-auto group-hover/volume:opacity-100">
+      <div className="flex h-36 w-10 justify-center rounded-lg border border-viewer-border bg-viewer-panel py-3 shadow-lg">
+      <Slider orientation="vertical" aria-label={t("viewer.volume")} min={0} max={1} step={0.01} value={[level]} onValueChange={([next]) => setSound({ volume: next, muted: next === 0 })}
+        className="cursor-pointer data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-0"
+        trackClassName="bg-viewer-track data-[orientation=vertical]:w-1"
         rangeClassName="bg-viewer-foreground"
         thumbClassName="size-3 border-0 bg-viewer-foreground shadow-md ring-viewer-foreground/25" />
+      </div>
     </div>
   </div>;
 }
