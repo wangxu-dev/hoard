@@ -245,7 +245,7 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
   const fade = cn("transition-opacity duration-300 ease-out", shown ? "opacity-100" : "pointer-events-none opacity-0");
   const panel = entry && <InfoPanel entry={entry} media={media} />;
 
-  return createPortal(<TooltipProvider delayDuration={500}>
+  return createPortal(<TooltipProvider>
     <motion.div ref={root} data-testid="viewer" role="dialog" aria-modal="true" aria-label={t("viewer.title")}
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18, ease: "easeOut" }}
       onPointerMove={wake} onPointerDown={wake}

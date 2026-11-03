@@ -42,7 +42,7 @@ function AccountControl({ target, account, compact, on, pending, perform }: { ta
     <Avatar className="size-10"><AvatarImage src={account.avatarUrl} alt="" /><AvatarFallback>{account.nickname.slice(0, 1)}</AvatarFallback></Avatar>
     <span className="absolute -right-1 -bottom-1 rounded-full bg-popover p-0.5"><Icon className={`size-3 ${on ? activeIcon(target.kind) : "text-muted-foreground"}`} /></span>
   </Button>;
-  if (!chooseFolders) return compact ? button : <Tooltip delayDuration={0}><TooltipTrigger asChild>{button}</TooltipTrigger><TooltipContent side="top" className="z-[80]">{account.nickname} · {label}</TooltipContent></Tooltip>;
+  if (!chooseFolders) return compact ? button : <Tooltip><TooltipTrigger asChild>{button}</TooltipTrigger><TooltipContent side="top" className="z-[80]">{account.nickname} · {label}</TooltipContent></Tooltip>;
   return <Popover open={open} onOpenChange={setOpen}><PopoverTrigger asChild>{button}</PopoverTrigger>
     <PopoverContent side={compact ? "left" : "bottom"} className="z-[80] w-auto p-3"><FavoriteFolders target={target} accountId={account.id} pending={pending} onSave={(ids) => { perform(ids.length > 0, ids); setOpen(false); }} /></PopoverContent>
   </Popover>;

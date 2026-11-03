@@ -89,7 +89,7 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
                       onClick={() => onPageChange(id)}
                       aria-current={page === id ? "page" : undefined}
                       tooltip={{ children: t(`sidebar.${id}`), sideOffset: TIP_OFFSET }}
-                      className={`${railButton} transition-none group-data-[collapsible=icon]:w-full!`}
+                      className={railButton}
                     >
                       <Icon aria-hidden="true" />
                       <span>{t(`sidebar.${id}`)}</span>
