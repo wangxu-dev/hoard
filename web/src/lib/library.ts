@@ -77,9 +77,7 @@ const realSource: LibrarySource = {
     if (signal?.aborted) return;
     const login = await App.checkLogin();
     if (!login.loggedIn || signal?.aborted) return;
-    const states = await Sync.states();
-    const lastSync = Math.max(0, ...states.filter((state) => state.accountId === account.id && state.kind !== "cover").map((state) => state.lastSyncAt));
-    if (!signal?.aborted && (!lastSync || Date.now() / 1000 - lastSync > 180)) await Sync.start();
+    if (!signal?.aborted) await Sync.autoStart();
   },
   folders(accountId) { return Library.folders(accountId); },
   async sources() {
