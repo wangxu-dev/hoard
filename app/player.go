@@ -140,7 +140,7 @@ func (p *Player) Part(id, partID string, refresh bool) (MediaResult, error) {
 func (p *Player) media(kind, id string, force bool, partID ...string) (out MediaResult, resultErr error) {
 	start, source, class := time.Now(), "detail", "OK"
 	defer func() {
-		log.Printf("[hoard:player] media kind=%s class=%s ms=%d source=%s", kind, class, time.Since(start).Milliseconds(), source)
+		log.Printf("[hoard:player] media kind=%s class=%s ms=%d source=%s part_requested=%t", kind, class, time.Since(start).Milliseconds(), source, len(partID) > 0 && partID[0] != "")
 	}()
 	if id == "" || (kind != "video" && kind != "gallery" && kind != "music") {
 		class = "INVALID_REQUEST"
