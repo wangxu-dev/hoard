@@ -18,16 +18,13 @@ import { GalleryStage, type GalleryHandle } from "./gallery-stage";
 import { ViewerActions } from "@/components/entry-actions";
 import { InfoPanel } from "./info-panel";
 import { useMedia } from "./use-media";
+import { WorkTrack } from "./work-track";
+import type { CarouselApi } from "@/components/ui/carousel";
 import { prefetchMedia } from "@/lib/query";
 
 const IDLE_MS = 2000;
 const WIDE = 1100;
 const slideEase = [0.16, 1, 0.3, 1] as const;
-const slide = {
-  enter: (dir: number) => ({ y: dir > 0 ? "100%" : dir < 0 ? "-100%" : 0, opacity: dir === 0 ? 0 : 1 }),
-  center: { y: 0, opacity: 1 },
-  exit: (dir: number) => ({ y: dir > 0 ? "-100%" : "100%", opacity: 1 }),
-};
 
 function useWide() {
   const [wide, setWide] = useState(() => window.innerWidth >= WIDE);
@@ -57,7 +54,7 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
   const root = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(start);
   const [entry, setEntry] = useState<LibraryEntry | undefined>(() => cursor.peek(start));
-  const [dir, setDir] = useState(0);
+  const [workApi, setWorkApi] = useState<CarouselApi>();
   const [total, setTotal] = useState(cursor.total);
   const [element, setElement] = useState<HTMLMediaElement | null>(null);
   const [gallery, setGallery] = useState<GalleryHandle | null>(null);
@@ -68,7 +65,6 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
   const [fullscreen, setFullscreen] = useState(false);
   const [info, setInfo] = useState(() => localStorage.getItem(infoKey) !== "0");
   const [sheet, setSheet] = useState(false);
-  const moving = useRef(false);
   const state = useMediaState(element);
   const sound = useSound();
   const [part, setPart] = useState<{ key: string; id: string } | null>(null);
@@ -110,15 +106,11 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
   useEffect(() => { if (playingVideo) void getLibrarySource().warm([playingVideo]).catch(() => undefined); }, [playingVideo]);
 
   const move = useCallback((delta: number) => {
-    if (moving.current) return;
-    const next = index + delta;
-    if (next < 0 || next >= cursor.total) return;
-    moving.current = true;
-    void cursor.at(next).then((value) => {
-      if (!value) return;
-      setDir(delta); setIndex(next); setEntry(value); setTotal(cursor.total); setElement(null);
-    }).finally(() => { moving.current = false; });
-  }, [index, cursor]);
+    if (delta > 0) workApi?.scrollNext(); else workApi?.scrollPrev();
+  }, [workApi]);
+  const selectWork = useCallback((next: number, value: LibraryEntry) => {
+    setIndex(next); setEntry(value); setTotal(cursor.total); setElement(null);
+  }, [cursor]);
 
   const close = useCallback(() => { pauseAll(); onClose(index); }, [index, onClose]);
 
@@ -170,73 +162,6 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
     return () => { window.removeEventListener("keydown", onKey, true); window.removeEventListener("keyup", onKeyUp, true); };
   }, [move, close, gallery, element, sound.muted, wide, sheet, wake]);
 
-  // One wheel or trackpad gesture moves one item, however long its inertia runs.
-  useEffect(() => {
-    const el = root.current;
-    if (!el) return;
-    let sum = 0, locked = false, movedAt = 0;
-    let quiet: ReturnType<typeof setTimeout> | undefined;
-    const onWheel = (event: WheelEvent) => {
-      const area = (event.target as Element | null)?.closest?.("[data-scroll-area]");
-      if (area && area.scrollHeight > area.clientHeight) return;
-      event.preventDefault();
-      clearTimeout(quiet);
-      quiet = setTimeout(() => { locked = false; sum = 0; }, 160);
-      // Inertia can pause between events; after a move, nothing counts until the slide has settled.
-      if (locked || performance.now() - movedAt < 600 || Math.abs(event.deltaY) < Math.abs(event.deltaX)) return;
-      sum += event.deltaY;
-      if (Math.abs(sum) >= 24) { locked = true; movedAt = performance.now(); move(sum > 0 ? 1 : -1); sum = 0; }
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => { el.removeEventListener("wheel", onWheel); clearTimeout(quiet); };
-  }, [move]);
-
-  // Lock each drag to its initial axis so gallery swipes never change works.
-  useEffect(() => {
-    const stage = root.current?.querySelector<HTMLElement>('[data-testid="viewer-stage"]');
-    if (!stage) return;
-    let gesture: { id: number; x: number; y: number; axis?: "x" | "y" } | undefined;
-    let suppressClick = false;
-    const down = (event: PointerEvent) => {
-      if (!event.isPrimary || event.button !== 0 || (event.target as Element).closest('button, a, input, [role="slider"], [data-preview-actions], [data-testid="viewer-controls"]')) return;
-      suppressClick = false;
-      gesture = { id: event.pointerId, x: event.clientX, y: event.clientY };
-    };
-    const drag = (event: PointerEvent) => {
-      if (!gesture || gesture.id !== event.pointerId) return;
-      const x = event.clientX - gesture.x, y = event.clientY - gesture.y;
-      if (!gesture.axis && Math.max(Math.abs(x), Math.abs(y)) >= 12) gesture.axis = Math.abs(y) > Math.abs(x) * 1.2 ? "y" : "x";
-      if (gesture.axis === "y") {
-        stage.setPointerCapture(event.pointerId);
-        event.preventDefault();
-      }
-    };
-    const end = (event: PointerEvent) => {
-      if (!gesture || gesture.id !== event.pointerId) return;
-      const y = event.clientY - gesture.y;
-      const vertical = gesture.axis === "y";
-      gesture = undefined;
-      if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
-      if (vertical && event.type === "pointerup" && Math.abs(y) >= 64) {
-        suppressClick = true;
-        move(y < 0 ? 1 : -1);
-      }
-    };
-    const click = (event: MouseEvent) => { if (suppressClick) { suppressClick = false; event.preventDefault(); event.stopPropagation(); } };
-    stage.addEventListener("pointerdown", down);
-    stage.addEventListener("pointermove", drag, { passive: false });
-    window.addEventListener("pointerup", end);
-    window.addEventListener("pointercancel", end);
-    stage.addEventListener("click", click, true);
-    return () => {
-      stage.removeEventListener("pointerdown", down);
-      stage.removeEventListener("pointermove", drag);
-      window.removeEventListener("pointerup", end);
-      window.removeEventListener("pointercancel", end);
-      stage.removeEventListener("click", click, true);
-    };
-  }, [move]);
-
   const onSlide = useCallback((n: number, count: number) => setSlideInfo({ index: n, count }), []);
   const onElement = useCallback((value: HTMLMediaElement | null) => setElement(value), []);
   const key = entry ? `${entry.kind}:${entry.id}` : "empty";
@@ -258,14 +183,12 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
       </AnimatePresence>
 
       <div data-testid="viewer-stage" className="relative min-w-0 flex-1 touch-none overflow-hidden">
-        <AnimatePresence initial={false} custom={dir}>
-          {entry && <motion.div key={key} custom={dir} variants={slide} initial="enter" animate="center" exit="exit"
-            transition={{ duration: 0.42, ease: slideEase }} className="absolute inset-0">
+        <WorkTrack cursor={cursor} index={index} entry={entry} onSelect={selectWork} onApi={setWorkApi}>
+          {entry && <div key={key} className="absolute inset-0">
             {isGallery
               ? <GalleryStage entry={entry} media={media} badgeSlot={badgeSlot} onElement={onElement} onHandle={setGallery} onSlide={onSlide} onExpired={refresh} />
               : <VideoStage entry={entry} media={media} onNextPart={nextPart} onElement={onElement} onExhausted={refresh} onDoubleClick={() => toggleFullscreen(root.current)} />}
-          </motion.div>}
-        </AnimatePresence>
+          </div>}
 
         {(loading || state.waiting) && !error && !isGallery && <div data-testid="viewer-spinner" className="spinner-late pointer-events-none absolute inset-0 grid place-items-center"><Spinner className="size-7 text-viewer-foreground/80" /></div>}
         {error && !isGallery && <div role="alert" className="absolute inset-0 grid place-items-center">
@@ -276,6 +199,7 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
         </div>}
 
         {!!media?.previewMs && !error && <div role="status" className="pointer-events-none absolute inset-x-4 top-20 flex justify-center"><p className="rounded-lg bg-viewer-scrim px-4 py-2 text-sm text-viewer-foreground backdrop-blur-md">{t("viewer.paidPreview", { duration: formatClock(media.previewMs / 1000) })}</p></div>}
+        </WorkTrack>
         <div className={cn("absolute inset-x-0 top-0 flex h-16 items-center gap-2 bg-linear-to-b from-viewer-scrim to-transparent px-4", fade)}>
           <ControlButton label={t("viewer.close")} hint="Esc" side="bottom" onClick={close} className="bg-viewer-control backdrop-blur-md"><X /></ControlButton>
           <span data-testid="viewer-counter" className="ml-1 text-xs font-medium tabular-nums text-viewer-muted">{(index + 1).toLocaleString()} / {total.toLocaleString()}</span>

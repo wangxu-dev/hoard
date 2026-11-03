@@ -6,6 +6,9 @@ function duration(name: string, fallback: number): number {
   return Number.isFinite(milliseconds) ? milliseconds / 1000 : fallback;
 }
 
+// Embla uses simulation steps rather than milliseconds for its attraction duration.
+export const carouselDuration = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--carousel-duration")) || 14;
+
 export const pageTransition: Transition = {
   duration: duration("--duration-base", 0.2),
   ease: "easeOut",
