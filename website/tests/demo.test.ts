@@ -1,9 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { Accounts, Library, demoEntries } from "../demo/backend";
+import { Accounts, Library, Player, Sync, demoEntries } from "../demo/backend";
 
 describe("website demo data", () => {
+  test("shared player and automatic sync APIs remain available", async () => {
+    const item = demoEntries[0];
+    const result = await Player.resolve(item.kind, item.id, item.accountIds[0], false, "");
+    expect(result.images).toEqual([{ url: item.cover }]);
+    await expect(Sync.autoStart()).resolves.toBeUndefined();
+  });
   test("all fifty works have distinct local covers", () => {
     expect(demoEntries).toHaveLength(50);
     expect(new Set(demoEntries.map(item => item.id)).size).toBe(50);

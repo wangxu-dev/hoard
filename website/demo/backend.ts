@@ -114,8 +114,8 @@ const media = async (_kind: string, id: string) => {
     publishedAt: item?.publishedAt ?? 0,
   };
 };
-export const Player = { media, refresh: media, part: async (id: string, _partId: string, _refresh: boolean) => media("video", id), warm: noop };
-export const Sync = { states: async () => [], start: noop, verify: noop };
+export const Player = { resolve: (kind: string, id: string, _accountId: string, _refresh: boolean, _partId: string) => media(kind, id), media, refresh: media, part: async (id: string, _partId: string, _refresh: boolean) => media("video", id), warm: noop };
+export const Sync = { states: async () => [], autoStart: noop, start: noop, verify: noop };
 export const Actions = {
   state: async () => ({ liked: false, favorited: false, watchLater: false, folders: [] }),
   folders: async (_accountId: string, _workId: string) => [],

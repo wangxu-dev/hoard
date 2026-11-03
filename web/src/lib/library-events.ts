@@ -16,6 +16,9 @@ export function useLibraryVersion(): number {
 export function startLibraryEvents(): () => void {
   const source = getLibrarySource();
   const stopProgress = source.onSyncProgress((next) => {
+    if (next.kind === "favorite" && next.phase === "done" && next.status === "idle") {
+      void queryClient.invalidateQueries({ queryKey: ["folders", next.accountId] });
+    }
     queryClient.setQueryData<SyncState[]>(queryKeys.syncStates, (old = []) => [...old.filter((s) => s.accountId !== next.accountId || s.kind !== next.kind), next]);
   });
   // A fast sync changes the library many times a second; refresh about once a second.
@@ -34,6 +37,7 @@ export function startLibraryEvents(): () => void {
   });
   const stopAccounts = onAccountsChanged(() => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.sources });
+    void queryClient.invalidateQueries({ queryKey: ["media"] });
     void queryClient.invalidateQueries({ queryKey: queryKeys.syncStates });
     void queryClient.invalidateQueries({ queryKey: ["counts"] });
   });

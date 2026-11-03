@@ -1,4 +1,5 @@
-import { memo, startTransition, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { motion, useReducedMotion } from "motion/react";
 import { useTranslation } from "react-i18next";
@@ -10,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { EntryActionMenu } from "@/components/entry-actions";
-import { EntryAccounts } from "@/components/entry-accounts";
+import { EntryAccounts, EntryAccountsContext } from "@/components/entry-accounts";
 import { LibraryNumber } from "@/components/library-number";
 import { pageTransition } from "@/lib/motion";
 import { getLibrarySource, type LibraryEntry, type ListKind, type Scope, type SortKey, type WorkType } from "@/lib/library";
@@ -34,10 +35,9 @@ const GAP = 6;
 // Fixed text block plus the 1px card border on both sides, so every row has a known height.
 const CARD_TEXT = 62;
 const CARD_BORDER = 2;
-// Rendered rows reach two viewports past each edge, so a Space or Page Down
-// jump lands on rows that are already laid out with covers decoded.
-const OVERSCAN_VIEWPORTS = 2;
-const MIN_OVERSCAN_ROWS = 8;
+// Render one extra viewport on each side; decoded covers warm beyond it.
+const OVERSCAN_VIEWPORTS = 1;
+const MIN_OVERSCAN_ROWS = 2;
 // Right after a leap of more than this many viewports (a jump or a timeline drag) only the
 // rows in view mount, so they show at once; the overscan returns once scrolling rests.
 const LEAP_VIEWPORTS = 2;
@@ -94,14 +94,6 @@ function coverOf(entry: LibraryEntry) {
   return entry.cover;
 }
 
-function preload(src: string) {
-  if (!src || loadedCovers.has(src)) return Promise.resolve();
-  const img = new Image();
-  img.referrerPolicy = "no-referrer";
-  img.src = src;
-  return img.decode().then(() => { loadedCovers.add(src); }).catch(() => undefined);
-}
-
 function duration(ms: number) {
   const s = Math.round(ms / 1000);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -114,7 +106,7 @@ export interface GridGeometry { columns: number; rowHeight: number; scrollMargin
 // them at once; where the reader was is kept with them.
 // Slots hold the loaded items at their list positions; positions not loaded yet are empty.
 type Slot = LibraryEntry | undefined;
-interface GridCache { items: Slot[]; total: number; shift: number }
+interface GridCache { items: Slot[]; total: number; shift: number; version: number; checkedAt: number }
 const gridScroll = new Map<string, number>();
 // The last request to show the playing sound that a grid handled, across mounts.
 let handledLocate = 0;
@@ -249,6 +241,8 @@ const PlaceholderCard = memo(function PlaceholderCard({ square }: { square: bool
 export const LibraryGrid = memo(function LibraryGrid({ scope, kind, type, query, sort, version, syncing, onOpen, onItemsChange, onTotalChange, onGeometry }: { scope: Scope; kind: ListKind; type: WorkType; query: string; sort: SortKey; version: number; syncing: boolean; onOpen: (entry: LibraryEntry) => void; onItemsChange: (items: (LibraryEntry | undefined)[]) => void; onGeometry?: (geometry: GridGeometry) => void; onTotalChange: (total: number) => void }) {
   const { t } = useTranslation("library");
   const filterKey = JSON.stringify([scope.accountId, scope.source, scope.folderId, kind, type, query, sort]);
+  const sourcesQuery = useQuery({ queryKey: queryKeys.sources, queryFn: () => getLibrarySource().sources(), staleTime: 60_000 });
+  const accountsContext = useMemo(() => ({ sources: sourcesQuery.data ?? [], scope, kind }), [sourcesQuery.data, scope, kind]);
   const [cached] = useState(() => queryClient.getQueryData<GridCache>(queryKeys.grid(filterKey)));
   const [items, setItems] = useState<Slot[]>(() => cached?.items ?? []);
   // total counts the list as the library has it now; shift is how many new items at its head
@@ -267,11 +261,16 @@ export const LibraryGrid = memo(function LibraryGrid({ scope, kind, type, query,
   const where = useRef(indexIds(cached?.items ?? []));
   const inflight = useRef(new Set<number>());
   const fetchedAt = useRef(new Map<number, number>());
-  const fetchPage = (offset: number, limit: number) => getLibrarySource().list({ scope, kind, type: kind === "music" ? "all" : type, query, sort, offset, limit });
+  const fetchPage = (offset: number, limit: number) => queryClient.fetchQuery({
+    queryKey: ["grid-page", filterKey, version, offset, limit],
+    queryFn: () => getLibrarySource().list({ scope, kind, type: kind === "music" ? "all" : type, query, sort, offset, limit }),
+    staleTime: REFETCH_AFTER,
+    gcTime: 30_000,
+  });
   const apply = (next: Slot[], count: number, nextShift = shiftRef.current) => {
     loaded.current = next; shiftRef.current = nextShift;
     setItems(next); setTotal(count); setShift(nextShift); setError(false); setSettled(true);
-    queryClient.setQueryData<GridCache>(queryKeys.grid(filterKey), { items: next, total: count, shift: nextShift });
+    queryClient.setQueryData<GridCache>(queryKeys.grid(filterKey), { items: next, total: count, shift: nextShift, version, checkedAt: Date.now() });
   };
   // A new list, or one whose positions moved, loads its pages afresh.
   const resetPages = (next: Slot[]) => { where.current = indexIds(next); inflight.current.clear(); fetchedAt.current.clear(); };
@@ -286,13 +285,11 @@ export const LibraryGrid = memo(function LibraryGrid({ scope, kind, type, query,
     if (known) {
       if (loaded.current !== known.items) { resetPages(known.items); apply(known.items, known.total, known.shift); }
       setLoading(false); setPending(false);
-      refreshHead(id);
+      if (known.version !== version || Date.now() - known.checkedAt > 30_000) refreshHead(id);
       return;
     }
     setLoading(true); setPending(true);
-    fetchPage(0, PAGE).then(async (page) => {
-      if (id !== request.current) return;
-      await Promise.race([Promise.all(page.items.slice(0, 24).map((item) => preload(coverOf(item)))), new Promise((done) => setTimeout(done, 300))]);
+    fetchPage(0, PAGE).then((page) => {
       if (id !== request.current) return;
       resetPages([]);
       apply(place([], where.current, 0, page.items), page.total, 0);
@@ -300,6 +297,7 @@ export const LibraryGrid = memo(function LibraryGrid({ scope, kind, type, query,
     }).catch(() => { if (id === request.current) { setError(true); setSettled(true); } })
       .finally(() => { if (id === request.current) { setLoading(false); setPending(false); } });
   }, [filterKey, retry]);
+  useEffect(() => () => { request.current++; }, []);
   // Items a sync adds ahead of the loaded ones. Near the top they slide in at once;
   // further down the grid stays put and a pill offers them, so nothing shifts under the reader.
   const [incoming, setIncoming] = useState<{ items: LibraryEntry[]; more: boolean } | null>(null);
@@ -414,11 +412,12 @@ export const LibraryGrid = memo(function LibraryGrid({ scope, kind, type, query,
   const restoreScroll = useRef(!!cached);
   useLayoutEffect(() => {
     const el = scroller();
+    if (!el) return;
     const top = restoreScroll.current ? gridScroll.get(filterKey) : undefined;
     restoreScroll.current = false;
-    if (el && top) el.scrollTop = top;
-    return () => { const at = scroller(); if (at) gridScroll.set(filterKey, at.scrollTop); };
-  }, [filterKey]);
+    if (top !== undefined) el.scrollTop = top;
+    return () => { gridScroll.set(filterKey, el.scrollTop); };
+  }, [filterKey, host]);
   const music = useMusic();
   const playingId = kind === "music" ? music.playing?.id : undefined;
   const playingState = music.playing?.paused ? "paused" : "playing";
@@ -555,7 +554,7 @@ export const LibraryGrid = memo(function LibraryGrid({ scope, kind, type, query,
   if (settled && !pending && count === 0) return <div data-testid="library-empty" className="flex min-h-[calc(100dvh-8rem)] items-center justify-center gap-2 text-center text-sm text-muted-foreground">
     {syncing && <Spinner className="size-4" />}{query || type !== "all" ? t("grid.emptyFiltered") : syncing ? t("grid.emptySyncing") : t("grid.empty")}
   </div>;
-  return <motion.div className="flex min-w-0 flex-col gap-2" initial={false} animate={{ opacity: pending && count > 0 ? 0.55 : 1 }} transition={pageTransition}>
+  return <EntryAccountsContext.Provider value={accountsContext}><motion.div className="flex min-w-0 flex-col gap-2" initial={false} animate={{ opacity: pending && count > 0 ? 0.55 : 1 }} transition={pageTransition}>
     <div ref={setHost} className="min-w-0">
       <div className="mx-auto flex flex-col gap-2" style={{ width: layout.width }}>
         {incoming && <div className="pointer-events-none sticky top-16 z-20 flex h-0 justify-center">
@@ -581,5 +580,5 @@ export const LibraryGrid = memo(function LibraryGrid({ scope, kind, type, query,
         <div className="h-6" />
       </div>
     </div>
-  </motion.div>;
+  </motion.div></EntryAccountsContext.Provider>;
 });

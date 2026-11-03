@@ -58,7 +58,7 @@ export function MusicBar({ className }: { className?: string }) {
   const title = media?.music.title || entry?.title || "";
   const author = media?.music.author || entry?.author || "";
   const ModeIcon = music.mode === "one" ? Repeat1 : music.mode === "shuffle" ? Shuffle : Repeat;
-  return <TooltipProvider delayDuration={500}>
+  return <TooltipProvider>
     <motion.div data-testid="music-bar" initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }} transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
       className={cn("dark @container flex w-full max-w-4xl min-w-0 items-center gap-2 rounded-2xl border border-viewer-border bg-viewer-bar px-2.5 py-2 text-viewer-foreground shadow-lg backdrop-blur-(--glass-blur) backdrop-saturate-150 @2xl:gap-3", className)}>
       {/* The cover and title show the playing sound in the library. */}

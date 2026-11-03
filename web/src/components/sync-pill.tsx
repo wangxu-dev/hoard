@@ -17,13 +17,13 @@ import { formatWhen } from "@/lib/time";
 const notified = new Map<string, number>();
 const freshFor = 4000;
 const busy = (s: SyncState) => s.status === "running" || s.status === "checking" || s.status === "queued" || s.status === "cooling" || s.status === "verifying";
-// A list that still has backfill left keeps syncing on its own, so between turns and across restarts it reads as syncing.
-const backfilling = (s: SyncState) => s.phase !== "done" && !["paused", "unsupported", "signed_out", "blocked", "verifying", "cooling"].includes(s.status);
+// Only active work is shown as syncing; an unfinished idle list can be resumed.
+const backfilling = (s: SyncState) => s.phase !== "done" && ["running", "checking", "queued"].includes(s.status);
 const checking = (s: SyncState) => s.phase === "done" && (s.status === "checking" || s.status === "queued" || s.status === "running");
 export function useSyncVisible(state?: SyncState) {
   return !!state;
 }
-export function SyncPill({ state, states, visible, compact = false, onLogin }: { state?: SyncState; states: SyncState[]; visible: boolean; compact?: boolean; onLogin: (accountId: string) => void }) {
+export function SyncPill({ accountName, state, states, visible, compact = false, onLogin }: { accountName?: string; state?: SyncState; states: SyncState[]; visible: boolean; compact?: boolean; onLogin: (accountId: string) => void }) {
   const { t, i18n } = useTranslation("library");
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const submitting = useRef(false);
@@ -67,7 +67,7 @@ export function SyncPill({ state, states, visible, compact = false, onLogin }: {
       : s.status === "blocked" ? t("sync.verifyRequired")
       : s.status === "verifying" ? t("sync.verifying")
       : s.status === "cooling" ? t("sync.cooling", { time })
-      : s.status === "paused" ? t("sync.paused")
+      : s.status === "paused" || (s.status === "idle" && s.phase !== "done") ? t("sync.paused")
       : s.status === "unsupported" ? t("sync.unsupported")
       : backfilling(s) ? `${t("sync.syncing")} · ${progress(s)}`
       : checking(s) ? t("sync.checking")
@@ -78,6 +78,7 @@ export function SyncPill({ state, states, visible, compact = false, onLogin }: {
   function listNode(s: SyncState) {
     const total = s.remoteTotal === undefined ? null : <> / {format(s.remoteTotal)}</>;
     if (backfilling(s)) return <>{t("sync.syncing")} · <LibraryNumber value={s.items} />{total}</>;
+    if (s.status === "idle" && s.phase !== "done") return listLabel(s);
     if (s.status === "paused" || s.status === "unsupported" || s.status === "signed_out" || s.status === "blocked" || s.status === "verifying" || s.status === "cooling" || checking(s) || freshCount(s)) return listLabel(s);
     return t("sync.synced");
   }
@@ -115,14 +116,15 @@ export function SyncPill({ state, states, visible, compact = false, onLogin }: {
   return <AnimatePresence initial={false}>{visible && <motion.div layout data-control="pill" data-compact={compact} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, width: 0 }} transition={pageTransition} className="min-w-6 overflow-hidden">
     <Tooltip><TooltipTrigger asChild>
       <Badge asChild variant="outline" className={`h-6 cursor-pointer rounded-full px-2.5 py-0 text-xs font-normal tabular-nums ${tone}`}>
-        <button aria-label={`${t("sync.label")}: ${label}`} aria-busy={anyBusy} type="button" onClick={() => void start()}>
+        <button aria-label={`${accountName ? `${accountName} · ` : ""}${t("sync.label")}: ${label}`} aria-busy={anyBusy} type="button" onClick={() => void start()}>
+          {accountName && !compact && <span className="max-w-24 truncate">{accountName}</span>}
           {icon}
-          <span data-pill-label className="shrink-0 whitespace-nowrap">{live ? <><AnimatedShinyText className="sync-shine mx-0 text-foreground dark:text-foreground">{`${t("sync.syncing")} ·`}</AnimatedShinyText>{" "}<LibraryNumber value={state.items} />{state.remoteTotal === undefined ? null : <> / {format(state.remoteTotal)}</>}</> : state.status === "cooling" ? label : listNode(state)}</span>
-          {showTime && <span className="whitespace-nowrap text-muted-foreground">· {timeLabel}</span>}
+          <span data-pill-label className={compact ? "sr-only whitespace-nowrap" : "shrink-0 whitespace-nowrap"}>{live ? <><AnimatedShinyText className="sync-shine mx-0 text-foreground dark:text-foreground">{`${t("sync.syncing")} ·`}</AnimatedShinyText>{" "}<LibraryNumber value={state.items} />{state.remoteTotal === undefined ? null : <> / {format(state.remoteTotal)}</>}</> : state.status === "cooling" ? label : listNode(state)}</span>
+          {showTime && !compact && <span className="whitespace-nowrap text-muted-foreground">· {timeLabel}</span>}
         </button>
       </Badge>
     </TooltipTrigger><TooltipContent side="bottom">
-      {action}
+      {compact ? `${accountName ? `${accountName} · ` : ""}${label} · ${action}` : action}
     </TooltipContent></Tooltip>
   </motion.div>}</AnimatePresence>;
 }

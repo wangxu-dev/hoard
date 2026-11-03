@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQueries, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -9,9 +9,9 @@ import { LibraryGrid, type GridGeometry } from "@/components/library-grid";
 import { TimelineScrubber } from "@/components/timeline-scrubber";
 import { Viewer } from "@/components/viewer/viewer";
 import { ListCursor } from "@/lib/library-cursor";
-import { setLibraryFilters, useLibraryFilters, useLibraryOrdering } from "@/lib/library-filters";
+import { reconcileLibraryScope, setLibraryFilters, useLibraryFilters, useLibraryOrdering } from "@/lib/library-filters";
 import { useLibraryVersion } from "@/lib/library-events";
-import { queryKeys } from "@/lib/query";
+import { foldersQuery, queryKeys } from "@/lib/query";
 import { playMusic } from "@/lib/music";
 
 const noSources: SourceGroup[] = [];
@@ -30,6 +30,8 @@ export function LibraryPage({ scrolled, onAddAccount, onLogin }: { scrolled: boo
   const statesQuery = useQuery({ queryKey: queryKeys.syncStates, queryFn: () => source.syncStates(), staleTime: Infinity });
   const countsQuery = useQuery({ queryKey: queryKeys.counts(filters.scope), queryFn: () => source.counts(filters.scope), placeholderData: keepPreviousData });
   const sources = sourcesQuery.data ?? noSources;
+  useQueries({ queries: sources.filter((group) => group.id === "bilibili").flatMap((group) => group.accounts.map((account) => foldersQuery(account.id))) });
+  useEffect(() => { if (sourcesQuery.data) reconcileLibraryScope(sourcesQuery.data); }, [sourcesQuery.data]);
   useQuery({
     queryKey: ["account-session", filters.scope.accountId ?? ""],
     queryFn: async ({ signal }) => { await source.checkSession(filters.scope.accountId, signal); if (!signal.aborted) await sourcesQuery.refetch(); return null; },
@@ -73,7 +75,7 @@ export function LibraryPage({ scrolled, onAddAccount, onLogin }: { scrolled: boo
   }, [viewer]);
   const kinds = [...new Set(sources.filter((s) => !filters.scope.source || s.id === filters.scope.source).flatMap((s) => s.kinds))];
   useEffect(() => { if (kinds.length && !kinds.includes(filters.kind)) setLibraryFilters({ kind: kinds[0] }); }, [kinds.join(","), filters.kind]);
-  const syncAccount = filters.scope.accountId ?? filters.syncAccountId ?? sources.flatMap((g) => g.accounts)[0]?.id;
+  const syncAccount = filters.scope.accountId ?? sources.flatMap((g) => g.accounts).find((account) => account.active)?.id ?? filters.syncAccountId ?? sources.flatMap((g) => g.accounts)[0]?.id;
   const accountStates = states.filter((s) => s.accountId === syncAccount && s.kind !== "cover");
   // Attention states belong to the whole account; otherwise the pill follows the selected tab.
   const state = accountStates.find((s) => s.status === "signed_out" || s.status === "blocked" || s.status === "verifying" || s.status === "cooling")
@@ -83,10 +85,10 @@ export function LibraryPage({ scrolled, onAddAccount, onLogin }: { scrolled: boo
   // The right gutter is kept free for the timeline; the grid centers between equal margins.
   return <section className="relative flex min-h-full min-w-0 flex-1 bg-background">
     <div data-testid="library-main" className="min-w-0 flex-1 bg-background">
-      <LibraryToolbar sources={sources} kinds={kinds as ListKind[]} counts={displayCounts} state={filters.scope.accountId ? state : undefined} states={states} scrolled={scrolled} onAddAccount={onAddAccount} onLogin={onLogin} />
+      <LibraryToolbar sources={sources} kinds={kinds as ListKind[]} counts={displayCounts} state={state} states={states} scrolled={scrolled} onAddAccount={onAddAccount} onLogin={onLogin} />
       <div className="min-w-0 px-12 py-4">
         {error ? <div role="alert">{t("error.load")}<Button variant="outline" size="sm" className="ml-3" onClick={reload}>{t("error.retry")}</Button></div>
-          : <LibraryGrid scope={filters.scope} kind={filters.kind} type={filters.type} query={filters.query} sort={ordering.sort} version={visibleVersion} syncing={syncing} onOpen={openEntry} onItemsChange={handleItems} onTotalChange={handleTotal} onGeometry={setGeometry} />}
+          : <LibraryGrid key={JSON.stringify([filters.scope.accountId, filters.scope.source, filters.scope.folderId, filters.kind, filters.type, filters.query, ordering.sort])} scope={filters.scope} kind={filters.kind} type={filters.type} query={filters.query} sort={ordering.sort} version={visibleVersion} syncing={syncing} onOpen={openEntry} onItemsChange={handleItems} onTotalChange={handleTotal} onGeometry={setGeometry} />}
       </div>
     </div>
     <div data-testid="timeline-reserved" className="pointer-events-none absolute top-0 right-0 h-full w-12">

@@ -44,7 +44,7 @@ export function SourceSelect({ sources, onAddAccount, compact = false }: { sourc
     </DropdownMenuTrigger></TooltipTrigger><TooltipContent>{label}</TooltipContent></Tooltip>
     <DropdownMenuContent align="start" className="w-64" onCloseAutoFocus={() => setExpanded(false)}>
       <DropdownMenuRadioGroup value={value} onValueChange={select}>
-        <DropdownMenuRadioItem value="all" className="h-8 text-[13px]"><Users className="size-3.5" />{t("toolbar.source.all")}</DropdownMenuRadioItem>
+        {sources.reduce((count, source) => count + source.accounts.length, 0) > 1 && <DropdownMenuRadioItem value="all" className="h-8 text-[13px]"><Users className="size-3.5" />{t("toolbar.source.all")}</DropdownMenuRadioItem>}
         {sources.map((source) => <div key={source.id}>
           <DropdownMenuLabel className="flex items-center gap-2 text-xs text-muted-foreground"><SourceIcon source={source.id} />{source.name}</DropdownMenuLabel>
           {source.accounts.length >= 2 && <DropdownMenuRadioItem value={`source:${source.id}`} className="h-8 text-[13px]"><SourceIcon source={source.id} />{t("toolbar.source.platform", { name: source.name })}</DropdownMenuRadioItem>}

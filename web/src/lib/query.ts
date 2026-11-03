@@ -1,4 +1,5 @@
 import { QueryClient, queryOptions } from "@tanstack/react-query";
+import { libraryScope } from "./library-filters";
 import { getLibrarySource, type LibraryEntry, type MediaResult, type Scope } from "./library";
 
 /** One client for the whole app, so data outlives the page that asked for it. */
@@ -12,12 +13,21 @@ export const queryKeys = {
   counts: (scope: Scope) => ["counts", scope.source ?? "", scope.accountId ?? ""] as const,
   grid: (filterKey: string) => ["grid", filterKey] as const,
   timeline: (filterKey: string) => ["timeline", filterKey] as const,
-  media: (kind: string, id: string, partId?: string) => partId ? ["media", kind, id, partId] as const : ["media", kind, id] as const,
+  media: (kind: string, id: string, partId?: string, accountId = libraryScope().accountId ?? "") => ["media", accountId, kind, id, partId ?? ""] as const,
 };
 
 // Grid lists hold thousands of slots and change a page at a time; comparing them deeply on every
 // update would cost more than it saves.
 queryClient.setQueryDefaults(["grid"], { structuralSharing: false });
+
+/** Folder names come from SQLite; sync and successful actions invalidate this cache. */
+export function foldersQuery(accountId: string) {
+  return queryOptions({
+    queryKey: ["folders", accountId],
+    queryFn: () => getLibrarySource().folders(accountId),
+    staleTime: Infinity,
+  });
+}
 
 // Play URLs are reused for half an hour, or until the CDN says they expire.
 const MEDIA_FRESH = 30 * 60_000;
@@ -30,9 +40,10 @@ function mediaFreshness(media: MediaResult | undefined) {
 
 /** mediaQuery resolves the playable media of one item. */
 export function mediaQuery(entry: Pick<LibraryEntry, "kind" | "id">, full = false, partId?: string) {
+  const accountId = libraryScope().accountId ?? "";
   return queryOptions({
-    queryKey: queryKeys.media(entry.kind, entry.id, partId),
-    queryFn: () => getLibrarySource().media(entry.kind, entry.id, full, partId),
+    queryKey: queryKeys.media(entry.kind, entry.id, partId, accountId),
+    queryFn: () => getLibrarySource().media(entry.kind, entry.id, full, partId, accountId),
     staleTime: (query) => mediaFreshness(query.state.data),
     gcTime: MEDIA_FRESH,
     structuralSharing: false,
@@ -41,8 +52,9 @@ export function mediaQuery(entry: Pick<LibraryEntry, "kind" | "id">, full = fals
 
 /** refreshMedia asks for new play URLs and replaces the cached ones. */
 export async function refreshMedia(entry: Pick<LibraryEntry, "kind" | "id">, partId?: string): Promise<MediaResult> {
-  const media = await getLibrarySource().media(entry.kind, entry.id, true, partId);
-  queryClient.setQueryData(queryKeys.media(entry.kind, entry.id, partId), media);
+  const accountId = libraryScope().accountId ?? "";
+  const media = await getLibrarySource().media(entry.kind, entry.id, true, partId, accountId);
+  queryClient.setQueryData(queryKeys.media(entry.kind, entry.id, partId, accountId), media);
   return media;
 }
 

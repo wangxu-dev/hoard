@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -46,6 +47,9 @@ func classifyResponse(operation string, httpStatus int, statusCode int64, status
 		return ResponseVerificationRequired
 	}
 	if operation == "self" {
+		if statusCode == 8 {
+			return ResponseAuthRequired
+		}
 		if statusCode == 0 && !envelopeOnly {
 			return ResponseOK
 		}
@@ -177,7 +181,7 @@ func (a *Engine) Identity(ctx context.Context) (Identity, error) {
         detail: ''
       };
     }
-    return { loggedIn: false, nickname: '', uid: '', detail: 'IDENTITY_UNAVAILABLE', authRequired: res.status === 401 || res.status === 403 || (res.ok && data?.status_code === 0 && !user?.sec_uid) };
+    return { loggedIn: false, nickname: '', uid: '', detail: 'IDENTITY_UNAVAILABLE', diagnostic: {status: res.status, body: text}, authRequired: res.status === 401 || res.status === 403 || (res.ok && data?.status_code === 0 && !user?.sec_uid) };
   } catch (e) {
     return { loggedIn: false, nickname: '', uid: '', detail: 'NETWORK_FAILED' };
   }
@@ -185,11 +189,18 @@ func (a *Engine) Identity(ctx context.Context) (Identity, error) {
 	if err != nil {
 		return Identity{}, err
 	}
-	state, err := decode[Identity](v)
+	state, err := decode[struct {
+		Identity
+		Diagnostic PageReply `json:"diagnostic"`
+	}](v)
 	if err != nil {
 		return Identity{}, err
 	}
-	return state, nil
+	if state.Detail == "IDENTITY_UNAVAILABLE" {
+		state.AuthRequired = state.AuthRequired || ParseProfile(state.Diagnostic).Class == ResponseAuthRequired
+		log.Printf("[hoard:douyin] identity unavailable %s", ProfileDiagnostics(state.Diagnostic))
+	}
+	return state.Identity, nil
 }
 
 func (a *Engine) FetchLikes(cursor string) (LikesResult, error) {

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { ListKind, Scope, SortKey, WorkType } from "./library";
+import type { ListKind, Scope, SortKey, SourceGroup, WorkType } from "./library";
 
 interface LibraryFilters {
   scope: Scope;
@@ -16,7 +16,24 @@ export const sortOptions = [
 ] as const;
 export const defaultSort: SortKey = sortOptions[0].value;
 let preferredSort: SortKey = defaultSort;
-let state: LibraryFilters = { scope: {}, kind: "like", type: "all", query: "", queryInput: "", sort: defaultSort };
+let savedScope: Scope = {};
+try {
+  const saved: unknown = JSON.parse(localStorage.getItem("hoard-library-scope") ?? "{}");
+  if (saved && typeof saved === "object") {
+    const value = saved as Record<string, unknown>;
+    savedScope = { source: typeof value.source === "string" ? value.source : undefined, accountId: typeof value.accountId === "string" ? value.accountId : undefined };
+  }
+} catch { /* Storage can be unavailable. */ }
+let state: LibraryFilters = { scope: savedScope, kind: "like", type: "all", query: "", queryInput: "", sort: defaultSort };
+export const libraryScope = () => state.scope;
+export function reconcileLibraryScope(sources: SourceGroup[]) {
+  const accounts = sources.flatMap((group) => group.accounts);
+  if (!accounts.length) return;
+  const selected = accounts.length === 1 ? accounts[0] : accounts.find((account) => account.id === state.scope.accountId);
+  const scope = selected ? { source: selected.source, accountId: selected.id }
+    : state.scope.accountId || (state.scope.source && !sources.some((group) => group.id === state.scope.source)) ? {} : state.scope;
+  if (scope.source !== state.scope.source || scope.accountId !== state.scope.accountId) setLibraryFilters({ scope });
+}
 const listeners = new Set<() => void>();
 let queryTimer: ReturnType<typeof setTimeout>;
 const emit = () => listeners.forEach((fn) => fn());
@@ -36,6 +53,9 @@ export function setLibraryFilters(patch: Partial<LibraryFilters>) {
       state = { ...state, query: state.queryInput };
       emit();
     }, 150);
+  }
+  if (patch.scope) {
+    try { localStorage.setItem("hoard-library-scope", JSON.stringify({ source: state.scope.source, accountId: state.scope.accountId })); } catch { /* Storage can be unavailable. */ }
   }
   emit();
 }

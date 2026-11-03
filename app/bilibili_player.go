@@ -39,12 +39,13 @@ func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord, reque
 	defer cancel()
 	stop := context.AfterFunc(session, cancel)
 	defer stop()
-	p.app.frontRequests.Add(1)
-	defer p.app.frontRequests.Add(-1)
+	gate := p.requestApp()
+	gate.frontRequests.Add(1)
+	defer gate.frontRequests.Add(-1)
 	read := func(path string, params map[string]string) ([]byte, error) {
-		p.app.requestMu.Lock()
-		defer p.app.requestMu.Unlock()
-		if delay := time.Until(p.app.lastRequest.Add(pageGap)); delay > 0 && !wait(call, delay) {
+		gate.requestMu.Lock()
+		defer gate.requestMu.Unlock()
+		if delay := time.Until(gate.lastRequest.Add(pageGap)); delay > 0 && !wait(call, delay) {
 			return nil, errors.New("CANCELED")
 		}
 		if call.Err() != nil {
@@ -52,7 +53,7 @@ func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord, reque
 		}
 		for {
 			body, err := engine.ReadBilibili(call, path, params)
-			p.app.lastRequest = time.Now()
+			gate.lastRequest = time.Now()
 			if err == nil || err.Error() != "NOT_READY" {
 				return body, err
 			}
@@ -160,24 +161,24 @@ func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord, reque
 			defer cancel()
 			client := bilibili.Client{Persist: p.app.bilibiliPersistence(), Read: func(ctx context.Context, path string, params map[string]string) ([]byte, error) {
 				for {
-					p.app.requestMu.Lock()
-					if p.app.frontRequests.Load() == 0 {
+					gate.requestMu.Lock()
+					if gate.frontRequests.Load() == 0 {
 						break
 					}
-					p.app.requestMu.Unlock()
+					gate.requestMu.Unlock()
 					if !wait(ctx, 20*time.Millisecond) {
 						return nil, ctx.Err()
 					}
 				}
-				defer p.app.requestMu.Unlock()
-				if delay := time.Until(p.app.lastRequest.Add(pageGap)); delay > 0 && !wait(ctx, delay) {
+				defer gate.requestMu.Unlock()
+				if delay := time.Until(gate.lastRequest.Add(pageGap)); delay > 0 && !wait(ctx, delay) {
 					return nil, ctx.Err()
 				}
 				if err := ctx.Err(); err != nil {
 					return nil, err
 				}
 				body, err := engine.ReadBilibili(ctx, path, params)
-				p.app.lastRequest = time.Now()
+				gate.lastRequest = time.Now()
 				return body, err
 			}}
 			if err := client.Observe(ctx, p.app.Store, accountID, bilibili.Video{ID: rec.RemoteID, AID: archive.AID}); err != nil && ctx.Err() == nil {

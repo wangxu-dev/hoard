@@ -13,7 +13,9 @@ func TestClassifyResponseByOperation(t *testing.T) {
 		envelope bool
 		want     ResponseClass
 	}{
-		{"self risk code is not risk", "self", 200, 8, "", `{"status_code":8}`, false, ResponseNotReady},
+		{"self logged out", "self", 200, 8, "用户未登录", `{"status_code":8}`, false, ResponseAuthRequired},
+		{"self unknown error", "self", 200, 42, "", `{"status_code":42}`, false, ResponseNotReady},
+		{"self captcha before auth", "self", 200, 8, "需要验证", "", false, ResponseVerificationRequired},
 		{"self success", "self", 200, 0, "", `{"status_code":0}`, false, ResponseOK},
 		{"self missing identity", "self", 200, 0, "", `{"status_code":0}`, true, ResponseNotReady},
 		{"auth", "list", 401, 0, "", "", false, ResponseAuthRequired},

@@ -15,6 +15,7 @@ import (
 	"github.com/wangxu-dev/hoard/internal/bilibili"
 	"github.com/wangxu-dev/hoard/internal/covers"
 	"github.com/wangxu-dev/hoard/internal/douyin"
+	"github.com/wangxu-dev/hoard/internal/source"
 	"github.com/wangxu-dev/hoard/internal/store"
 )
 
@@ -59,9 +60,13 @@ type MediaResult struct {
 // Player resolves playable media for the viewer. It keeps no URLs: the
 // frontend caches results while they are fresh and asks again when one fails.
 type Player struct {
-	app      *App
-	mu       sync.Mutex
-	inflight map[string]*playerCall
+	gate       *App
+	engine     func() AccountEngine
+	sessionsMu sync.Mutex
+	sessions   map[string]*playbackSession
+	app        *App
+	mu         sync.Mutex
+	inflight   map[string]*playerCall
 }
 
 type playerCall struct {
@@ -71,7 +76,16 @@ type playerCall struct {
 }
 
 func NewPlayer(a *App) *Player {
-	return &Player{app: a, inflight: map[string]*playerCall{}}
+	p := &Player{app: a, inflight: map[string]*playerCall{}, sessions: map[string]*playbackSession{}, engine: func() AccountEngine { return source.NewEngine() }}
+	a.playback = p
+	return p
+}
+
+func (p *Player) requestApp() *App {
+	if p.gate != nil {
+		return p.gate
+	}
+	return p.app
 }
 
 func mediaExpiry(raw string) time.Time {
@@ -125,16 +139,16 @@ func mediaTTL(detail douyin.Detail) time.Time {
 // A gallery answers at once from its cached images; Refresh then adds its
 // sound and live photos.
 func (p *Player) Media(kind, id string) (MediaResult, error) {
-	return p.media(kind, id, false)
+	return p.Resolve(kind, id, "", false, "")
 }
 
 // Refresh forces one fresh detail request after the current media candidates fail.
 func (p *Player) Refresh(kind, id string) (MediaResult, error) {
-	return p.media(kind, id, true)
+	return p.Resolve(kind, id, "", true, "")
 }
 
 func (p *Player) Part(id, partID string, refresh bool) (MediaResult, error) {
-	return p.media("video", id, refresh, partID)
+	return p.Resolve("video", id, "", refresh, partID)
 }
 
 func (p *Player) media(kind, id string, force bool, partID ...string) (out MediaResult, resultErr error) {
@@ -280,23 +294,29 @@ func (p *Player) detail(ctx context.Context, id string) (douyin.Detail, error) {
 	stop := context.AfterFunc(session, cancel)
 	defer stop()
 	// Playback waits on this request, so the next sync page goes after it.
-	p.app.frontRequests.Add(1)
-	defer p.app.frontRequests.Add(-1)
-	p.app.requestMu.Lock()
-	if !p.app.lastRequest.IsZero() {
-		if d := 1200*time.Millisecond - time.Since(p.app.lastRequest); d > 0 && !wait(call, d) {
-			p.app.requestMu.Unlock()
+	gate := p.requestApp()
+	gate.frontRequests.Add(1)
+	defer gate.frontRequests.Add(-1)
+	gate.requestMu.Lock()
+	if !gate.lastRequest.IsZero() {
+		if d := 1200*time.Millisecond - time.Since(gate.lastRequest); d > 0 && !wait(call, d) {
+			gate.requestMu.Unlock()
 			return douyin.Detail{}, errors.New("CANCELED")
 		}
 	}
 	if call.Err() != nil {
-		p.app.requestMu.Unlock()
+		gate.requestMu.Unlock()
 		return douyin.Detail{}, errors.New("CANCELED")
 	}
 	reply, err := eng.Request(call, douyin.OpDetail, map[string]string{"aweme_id": id})
-	p.app.lastRequest = time.Now()
-	p.app.requestMu.Unlock()
+	gate.lastRequest = time.Now()
+	gate.requestMu.Unlock()
 	if err != nil {
+		log.Print("[hoard:player] detail request failed stage=session-request")
+		switch err.Error() {
+		case "PAGE_NOT_READY", "SESSION_REQUIRED", "UNSUPPORTED_SOURCE":
+			return douyin.Detail{}, errors.New("SESSION_NOT_READY")
+		}
 		return douyin.Detail{}, errors.New("REQUEST_FAILED")
 	}
 	detail := douyin.ParseDetail(reply)
@@ -328,6 +348,11 @@ func (p *Player) detail(ctx context.Context, id string) (douyin.Detail, error) {
 func (p *Player) confirmPlaybackLogin(ctx context.Context) {
 	if ctx.Err() == nil {
 		_, _ = p.app.CheckLogin()
+		if p.gate != nil {
+			p.gate.mu.Lock()
+			p.gate.emitLocked()
+			p.gate.mu.Unlock()
+		}
 	}
 }
 

@@ -119,6 +119,15 @@
   }
 }
 
+[data-slot="sidebar-container"],
+[data-slot="sidebar-gap"] {
+  transition-duration: var(--duration-slow);
+}
+
+[data-sidebar-brand-icon] {
+  transition: opacity var(--duration-sidebar) var(--ease-out);
+}
+
 /* Collapsed rail buttons are all 40px squares 8px from the left edge, like the toggle above them. */
 [data-slot="sidebar"][data-state="collapsed"] [data-sidebar="menu"] {
   align-items: flex-start;
@@ -130,12 +139,14 @@
 
 [data-slot="sidebar"][data-state="collapsed"] [data-sidebar="trigger"] {
   opacity: 0;
-  transition: opacity var(--duration-sidebar) var(--ease-out);
 }
 
-[data-slot="sidebar"][data-state="collapsed"]:hover [data-sidebar="trigger"],
-[data-slot="sidebar"][data-state="collapsed"] [data-sidebar="trigger"]:focus-visible {
+[data-slot="sidebar"][data-state="collapsed"] [data-sidebar-brand][data-hovered="true"] [data-sidebar="trigger"] {
   opacity: 1;
+}
+
+[data-slot="sidebar"][data-state="collapsed"] [data-sidebar-brand][data-hovered="true"] [data-sidebar-brand-icon] {
+  opacity: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -40,7 +40,9 @@ type App struct {
 	sessionCtx     context.Context
 	cancelSession  context.CancelFunc
 	changed        func([]Account)
+	loginBlocked   func(context.Context)
 	loggedIn       func()
+	playback       *Player
 	Engine         AccountEngine
 	Media          *relay.Relay
 	Covers         *covers.Cache

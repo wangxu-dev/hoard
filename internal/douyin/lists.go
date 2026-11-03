@@ -3,6 +3,7 @@ package douyin
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 )
 
@@ -210,6 +211,17 @@ func classify(op Operation, reply PageReply) (map[string]json.RawMessage, Respon
 		}
 	}
 	return obj, classifyResponse(string(op), reply.Status, code, msg, "", code == 0 && envelopeOnly(obj)), code
+}
+
+// ProfileDiagnostics records response shape without identity or response values.
+func ProfileDiagnostics(reply PageReply) string {
+	obj, valid := decodeObject(reply.Body)
+	code, _ := statusOf(obj)
+	var user map[string]json.RawMessage
+	_ = json.Unmarshal(obj["user"], &user)
+	var id string
+	_ = json.Unmarshal(user["sec_uid"], &id)
+	return fmt.Sprintf("http=%d bytes=%d json=%t status_present=%t code=%d envelope=%t user=%t user_id=%t", reply.Status, len(reply.Body), valid, len(obj["status_code"]) > 0, code, valid && envelopeOnly(obj), user != nil, id != "")
 }
 
 // ParseProfile reads profile/self.

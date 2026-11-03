@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -170,6 +171,9 @@ func (a *App) activateLocked(account store.Account, show bool) error {
 func (a *App) watchIdentity(ctx context.Context, waitForLogin bool) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
+	log.Print("[hoard:accounts] startup identity watcher started")
+	defer log.Print("[hoard:accounts] startup identity watcher stopped")
+	previous := ""
 	for {
 		select {
 		case <-ctx.Done():
@@ -179,6 +183,13 @@ func (a *App) watchIdentity(ctx context.Context, waitForLogin bool) {
 				return
 			}
 			state, err := a.CheckLogin()
+			// Only record state changes; identity values stay out of diagnostics.
+			status := a.Status()
+			diagnostic := fmt.Sprintf("logged_in=%t ready=%t loading=%t detail=%s failed=%t", state.LoggedIn, status.Ready, status.Loading, state.Detail, err != nil)
+			if diagnostic != previous {
+				log.Printf("[hoard:accounts] startup identity %s", diagnostic)
+				previous = diagnostic
+			}
 			if ctx.Err() != nil {
 				return
 			}
@@ -190,6 +201,13 @@ func (a *App) watchIdentity(ctx context.Context, waitForLogin bool) {
 					go a.loggedIn()
 				}
 				return
+			}
+			if a.loginBlocked != nil && (err != nil || state.Detail == "NOT_READY") {
+				if engine, ok := a.Engine.(interface {
+					PageState(context.Context) douyin.PageState
+				}); ok && engine.PageState(ctx).Captcha {
+					a.loginBlocked(ctx)
+				}
 			}
 			if err == nil && !waitForLogin && state.Detail == "AUTH_REQUIRED" {
 				return
@@ -210,7 +228,7 @@ func (a *App) saveLogin(ctx context.Context) {
 	defer a.mu.Unlock()
 	if ctx.Err() == nil && a.sessionCtx == ctx {
 		a.Engine.HideDouyin()
-		log.Print("[hoard:accounts] save login prompt dismissed; window hidden")
+		log.Print("[hoard:accounts] authenticated login window hidden")
 	}
 }
 
@@ -290,6 +308,9 @@ func (s *Accounts) SignOut(id string) error {
 	if id == a.accountID {
 		a.stopLocked()
 	}
+	if a.playback != nil {
+		a.playback.closeAccount(id)
+	}
 	clearErr := a.Engine.ClearSession(account.SessionName)
 	if err := a.signedOutLocked(id); err != nil {
 		return err
@@ -328,6 +349,9 @@ func (s *Accounts) Remove(id string) error {
 	}
 	if id == a.accountID {
 		a.stopLocked()
+	}
+	if a.playback != nil {
+		a.playback.closeAccount(id)
 	}
 	if err := a.Store.DeleteAccount(ctx, id); err != nil {
 		return errors.New("STORE_FAILED")
@@ -381,14 +405,26 @@ func (a *App) restoreLocked() error {
 	}
 	id, err := a.Store.Setting(ctx, "active_account")
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil
+		id, err = "", nil
 	}
 	if err != nil {
 		return errors.New("STORE_FAILED")
 	}
 	account, err := a.Store.Account(ctx, id)
 	if err != nil {
-		return errors.New("STORE_FAILED")
+		if !errors.Is(err, sql.ErrNoRows) {
+			return errors.New("STORE_FAILED")
+		}
+		accounts, listErr := a.Store.Accounts(ctx)
+		if listErr != nil {
+			return errors.New("STORE_FAILED")
+		}
+		for _, candidate := range accounts {
+			if candidate.Status == "active" {
+				return a.activateLocked(candidate, false)
+			}
+		}
+		return nil
 	}
 	return a.activateLocked(account, false)
 }
@@ -403,4 +439,7 @@ func CloseAccounts(a *App) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.stopLocked()
+	if a.playback != nil {
+		a.playback.closeAccount("")
+	}
 }

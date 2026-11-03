@@ -1,28 +1,40 @@
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { createContext, memo, useCallback, useContext, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { getLibrarySource, type LibraryEntry } from "@/lib/library";
+import type { LibraryEntry, ListKind, Scope, SourceGroup } from "@/lib/library";
 import { usePreviewOwners } from "@/lib/action-preview";
-import { useLibraryFilters } from "@/lib/library-filters";
 import { fixtureName } from "@/lib/demo";
 import type { ActionState } from "@/lib/api";
-import { actionField } from "@/lib/work-actions";
-import { queryKeys } from "@/lib/query";
+import { actionField, actionKey } from "@/lib/work-actions";
+import { queryClient } from "@/lib/query";
 
-export function EntryAccounts({ entry }: { entry: LibraryEntry }) {
+export const EntryAccountsContext = createContext<{ sources: SourceGroup[]; scope: Scope; kind: ListKind }>({ sources: [], scope: {}, kind: "like" });
+
+function RealOwners({ entry }: { entry: LibraryEntry }) {
+  const { sources, scope, kind } = useContext(EntryAccountsContext);
+  const accounts = sources.find((group) => group.id === (entry.source ?? "douyin"))?.accounts ?? [];
+  const snapshot = () => accounts.filter((account) => {
+    if (scope.accountId && scope.accountId !== account.id) return false;
+    const state = queryClient.getQueryData<ActionState>(actionKey(account.id, entry.id));
+    return kind !== "music" && state ? state[actionField(kind)] : entry.accountIds?.includes(account.id);
+  }).map((account) => account.id).join(",");
+  const subscribe = useCallback((notify: () => void) => queryClient.getQueryCache().subscribe((event) => {
+    if (event.type === "updated" && event.query.queryKey[0] === "action-state" && event.query.queryKey[2] === entry.id) notify();
+  }), [entry.id]);
+  const owners = useSyncExternalStore(subscribe, snapshot);
+  return <Owners ids={owners ? owners.split(",") : []} />;
+}
+
+function PreviewOwners({ entry }: { entry: LibraryEntry }) {
+  const { kind } = useContext(EntryAccountsContext);
+  const owners = usePreviewOwners({ id: entry.id, source: entry.source, kind });
+  return <Owners ids={owners} />;
+}
+
+function Owners({ ids }: { ids: readonly string[] }) {
   const { t } = useTranslation("library");
-  const { data } = useQuery({ queryKey: queryKeys.sources, queryFn: () => getLibrarySource().sources(), staleTime: 60_000 });
-  const { scope, kind } = useLibraryFilters();
-  const preview = usePreviewOwners({ id: entry.id, source: entry.source, kind });
-  const ownerIds = fixtureName ? preview.filter((id) => !scope.accountId || id === scope.accountId) : entry.accountIds;
-  const allAccounts = data?.filter((source) => source.id === (entry.source ?? "douyin")).flatMap((source) => source.accounts) ?? [];
-  const states = useQueries({ queries: allAccounts.map((account) => ({ queryKey: ["action-state", account.id, entry.id], enabled: false, queryFn: async (): Promise<ActionState> => ({ liked: false, favorited: false, watchLater: false, folders: [] }) })) });
-  const accounts = allAccounts.filter((account, index) => {
-    if (scope.accountId && account.id !== scope.accountId) return false;
-    const state = states[index].data;
-    if (!fixtureName && state && kind !== "music") return state[actionField(kind)];
-    return ownerIds?.includes(account.id);
-  });
+  const { sources, scope } = useContext(EntryAccountsContext);
+  const accounts = sources.flatMap((source) => source.accounts).filter((account) => ids.includes(account.id) && (!scope.accountId || scope.accountId === account.id));
   if (!accounts.length) return null;
   return <div data-entry-accounts role="group" tabIndex={0}
     aria-label={`${t("accounts.owners", { count: accounts.length })}: ${accounts.map((account) => account.nickname).join(", ")}`}
@@ -35,3 +47,7 @@ export function EntryAccounts({ entry }: { entry: LibraryEntry }) {
     </Avatar>)}
   </div>;
 }
+
+export const EntryAccounts = memo(function EntryAccounts({ entry }: { entry: LibraryEntry }) {
+  return fixtureName ? <PreviewOwners entry={entry} /> : <RealOwners entry={entry} />;
+});

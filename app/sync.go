@@ -83,8 +83,37 @@ type Sync struct {
 func NewSync(a *App) *Sync {
 	s := &Sync{app: a, views: map[string]SyncView{}}
 	a.loggedIn = func() {
-		if err := s.Start(); err != nil {
+		if err := s.AutoStart(); err != nil {
 			log.Printf("[hoard:sync] auto start skipped: %v", err)
+		}
+	}
+	a.loginBlocked = func(ctx context.Context) {
+		a.mu.Lock()
+		id, current := a.accountID, a.sessionCtx
+		a.mu.Unlock()
+		if current != ctx || ctx.Err() != nil {
+			return
+		}
+		s.mu.Lock()
+		status := s.views[viewKey(id, "like")].Status
+		s.mu.Unlock()
+		if status == "blocked" || status == "verifying" {
+			return
+		}
+		records, err := a.Store.SyncRecords(ctx, id)
+		if err != nil {
+			return
+		}
+		byKind := map[string]store.SyncRecord{}
+		for _, record := range records {
+			byKind[record.Kind] = record
+		}
+		for _, kind := range syncKinds {
+			record := byKind[kind]
+			record.Kind = kind
+			view := toView(id, record)
+			view.Status, view.ErrorCode = "blocked", "NEED_VERIFY"
+			s.emit(view)
 		}
 	}
 	return s
@@ -156,8 +185,13 @@ func (s *Sync) States() ([]SyncView, error) {
 	return out, nil
 }
 
-// Start syncs the active account in the background. A running sync continues.
-func (s *Sync) Start() error {
+// AutoStart applies the per-account freshness rule after session restoration.
+func (s *Sync) AutoStart() error { return s.start(true) }
+
+// Start explicitly syncs the active account, regardless of freshness.
+func (s *Sync) Start() error { return s.start(false) }
+
+func (s *Sync) start(automatic bool) error {
 	log.Print("[hoard:sync] start requested")
 	a := s.app
 	a.mu.Lock()
@@ -174,6 +208,20 @@ func (s *Sync) Start() error {
 	if _, ok := a.Engine.(SyncEngine); !ok {
 		log.Print("[hoard:sync] start rejected: engine unavailable")
 		return errors.New("SYNC_UNAVAILABLE")
+	}
+	if automatic {
+		account, err := a.Store.Account(ctx, accountID)
+		if err != nil {
+			return errors.New("STORE_FAILED")
+		}
+		records, err := a.Store.SyncRecords(ctx, accountID)
+		if err != nil {
+			return errors.New("STORE_FAILED")
+		}
+		if !automaticSyncDue(account.Source, records, time.Now().Unix()) {
+			log.Print("[hoard:sync] auto start skipped: account synced within 180 seconds")
+			return nil
+		}
 	}
 	s.mu.Lock()
 	if s.running == accountID && s.runCtx != nil && s.runCtx.Err() == nil {
@@ -371,7 +419,7 @@ func (s *Sync) run(ctx context.Context, accountID string) {
 		} else {
 			profile = douyin.ParseProfile(reply)
 		}
-		log.Printf("[hoard:sync] self class=%s http=%d", profile.Class, reply.Status)
+		log.Printf("[hoard:sync] self class=%s %s", profile.Class, douyin.ProfileDiagnostics(reply))
 		if profile.Class != douyin.ResponseNotReady {
 			break
 		}
