@@ -18,7 +18,8 @@ import type { ActionState } from "@/lib/api";
 import { queryKeys } from "@/lib/query";
 import { actionField, actionKey, useWorkAction } from "@/lib/work-actions";
 
-const activeColor = (kind: ActionKind) => kind === "like" ? "text-(--action-like)" : kind === "favorite" ? "text-(--action-favorite)" : "text-primary";
+const activeColor = (kind: ActionKind) => kind === "like" ? "text-(--action-like)" : kind === "favorite" ? "text-(--action-favorite)" : "text-(--action-watch-later)";
+const activeIcon = (kind: ActionKind) => `${kind === "watch_later" ? "" : "fill-current "}${activeColor(kind)}`;
 const iconFor = (target: ActionTarget) => target.kind === "like" ? target.source === "bilibili" ? ThumbsUp : Heart : target.kind === "favorite" ? Star : target.kind === "watch_later" ? Clock : Music2;
 const labelKey = (target: ActionTarget, on: boolean) => `actions.${on ? "remove" : "add"}.${target.kind === "like" && target.source === "bilibili" ? "bilibili_like" : target.kind}`;
 
@@ -36,10 +37,10 @@ function AccountControl({ target, account, compact, on, pending, perform }: { ta
   const label = t(unavailable ? "actions.login" : labelKey(target, on));
   const chooseFolders = target.source === "bilibili" && target.kind === "favorite" && !target.id.startsWith("opus:");
   const button = compact ? <ControlButton label={label} side="left" className="size-10 bg-viewer-control backdrop-blur-md" aria-pressed={on} aria-busy={pending} disabled={unavailable} onClick={chooseFolders ? undefined : () => perform(!on)}>
-    <Icon className={on ? `fill-current ${activeColor(target.kind)}` : ""} />
+    <Icon className={on ? activeIcon(target.kind) : ""} />
   </ControlButton> : <Button variant="ghost" className="relative size-10 shrink-0 rounded-full p-0" aria-label={`${account.nickname} · ${label}`} disabled={unavailable} aria-pressed={on} aria-busy={pending} onClick={chooseFolders ? undefined : () => perform(!on)}>
     <Avatar className="size-10"><AvatarImage src={account.avatarUrl} alt="" /><AvatarFallback>{account.nickname.slice(0, 1)}</AvatarFallback></Avatar>
-    <span className="absolute -right-1 -bottom-1 rounded-full bg-popover p-0.5"><Icon className={`size-3 ${on ? `fill-current ${activeColor(target.kind)}` : "text-muted-foreground"}`} /></span>
+    <span className="absolute -right-1 -bottom-1 rounded-full bg-popover p-0.5"><Icon className={`size-3 ${on ? activeIcon(target.kind) : "text-muted-foreground"}`} /></span>
   </Button>;
   if (!chooseFolders) return compact ? button : <Tooltip delayDuration={0}><TooltipTrigger asChild>{button}</TooltipTrigger><TooltipContent side="top" className="z-[80]">{account.nickname} · {label}</TooltipContent></Tooltip>;
   return <Popover open={open} onOpenChange={setOpen}><PopoverTrigger asChild>{button}</PopoverTrigger>
@@ -78,7 +79,7 @@ function ActionButton({ target }: { target: ActionTarget }) {
   </Popover>;
 }
 
-const kindsFor = (entry: LibraryEntry): ActionKind[] => entry.kind === "music" ? ["music"] : entry.source === "bilibili" && entry.kind === "video" ? ["like", "favorite", "watch_later"] : ["like", "favorite"];
+const kindsFor = (entry: LibraryEntry): ActionKind[] => entry.kind === "music" ? ["music"] : entry.source === "bilibili" ? entry.kind === "video" ? ["favorite", "watch_later"] : ["favorite"] : ["like", "favorite"];
 
 export function ViewerActions({ entry }: { entry: LibraryEntry }) {
   const { t } = useTranslation("library");
@@ -95,7 +96,7 @@ function MenuActionLabel({ entry, kind }: { entry: LibraryEntry; kind: ActionKin
   const local = kind === "like" ? entry.likedAccountIds : kind === "watch_later" ? entry.watchLaterAccountIds : entry.favoritedAccountIds;
   const on = !!single && (fixtureName ? preview.includes(single) : state?.[actionField(kind)] ?? local?.includes(single));
   const Icon = iconFor(target);
-  return <><Icon className={on ? `fill-current ${activeColor(kind)}` : ""} />{t(on ? labelKey(target, true) : `actions.label.${kind === "like" && entry.source === "bilibili" ? "bilibili_like" : kind}`)}</>;
+  return <><Icon className={on ? activeIcon(kind) : ""} />{t(on ? labelKey(target, true) : `actions.label.${kind === "like" && entry.source === "bilibili" ? "bilibili_like" : kind}`)}</>;
 }
 
 export function EntryActionMenu({ entry, children, onPlay }: { entry: LibraryEntry; children: ReactNode; onPlay: () => void }) {
