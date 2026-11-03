@@ -19,6 +19,7 @@ func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord) (Medi
 		Source() string
 	})
 	if !ok || engine.Source() != "bilibili" {
+		log.Printf("[hoard:player] Bilibili session unavailable supported=%t source_match=%t", ok, ok && engine.Source() == "bilibili")
 		return MediaResult{}, errors.New("AUTH_REQUIRED")
 	}
 	p.app.mu.Lock()
