@@ -220,8 +220,9 @@ func (a *App) saveLogin(ctx context.Context) {
 	engine, ok := a.Engine.(interface{ SaveLogin(context.Context) bool })
 	if !ok || !engine.SaveLogin(ctx) {
 		if ctx.Err() == nil {
-			log.Print("[hoard:accounts] save login not confirmed; hiding authenticated window")
+			log.Print("[hoard:accounts] save login not confirmed; window kept open")
 		}
+		return
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()

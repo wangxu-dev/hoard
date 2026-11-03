@@ -13,6 +13,19 @@
         const text = (el.innerText || '').trim();
         return visible(el) && text.includes('保存登录信息') && text.length < 500;
       });
+      const switches = new Set();
+      for (const prompt of prompts) {
+        for (const control of prompt.querySelectorAll('[role="switch"], input[type="checkbox"]')) {
+          if (visible(control)) switches.add(control);
+        }
+      }
+      if (switches.size === 1) {
+        const control = [...switches][0];
+        const checked = control.getAttribute('aria-checked');
+        if (checked === 'true' || control.checked === true) return true;
+        // Leave an off or unreadable switch visible instead of claiming it was saved.
+        return false;
+      }
       const buttons = new Set();
       for (const prompt of prompts) {
         for (const button of prompt.querySelectorAll('button, [role="button"]')) {
