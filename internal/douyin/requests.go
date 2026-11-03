@@ -47,6 +47,9 @@ func classifyResponse(operation string, httpStatus int, statusCode int64, status
 		return ResponseVerificationRequired
 	}
 	if operation == "self" {
+		if statusCode == 8 {
+			return ResponseAuthRequired
+		}
 		if statusCode == 0 && !envelopeOnly {
 			return ResponseOK
 		}
@@ -194,6 +197,7 @@ func (a *Engine) Identity(ctx context.Context) (Identity, error) {
 		return Identity{}, err
 	}
 	if state.Detail == "IDENTITY_UNAVAILABLE" {
+		state.AuthRequired = state.AuthRequired || ParseProfile(state.Diagnostic).Class == ResponseAuthRequired
 		log.Printf("[hoard:douyin] identity unavailable %s", ProfileDiagnostics(state.Diagnostic))
 	}
 	return state.Identity, nil

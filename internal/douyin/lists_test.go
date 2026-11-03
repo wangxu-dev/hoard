@@ -41,8 +41,8 @@ func TestParseMusicAndProfile(t *testing.T) {
 	if p.Class != ResponseOK || len(p.Musics) != 1 || p.Musics[0].DurationMS != 30000 {
 		t.Fatalf("unexpected music page: %+v", p)
 	}
-	if got := ParseProfile(PageReply{Status: 200, Body: `{"status_code":8}`}).Class; got != ResponseNotReady {
-		t.Fatalf("self code 8 must not be risk, got %s", got)
+	if got := ParseProfile(PageReply{Status: 200, Body: `{"status_code":8}`}).Class; got != ResponseAuthRequired {
+		t.Fatalf("self code 8 must require login, got %s", got)
 	}
 	pr := ParseProfile(PageReply{Status: 200, Body: `{"status_code":0,"user":{"sec_uid":"MS4wLjABAAAA","favoriting_count":12}}`})
 	if pr.Class != ResponseOK || pr.Likes != 12 {
