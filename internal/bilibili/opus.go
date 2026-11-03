@@ -236,7 +236,7 @@ func (c Client) indexOpus(ctx context.Context, db *store.Store, accountID string
 			}
 			enriched = append(enriched, works[i])
 		}
-		if _, err = db.SaveWorks(ctx, accountID, "favorite", false, enriched); err != nil {
+		if err = c.persist(ctx, func() error { _, err := db.SaveWorks(ctx, accountID, "favorite", false, enriched); return err }); err != nil {
 			return err
 		}
 		if c.Changed != nil {

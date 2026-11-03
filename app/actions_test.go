@@ -22,9 +22,12 @@ type actionFake struct {
 	session  string
 }
 
-func (f *actionFake) UseSession(name string, _ bool) error { f.session = name; return nil }
-func (f *actionFake) Close()                               {}
-func (f *actionFake) Status() douyin.Status                { return douyin.Status{Ready: true} }
+func (f *actionFake) UseSourceSession(_ string, name string, _ bool) error {
+	f.session = name
+	return nil
+}
+func (f *actionFake) Close()                {}
+func (f *actionFake) Status() douyin.Status { return douyin.Status{Ready: true} }
 func (f *actionFake) Identity(context.Context) (douyin.Identity, error) {
 	return douyin.Identity{LoginState: douyin.LoginState{LoggedIn: true}, RemoteID: f.identity}, nil
 }

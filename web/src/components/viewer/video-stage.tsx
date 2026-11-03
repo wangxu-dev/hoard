@@ -4,8 +4,9 @@ import type { LibraryEntry, MediaResult } from "@/lib/library";
 import { claimPlayback, releaseMedia, togglePlay, useApplySound } from "@/lib/player";
 
 /** VideoStage plays one video, trying each candidate URL and then asking for fresh ones. */
-export function VideoStage({ entry, media, onElement, onExhausted, onDoubleClick }: {
+export function VideoStage({ entry, media, onElement, onExhausted, onDoubleClick, onNextPart }: {
   entry: LibraryEntry; media: MediaResult | null;
+  onNextPart?: () => void;
   onElement: (element: HTMLVideoElement | null) => void; onExhausted: (reason: string) => void; onDoubleClick: () => void;
 }) {
   const [element, setElement] = useState<HTMLVideoElement | null>(null);
@@ -23,15 +24,21 @@ export function VideoStage({ entry, media, onElement, onExhausted, onDoubleClick
   useEffect(() => { if (present) onElement(element); }, [element, present, onElement]);
   useEffect(() => () => releaseMedia(element), [element]);
   useEffect(() => { if (!present) element?.pause(); }, [present, element]);
-  useEffect(() => { setCandidate(0); }, [media]);
+  const partId = useRef(media?.partId);
+  useEffect(() => {
+    if (partId.current !== media?.partId) { resume.current = 0; setAudioOnly(false); }
+    partId.current = media?.partId;
+    setCandidate(0);
+    if (candidate === 0) element?.load();
+  }, [media]);
   const src = media?.videos[candidate];
   useEffect(() => {
     if (!element || !src || !present) return;
     claimPlayback(element);
     void element.play().catch(() => undefined);
-  }, [element, src]);
+  }, [element, src, media]);
   return <div className="relative size-full">
-    <video ref={setElement} data-testid="viewer-video" src={src} poster={entry.cover} playsInline loop preload="auto"
+    <video ref={setElement} data-testid="viewer-video" src={src} poster={entry.cover} playsInline loop={!onNextPart && !media?.previewMs} onEnded={media?.previewMs ? undefined : onNextPart} preload="auto"
     className="size-full object-contain"
     onClick={() => togglePlay(element)} onDoubleClick={onDoubleClick}
     onLoadedMetadata={(event) => { if (resume.current) { event.currentTarget.currentTime = resume.current; resume.current = 0; } }}

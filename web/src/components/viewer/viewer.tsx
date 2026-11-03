@@ -5,12 +5,13 @@ import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronUp, Maximize, Minimize, Music2, PanelRightClose, PanelRightOpen, Pause, Play, RotateCw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getLibrarySource, type LibraryEntry } from "@/lib/library";
 import { warmImage, type ListCursor } from "@/lib/library-cursor";
-import { setSound, togglePlay, useMediaState, useSound, pauseAll } from "@/lib/player";
+import { setSound, togglePlay, formatClock, useMediaState, useSound, pauseAll } from "@/lib/player";
 import { ControlButton, SeekBar, SpeedMenu, TimeLabel, VolumeControl } from "./controls";
 import { VideoStage } from "./video-stage";
 import { GalleryStage, type GalleryHandle } from "./gallery-stage";
@@ -70,7 +71,13 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
   const moving = useRef(false);
   const state = useMediaState(element);
   const sound = useSound();
-  const { media, error, loading, refresh, retry } = useMedia(entry);
+  const [part, setPart] = useState<{ key: string; id: string } | null>(null);
+  const entryKey = entry ? `${entry.kind}:${entry.id}` : "";
+  const partId = part?.key === entryKey ? part.id : undefined;
+  const { media, error, loading, refresh, retry } = useMedia(entry, partId);
+  const parts = media?.parts ?? [];
+  const partIndex = parts.findIndex((item) => item.id === media?.partId);
+  const nextPart = partIndex >= 0 && partIndex + 1 < parts.length ? () => setPart({ key: entryKey, id: parts[partIndex + 1].id }) : undefined;
 
   useEffect(() => { pauseAll(); }, []);
   useEffect(() => { if (!entry) void cursor.at(start).then(setEntry); }, []);
@@ -137,7 +144,7 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
   // Keys work wherever focus is, as long as no menu is open.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (document.querySelector('[role="menu"][data-state="open"], [data-slot="popover-content"][data-state="open"], [data-slot="dialog-content"][data-state="open"]')) return;
+      if (document.querySelector('[role="menu"][data-state="open"], [role="listbox"], [role="alertdialog"], [data-slot="popover-content"][data-state="open"], [data-slot="dialog-content"][data-state="open"]')) return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       const key = event.key;
       const handled = () => { event.preventDefault(); event.stopPropagation(); wake(); };
@@ -256,7 +263,7 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
             transition={{ duration: 0.42, ease: slideEase }} className="absolute inset-0">
             {isGallery
               ? <GalleryStage entry={entry} media={media} badgeSlot={badgeSlot} onElement={onElement} onHandle={setGallery} onSlide={onSlide} onExpired={refresh} />
-              : <VideoStage entry={entry} media={media} onElement={onElement} onExhausted={refresh} onDoubleClick={() => toggleFullscreen(root.current)} />}
+              : <VideoStage entry={entry} media={media} onNextPart={nextPart} onElement={onElement} onExhausted={refresh} onDoubleClick={() => toggleFullscreen(root.current)} />}
           </motion.div>}
         </AnimatePresence>
 
@@ -264,10 +271,11 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
         {error && !isGallery && <div role="alert" className="absolute inset-0 grid place-items-center">
           <div className="flex flex-col items-center gap-3 rounded-xl bg-viewer-scrim px-6 py-5 text-center backdrop-blur-md">
             <p className="text-sm font-medium">{t(`viewer.errors.${error}`, { defaultValue: t("viewer.unavailable") })}</p>
-            <Button size="sm" variant="secondary" onClick={retry} className="gap-1.5"><RotateCw className="size-3.5" />{t("viewer.retry")}</Button>
+            {error !== "PAID_CONTENT" && <Button size="sm" variant="secondary" onClick={retry} className="gap-1.5"><RotateCw className="size-3.5" />{t("viewer.retry")}</Button>}
           </div>
         </div>}
 
+        {!!media?.previewMs && !error && <div role="status" className="pointer-events-none absolute inset-x-4 top-20 flex justify-center"><p className="rounded-lg bg-viewer-scrim px-4 py-2 text-sm text-viewer-foreground backdrop-blur-md">{t("viewer.paidPreview", { duration: formatClock(media.previewMs / 1000) })}</p></div>}
         <div className={cn("absolute inset-x-0 top-0 flex h-16 items-center gap-2 bg-linear-to-b from-viewer-scrim to-transparent px-4", fade)}>
           <ControlButton label={t("viewer.close")} hint="Esc" side="bottom" onClick={close} className="bg-viewer-control backdrop-blur-md"><X /></ControlButton>
           <span data-testid="viewer-counter" className="ml-1 text-xs font-medium tabular-nums text-viewer-muted">{(index + 1).toLocaleString()} / {total.toLocaleString()}</span>
@@ -300,6 +308,10 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
               {slideInfo.count <= 12 && Array.from({ length: slideInfo.count }, (_, n) => <span key={n} className={cn("h-1 rounded-full transition-all duration-300", n === slideInfo.index ? "w-4 bg-viewer-foreground" : "w-1 bg-viewer-track")} />)}
               <span className="ml-1 text-xs font-medium tabular-nums text-viewer-muted">{slideInfo.index + 1} / {slideInfo.count}</span>
             </div>}
+            {parts.length > 1 && <Select value={media?.partId} onValueChange={(id) => setPart({ key: entryKey, id })}>
+              <SelectTrigger size="sm" aria-label={t("viewer.parts")} className="h-8 w-48 min-w-0 border-viewer-foreground/20 bg-viewer-control text-viewer-foreground"><SelectValue /></SelectTrigger>
+              <SelectContent position="popper" side="top" className="dark z-[80] max-h-80">{parts.map((item) => <SelectItem key={item.id} value={item.id}>{item.title}</SelectItem>)}</SelectContent>
+            </Select>}
             {!isGallery && <SpeedMenu rate={state.rate} onRate={(rate) => { if (element) element.playbackRate = rate; }} />}
             {hasSound && <VolumeControl />}
             <ControlButton label={fullscreen ? t("viewer.exitFullscreen") : t("viewer.fullscreen")} hint="F" onClick={() => toggleFullscreen(root.current)}>{fullscreen ? <Minimize /> : <Maximize />}</ControlButton>

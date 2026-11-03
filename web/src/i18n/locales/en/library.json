@@ -125,16 +125,20 @@
     "errors": {
       "NEED_VERIFY": "Douyin needs verification. Finish it, then retry",
       "COOLING": "Too many requests. Try again shortly",
-      "AUTH_REQUIRED": "Signed out. Sign in again",
+      "AUTH_REQUIRED": "Unable to confirm your session. Please retry.",
       "UNAVAILABLE": "This item can't be played right now",
       "REQUEST_FAILED": "The request failed",
       "CANCELED": "Canceled",
       "DELETED": "This item was deleted",
       "PRIVATE": "Only the creator can see this item",
       "REVIEWING": "This item is under review",
-      "WITHHELD": "This item can't be viewed right now"
+      "WITHHELD": "This item can't be viewed right now",
+      "SESSION_NOT_READY": "Connecting to your account. Please try again shortly.",
+      "PAID_CONTENT": "This video requires a purchase to play."
     },
-    "locate": "Show in library"
+    "locate": "Show in library",
+    "paidPreview": "This video has not been purchased. Preview available: {{duration}}",
+    "parts": "Episodes"
   },
   "grid": {
     "empty": "Nothing here yet. Choose Sync at the top right to bring in your Douyin items",
@@ -157,21 +161,35 @@
   "accounts": {
     "owners": "Linked accounts ({{count}})"
   },
+  "folders": {
+    "label": "Collections",
+    "all": "All collections",
+    "choose": "Choose collections",
+    "save": "Save",
+    "loading": "Loading",
+    "empty": "No collections yet"
+  },
   "actions": {
     "choose": "Choose an account",
     "preview": "Interaction preview · No platform changes",
     "more": "More actions",
     "label": {
+      "bilibili_like": "Like",
+      "watch_later": "Watch later",
       "like": "Like",
       "favorite": "Save",
       "music": "Save music"
     },
     "add": {
+      "bilibili_like": "Like",
+      "watch_later": "Add to watch later",
       "like": "Like",
       "favorite": "Save",
       "music": "Save music"
     },
     "remove": {
+      "bilibili_like": "Unlike",
+      "watch_later": "Remove from watch later",
       "like": "Unlike",
       "favorite": "Unsave",
       "music": "Unsave music"
@@ -184,5 +202,11 @@
     "loading": "Loading state…",
     "musicUnavailable": "Music saving is not available yet",
     "retry": "Retry loading state"
+  },
+  "session": {
+    "title": "Sign in again",
+    "description": "Your session for {{account}} has expired. Sign in again to continue.",
+    "later": "Later",
+    "login": "Sign in again"
   }
 }

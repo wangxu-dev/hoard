@@ -44,7 +44,7 @@ func (s *Store) SaveFolderMembership(ctx context.Context, accountID string, fold
 	return tx.Commit()
 }
 func (s *Store) Folders(ctx context.Context, accountID string) ([]Folder, error) {
-	rows, err := s.read.QueryContext(ctx, `SELECT remote_id,title,remote_count FROM folders WHERE account_id=? ORDER BY remote_id`, accountID)
+	rows, err := s.read.QueryContext(ctx, `SELECT remote_id,title,remote_count FROM folders WHERE account_id=? ORDER BY CASE WHEN title IN ('默认收藏夹','默认收藏') THEN 0 ELSE 1 END, length(remote_id) DESC, remote_id DESC`, accountID)
 	if err != nil {
 		return nil, err
 	}

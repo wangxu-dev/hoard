@@ -19,6 +19,9 @@ const sources: SourceGroup[] = [{ id: "douyin", name: "抖音", kinds: ["like", 
   { id: "demo-a", source: "douyin", nickname: "示例账号 A", avatarUrl: avatar("A"), status: "active", syncing: true },
   { id: "demo-b", source: "douyin", nickname: "示例账号 B", avatarUrl: avatar("B"), status: "signed_out", syncing: false },
 ] }];
+if (name === "bilibili") sources.splice(0, sources.length, { id: "bilibili", name: "哔哩哔哩", kinds: ["favorite", "watch_later"], accounts: [
+  { id: "demo-c", source: "bilibili", nickname: "示例账号 C", avatarUrl: avatar("C"), status: "active", syncing: false },
+] });
   let state: SyncState = { accountId: name === "login-required" ? "demo-b" : "demo-a", kind: "like", phase: name === "synced" ? "done" : "idle-real-layout" === name ? "idle" : "backfill",
     status: name === "login-required" ? "signed_out" : name === "idle-real-layout" ? "idle" : name === "cooling" ? "cooling" : name === "synced" ? "idle" : "running",
     items: name === "unknown-total" ? 340 : name === "synced" ? 10000 : 1240,
@@ -26,6 +29,8 @@ const sources: SourceGroup[] = [{ id: "douyin", name: "抖音", kinds: ["like", 
     etaSeconds: name === "unknown-total" ? undefined : 1080,
     retryAt: name === "cooling" ? Math.floor(Date.now() / 1000) + 118 : undefined };
   return {
+    async checkSession() {},
+    async folders() { return [{ id: "one", title: "旅行", count: 120 }, { id: "two", title: "音乐现场", count: 120 }]; },
     async sources() { return sources.map((g) => ({ ...g, accounts: g.accounts.map((a) => ({ ...a, syncing: a.id === "demo-a" && state.status === "running" })) })); },
     async counts(scope) { return scope.accountId === "demo-a" ? { like: 10000, favorite: 56, music: 78, watch_later: 0 }
       : scope.accountId === "demo-b" ? { like: 1234, favorite: 12, music: 0, watch_later: 0 } : { like: 10860, favorite: 68, music: 78, watch_later: 0 }; },
@@ -42,11 +47,11 @@ const sources: SourceGroup[] = [{ id: "douyin", name: "抖音", kinds: ["like", 
       return () => clearInterval(timer);
     },
     async list(q) {
-      const total = q.kind === "music" ? 78 : 240;
+      const total = q.scope.folderId ? 120 : q.kind === "music" ? 78 : 240;
       const items = Array.from({ length: Math.max(0, Math.min(q.limit, total - q.offset)) }, (_, i) => {
         const n = q.offset + i;
-        return { id: `demo-${q.kind}-${n}`, kind: q.kind === "music" ? "music" as const : n % 4 === 0 ? "gallery" as const : "video" as const,
-          accountIds: q.scope.accountId ? [q.scope.accountId] : n % 3 === 0 ? ["demo-a", "demo-b"] : ["demo-a"],
+        return { source: name === "bilibili" ? "bilibili" : "douyin", id: name === "bilibili" && n % 4 === 0 ? `opus:${1000 + n}` : `demo-${q.kind}-${n}`, kind: q.kind === "music" ? "music" as const : n % 4 === 0 ? "gallery" as const : "video" as const,
+          accountIds: name === "bilibili" ? ["demo-c"] : q.scope.accountId ? [q.scope.accountId] : n % 3 === 0 ? ["demo-a", "demo-b"] : ["demo-a"],
           title: `示例作品 ${n + 1}`, author: `作者 ${(n % 9) + 1}`, authorAvatar: q.kind === "music" ? undefined : avatar(String((n % 9) + 1)), cover: avatar(String((n % 9) + 1)), publishedAt: 1767000000 - n * 3600, durationMs: 15000 + n * 1000, imageCount: n % 4 === 0 ? 3 : 0 };
       });
       return { items, total };
@@ -55,7 +60,7 @@ const sources: SourceGroup[] = [{ id: "douyin", name: "抖音", kinds: ["like", 
       if (q.kind === "music" || q.sort !== "published") return [];
       // Hourly items, newest first, grouped by local month.
       const months: { year: number; month: number; count: number; start: number }[] = [];
-      for (let n = 0; n < 240; n++) {
+      for (let n = 0; n < (q.scope.folderId ? 120 : 240); n++) {
         const d = new Date((1767000000 - n * 3600 * 24) * 1000);
         const last = months[months.length - 1];
         if (last && last.year === d.getFullYear() && last.month === d.getMonth() + 1) last.count++;

@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SourceIcon } from "@/components/brand/source-icon";
 import { setLibraryFilters, useLibraryFilters } from "@/lib/library-filters";
-import { getLibrarySource, type SourceAccount, type SourceGroup } from "@/lib/library";
+import { type SourceAccount, type SourceGroup } from "@/lib/library";
 
 export type AccountSource = "douyin" | "bilibili";
 const platforms: AccountSource[] = ["douyin", "bilibili"];
@@ -18,7 +18,6 @@ function AccountAvatar({ account, small = false }: { account: SourceAccount; sma
 }
 export function SourceSelect({ sources, onAddAccount, compact = false }: { sources: SourceGroup[]; onAddAccount: (source: AccountSource) => void; compact?: boolean }) {
   const { t } = useTranslation("library");
-  const selection = useRef(0);
   const [expanded, setExpanded] = useState(false);
   const pointerInAdd = useRef(false);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -35,16 +34,7 @@ export function SourceSelect({ sources, onAddAccount, compact = false }: { sourc
   const label = account?.nickname ?? (group ? t("toolbar.source.platform", { name: group.name }) : t("toolbar.source.all"));
   const select = (next: string) => {
     const selected = sources.flatMap((s) => s.accounts).find((a) => `account:${a.id}` === next);
-    const request = ++selection.current;
     setLibraryFilters({ scope: selected ? { source: selected.source, accountId: selected.id } : next === "all" ? {} : { source: next.slice(7) } });
-    if (selected?.status === "active" && selected.id !== scope.accountId) {
-      const source = getLibrarySource();
-      void source.syncStates().then((states) => {
-        if (request !== selection.current) return;
-        const lastSync = Math.max(0, ...states.filter((s) => s.accountId === selected.id && s.kind !== "cover").map((s) => s.lastSyncAt ?? 0));
-        if (!lastSync || Date.now() / 1000 - lastSync > 180) return source.startSync(selected.id);
-      }).catch(() => toast.error(t("sync.startFailed")));
-    }
   };
   return <DropdownMenu onOpenChange={(open) => { if (!open) { pointerInAdd.current = false; clearTimeout(hoverTimer.current); setExpanded(false); } }}>
     <Tooltip><TooltipTrigger asChild><DropdownMenuTrigger asChild>

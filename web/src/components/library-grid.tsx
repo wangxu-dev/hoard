@@ -248,7 +248,7 @@ const PlaceholderCard = memo(function PlaceholderCard({ square }: { square: bool
 
 export const LibraryGrid = memo(function LibraryGrid({ scope, kind, type, query, sort, version, syncing, onOpen, onItemsChange, onTotalChange, onGeometry }: { scope: Scope; kind: ListKind; type: WorkType; query: string; sort: SortKey; version: number; syncing: boolean; onOpen: (entry: LibraryEntry) => void; onItemsChange: (items: (LibraryEntry | undefined)[]) => void; onGeometry?: (geometry: GridGeometry) => void; onTotalChange: (total: number) => void }) {
   const { t } = useTranslation("library");
-  const filterKey = JSON.stringify([scope.accountId, scope.source, kind, type, query, sort]);
+  const filterKey = JSON.stringify([scope.accountId, scope.source, scope.folderId, kind, type, query, sort]);
   const [cached] = useState(() => queryClient.getQueryData<GridCache>(queryKeys.grid(filterKey)));
   const [items, setItems] = useState<Slot[]>(() => cached?.items ?? []);
   // total counts the list as the library has it now; shift is how many new items at its head
@@ -427,7 +427,7 @@ export const LibraryGrid = memo(function LibraryGrid({ scope, kind, type, query,
   const reduced = useReducedMotion();
   const queued = music.queue?.cursor.query;
   const sameList = !!queued && kind === "music" && queued.kind === "music" && queued.query === query && queued.sort === sort
-    && (queued.scope.accountId ?? "") === (scope.accountId ?? "") && (queued.scope.source ?? "") === (scope.source ?? "");
+    && (queued.scope.accountId ?? "") === (scope.accountId ?? "") && (queued.scope.folderId ?? "") === (scope.folderId ?? "") && (queued.scope.source ?? "") === (scope.source ?? "");
   const playingIndex = !playingId ? -1 : sameList ? music.queue!.index : items.findIndex((e) => e?.id === playingId);
   /** cellVisible reports whether a cell is wholly in view, or with partly any of it. */
   const cellVisible = (index: number, partly = false) => {

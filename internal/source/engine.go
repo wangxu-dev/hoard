@@ -63,9 +63,11 @@ func (e *Engine) openLocked(show bool) error {
 		}
 	})
 	win.Page().OnDOMReady(func() {
+		// about:blank can emit DOM ready before the requested account page loads.
+		ready := strings.HasPrefix(win.Page().URL(), "https://www.bilibili.com/")
 		e.mu.Lock()
 		if e.window == win {
-			e.ready = true
+			e.ready = ready
 		}
 		e.mu.Unlock()
 	})

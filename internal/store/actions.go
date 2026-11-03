@@ -2,13 +2,14 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 )
 
 // ConfirmWorkAction updates only a relation; stored work metadata stays intact.
 func (s *Store) ConfirmWorkAction(ctx context.Context, accountID, remoteID, kind string, on bool) error {
-	if kind != "like" && kind != "favorite" {
+	if kind != "like" && kind != "favorite" && kind != "watch_later" {
 		return fmt.Errorf("invalid action kind")
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -16,9 +17,16 @@ func (s *Store) ConfirmWorkAction(ctx context.Context, accountID, remoteID, kind
 		return err
 	}
 	defer tx.Rollback()
+	if err := confirmWorkAction(ctx, tx, accountID, remoteID, kind, on); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func confirmWorkAction(ctx context.Context, tx *sql.Tx, accountID, remoteID, kind string, on bool) error {
 	var workID string
 	var published int64
-	err = tx.QueryRowContext(ctx, `SELECT w.id,w.published_at FROM works w JOIN accounts a ON a.source=w.source WHERE a.id=? AND w.remote_id=?`, accountID, remoteID).Scan(&workID, &published)
+	err := tx.QueryRowContext(ctx, `SELECT w.id,w.published_at FROM works w JOIN accounts a ON a.source=w.source WHERE a.id=? AND w.remote_id=?`, accountID, remoteID).Scan(&workID, &published)
 	if err != nil {
 		return fmt.Errorf("resolve action work: %w", err)
 	}
@@ -30,5 +38,5 @@ func (s *Store) ConfirmWorkAction(ctx context.Context, accountID, remoteID, kind
 	if err != nil {
 		return fmt.Errorf("confirm action: %w", err)
 	}
-	return tx.Commit()
+	return nil
 }

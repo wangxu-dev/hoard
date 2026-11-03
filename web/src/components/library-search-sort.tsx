@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { setLibraryFilters, useLibraryFilters, useLibraryOrdering } from "@/lib/library-filters";
+import { useQuery } from "@tanstack/react-query";
+import { getLibrarySource } from "@/lib/library";
+import { queryKeys } from "@/lib/query";
 import { pageTransition } from "@/lib/motion";
 import type { SortKey, WorkType } from "@/lib/library";
 
@@ -49,6 +52,20 @@ export function LibrarySort() {
     <SelectContent position="popper">{options.map((option) => <SortHint key={option.value} disabled={option.disabled} reason={t(option.reason)}><SelectItem value={option.value} disabled={option.disabled} className="h-8 text-[13px]">{t(option.label)}</SelectItem></SortHint>)}</SelectContent>
   </Select>;
 }
+export function LibraryFolders() {
+  const { t } = useTranslation("library");
+  const { scope } = useLibraryFilters();
+  const folders = useQuery({ queryKey: ["folders", scope.accountId], queryFn: () => getLibrarySource().folders(scope.accountId!) });
+  return <Select value={scope.folderId ?? "all"} onValueChange={(value) => setLibraryFilters({ scope: { ...scope, folderId: value === "all" ? undefined : value } })}>
+    <SelectTrigger size="sm" data-control="folders" aria-label={t("folders.label")} className="h-8 w-32 min-w-0 shrink-0 text-[13px]"><SelectValue placeholder={t("folders.all")} /></SelectTrigger>
+    <SelectContent position="popper" className="max-h-80">
+      <SelectItem value="all">{t("folders.all")}</SelectItem>
+      {folders.data?.map((folder) => <SelectItem key={folder.id} value={folder.id}><span className="max-w-48 truncate">{folder.title}</span></SelectItem>)}
+      {folders.isError && <Button variant="ghost" size="sm" onClick={() => void folders.refetch()}>{t("error.retry")}</Button>}
+    </SelectContent>
+  </Select>;
+}
+
 export function LibraryFilterMenu() {
   const { t } = useTranslation("library");
   const { kind, type } = useLibraryFilters();

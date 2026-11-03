@@ -12,6 +12,7 @@ const accounts = ["douyin", "bilibili"].map((source, i) => ({
   active: i === 0,
 }));
 const items = Array.from({ length: catalog.count }, (_, index) => ({
+  source: accounts[index % 2].source,
   id: `demo-work-${index + 1}`,
   kind: index % 3 === 0 ? "gallery" : "video",
   title: catalog.titles[english ? "en" : "zh-CN"][index],
@@ -53,6 +54,7 @@ function filtered(q: Query) {
       : result;
 }
 export const Library = {
+  folders: async (_accountId: string) => [],
   async list(q: Query) {
     const all = filtered(q);
     return {
@@ -89,6 +91,7 @@ export const Accounts = {
   signOut: noop,
 };
 export const App = {
+  checkLogin: async () => ({ loggedIn: true }),
   language: async () => (english ? "en" : "zh-CN"),
   setLanguage: noop,
   playMode: async () => "list",
@@ -111,11 +114,13 @@ const media = async (_kind: string, id: string) => {
     publishedAt: item?.publishedAt ?? 0,
   };
 };
-export const Player = { media, refresh: media, warm: noop };
+export const Player = { media, refresh: media, part: async (id: string, _partId: string, _refresh: boolean) => media("video", id), warm: noop };
 export const Sync = { states: async () => [], start: noop, verify: noop };
 export const Actions = {
-  state: async () => ({ liked: false, favorited: false }),
-  set: noop,
+  state: async () => ({ liked: false, favorited: false, watchLater: false, folders: [] }),
+  folders: async (_accountId: string, _workId: string) => [],
+  setFolders: async (_accountId: string, _workId: string, _ids: string[]) => ({ liked: false, favorited: false, watchLater: false, folders: [] }),
+  set: async (_accountId: string, _workId: string, kind: string, on: boolean) => ({ liked: kind === "like" && on, favorited: kind === "favorite" && on, watchLater: kind === "watch_later" && on, folders: [] }),
 };
 export const Updates = {
   check: async () => ({

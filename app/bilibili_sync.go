@@ -67,7 +67,7 @@ func (s *Sync) runBilibili(ctx context.Context, accountID string) {
 		return
 	}
 	lastPath := ""
-	client := bilibili.Client{Incremental: incremental, Read: func(ctx context.Context, path string, params map[string]string) ([]byte, error) {
+	client := bilibili.Client{Persist: s.app.bilibiliPersistence(), Incremental: incremental, Read: func(ctx context.Context, path string, params map[string]string) ([]byte, error) {
 		lastPath = path
 		for s.app.frontRequests.Load() > 0 {
 			if !wait(ctx, 20*time.Millisecond) {

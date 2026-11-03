@@ -28,6 +28,8 @@ export function startLibraryEvents(): () => void {
       emit();
       void queryClient.invalidateQueries({ queryKey: ["counts"] });
       void queryClient.invalidateQueries({ queryKey: ["timeline"] });
+      void queryClient.invalidateQueries({ queryKey: ["folders"] });
+      void queryClient.invalidateQueries({ queryKey: ["action-state"], predicate: (query) => !queryClient.isMutating({ mutationKey: ["work-action", query.queryKey[1], query.queryKey[2]] }) });
     }, 1000);
   });
   const stopAccounts = onAccountsChanged(() => {
