@@ -42,9 +42,6 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
   const { t } = useTranslation("common");
   const { resolvedTheme, setTheme } = useTheme();
   const [open, setOpen] = useState(() => localStorage.getItem("hoard-sidebar") !== "false");
-  const [transitioning, setTransitioning] = useState(false);
-  const transitionTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(transitionTimer.current), []);
   const isDark = resolvedTheme === "dark";
   const { available, info } = useUpdate();
   const { t: updateText } = useTranslation("settings");
@@ -59,16 +56,13 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
   }, [available, info, onPageChange, updateText]);
 
   const updateOpen = (next: boolean) => {
-    clearTimeout(transitionTimer.current);
-    setTransitioning(true);
-    transitionTimer.current = setTimeout(() => setTransitioning(false), Number.parseFloat(token("--duration-slow")));
     setOpen(next);
     localStorage.setItem("hoard-sidebar", String(next));
   };
 
   return (
     <SidebarProvider open={open} onOpenChange={updateOpen} style={{ "--sidebar-width": token("--sidebar-width"), "--sidebar-width-icon": token("--sidebar-width-icon") } as CSSProperties}>
-      <Sidebar collapsible="icon" data-transitioning={transitioning} className="bg-sidebar">
+      <Sidebar collapsible="icon" className="bg-sidebar">
         <SidebarHeader className="h-14 shrink-0 border-0 p-2">
           <div data-sidebar-brand className="relative flex h-10 min-w-0 items-center justify-end overflow-hidden">
             <img data-sidebar-brand-icon src={hoardIcon} alt="" className="pointer-events-none absolute top-1 left-1 size-8 object-contain" />

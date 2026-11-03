@@ -128,15 +128,6 @@
   transition: opacity var(--duration-sidebar) var(--ease-out);
 }
 
-[data-slot="sidebar"][data-transitioning="true"] [data-sidebar-brand-icon] {
-  opacity: 1 !important;
-}
-
-[data-slot="sidebar"][data-transitioning="true"] [data-sidebar="trigger"] {
-  opacity: 0 !important;
-  pointer-events: none;
-}
-
 /* Collapsed rail buttons are all 40px squares 8px from the left edge, like the toggle above them. */
 [data-slot="sidebar"][data-state="collapsed"] [data-sidebar="menu"] {
   align-items: flex-start;
