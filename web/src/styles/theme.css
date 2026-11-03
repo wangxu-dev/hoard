@@ -57,6 +57,7 @@
   --shadow-lg: 0 12px 30px oklch(0.2 0.01 270 / 0.12);
   --duration-fast: 120ms;
   --duration-base: 200ms;
+  --carousel-duration: 14;
   --duration-slow: 320ms;
   --duration-sidebar: 150ms;
   --duration-pulse: 1200ms;
@@ -145,6 +146,7 @@
   --sidebar-width-icon: var(--sidebar-width-icon);
   --duration-fast: var(--duration-fast);
   --duration-base: var(--duration-base);
+  --carousel-duration: 14;
   --duration-slow: var(--duration-slow);
   --duration-sidebar: var(--duration-sidebar);
   --ease-out: var(--ease-out);

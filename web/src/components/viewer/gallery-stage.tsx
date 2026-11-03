@@ -1,14 +1,17 @@
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useIsPresent } from "motion/react";
+import { useIsPresent, useReducedMotion } from "motion/react";
+import { WheelGesturesPlugin } from "embla-carousel-wheel-gestures";
 import { useTranslation } from "react-i18next";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
+import { carouselDuration } from "@/lib/motion";
 import type { LibraryEntry, MediaResult } from "@/lib/library";
 import { claimPlayback, releaseMedia, useApplySound } from "@/lib/player";
 import { warmImage } from "@/lib/library-cursor";
 
 const AUTOPLAY_MS = 3000;
+const wheelPlugins = [WheelGesturesPlugin()];
 
 export interface GalleryHandle { move: (delta: number) => void }
 
@@ -32,6 +35,7 @@ export function GalleryStage({ entry, media, onElement, onHandle, onSlide, onExp
   const resume = useRef(0);
   const reached = useRef(new Set<number>([0, 1, 2]));
   const present = useIsPresent();
+  const reduced = useReducedMotion();
   const images = media?.images.length ? media.images : [{ url: entry.cover }];
   useApplySound(audio);
   useEffect(() => { if (present) onElement(audio); }, [audio, present, onElement]);
@@ -72,7 +76,7 @@ export function GalleryStage({ entry, media, onElement, onHandle, onSlide, onExp
         className="inline-flex items-center gap-1.5 rounded-full bg-viewer-control px-2.5 py-1 text-xs font-medium text-viewer-foreground backdrop-blur-md">
         <span className={cn("size-2 rounded-full border border-viewer-foreground", !liveOff && "bg-viewer-foreground")} />{t("viewer.livePhoto")}
       </button>, badgeSlot)}
-    <Carousel setApi={setApi} opts={{ duration: 24, skipSnaps: false }} className="size-full">
+    <Carousel setApi={setApi} plugins={wheelPlugins} opts={{ duration: reduced ? 0 : carouselDuration, skipSnaps: false }} className="size-full">
       <CarouselContent viewportClassName="size-full" className="ml-0 h-full">
         {images.map((image, n) => <CarouselItem key={`${image.url}:${n}`} className="relative h-full pl-0" aria-label={`${n + 1} / ${images.length}`}>
           {reached.current.has(n) && <img src={image.url} alt="" draggable={false} decoding="async" loading="eager" className="size-full object-contain" />}
