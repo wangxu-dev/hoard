@@ -8,7 +8,7 @@ export type ListKind = "like" | "favorite" | "music" | "watch_later";
 export type WorkType = "all" | "video" | "gallery";
 export type SortKey = "published" | "recent";
 export type PlayMode = "list" | "one" | "shuffle";
-export interface Scope { source?: string; accountId?: string }
+export interface Scope { source?: string; accountId?: string; folderId?: string }
 export interface SourceAccount {
   id: string; source: string; nickname: string; avatarUrl: string;
   status: "active" | "signed_out" | "pending"; syncing: boolean;
@@ -22,6 +22,8 @@ export interface SyncState {
 }
 export interface LibraryCounts { like: number; favorite: number; music: number; watch_later: number }
 export interface LibraryEntry {
+  source?: string;
+  watchLaterAccountIds?: string[];
   id: string; kind: "video" | "gallery" | "music"; title: string; author: string; cover: string; authorAvatar?: string;
   publishedAt: number; durationMs: number; imageCount: number; accountIds?: string[]; likedAccountIds?: string[]; favoritedAccountIds?: string[];
 }
@@ -78,21 +80,22 @@ const realSource: LibrarySource = {
   onSyncProgress(fn) { return onSyncProgress((view) => fn(toState(view))); },
   async list(q) {
     const started = Date.now();
-    const page = await Library.list({ accountId: q.scope.accountId ?? "", source: q.scope.source ?? "", kind: q.kind, type: q.type, query: q.query, sort: q.sort, offset: q.offset, limit: q.limit });
+    const page = await Library.list({ accountId: q.scope.accountId ?? "", source: q.scope.source ?? "", folderId: q.scope.folderId ?? "", kind: q.kind, type: q.type, query: q.query, sort: q.sort, offset: q.offset, limit: q.limit });
     const { queryClient } = await import("./query");
     const accounts = queryClient.getQueryData<SourceGroup[]>(["sources"])?.flatMap((group) => group.accounts) ?? [];
     for (const entry of page.items) {
       if (entry.kind === "music") continue;
       for (const account of accounts) {
+        if (account.source !== entry.source) continue;
         const key = ["action-state", account.id, entry.id];
         if (queryClient.isMutating({ mutationKey: ["work-action", account.id, entry.id] }) || (queryClient.getQueryState(key)?.dataUpdatedAt ?? 0) > started) continue;
-        queryClient.setQueryData(key, { liked: entry.likedAccountIds?.includes(account.id) ?? false, favorited: entry.favoritedAccountIds?.includes(account.id) ?? false });
+        queryClient.setQueryData(key, { liked: entry.likedAccountIds?.includes(account.id) ?? false, favorited: entry.favoritedAccountIds?.includes(account.id) ?? false, watchLater: entry.watchLaterAccountIds?.includes(account.id) ?? false, folders: [] });
       }
     }
     return { items: page.items as LibraryEntry[], total: page.total };
   },
   async timeline(q) {
-    return (await Library.timeline({ accountId: q.scope.accountId ?? "", source: q.scope.source ?? "", kind: q.kind, type: q.type, query: q.query, sort: q.sort, offset: 0, limit: 0 })) ?? [];
+    return (await Library.timeline({ accountId: q.scope.accountId ?? "", source: q.scope.source ?? "", folderId: q.scope.folderId ?? "", kind: q.kind, type: q.type, query: q.query, sort: q.sort, offset: 0, limit: 0 })) ?? [];
   },
   onLibraryChanged(fn) { return onLibraryChanged((change) => fn(change.accountId, change.kind as ListKind)); },
   warm(urls) { return Player.warm(urls); },

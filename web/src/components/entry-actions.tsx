@@ -24,7 +24,7 @@ const activeColor = (kind: ActionKind) => kind === "like" ? "text-(--action-like
 function RealAccountChoice({ target, account, compact = false }: { target: ActionTarget; compact?: boolean; account: { id: string; nickname: string; avatarUrl: string; status: string } }) {
   const { t } = useTranslation("library");
   const key = ["action-state", account.id, target.id];
-  const initial = { liked: target.likedAccountIds?.includes(account.id) ?? false, favorited: target.favoritedAccountIds?.includes(account.id) ?? false };
+  const initial = { liked: target.likedAccountIds?.includes(account.id) ?? false, favorited: target.favoritedAccountIds?.includes(account.id) ?? false, watchLater: false, folders: [] };
   const state = useQuery({ queryKey: key, queryFn: () => Actions.state(account.id, target.id), initialData: initial, enabled: false });
   const mutation = useMutation({
     mutationKey: ["work-action", account.id, target.id, target.kind],

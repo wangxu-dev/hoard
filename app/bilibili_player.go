@@ -103,7 +103,7 @@ func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord) (Medi
 		go func() {
 			ctx, cancel := context.WithTimeout(session, 30*time.Second)
 			defer cancel()
-			client := bilibili.Client{Read: func(ctx context.Context, path string, params map[string]string) ([]byte, error) {
+			client := bilibili.Client{Persist: p.app.bilibiliPersistence(), Read: func(ctx context.Context, path string, params map[string]string) ([]byte, error) {
 				for {
 					p.app.requestMu.Lock()
 					if p.app.frontRequests.Load() == 0 {

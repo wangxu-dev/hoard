@@ -17,10 +17,18 @@ import (
 type Read func(context.Context, string, map[string]string) ([]byte, error)
 
 type Client struct {
+	Persist     func(context.Context, func() error) error
 	Read        Read
 	Changed     func(string)
 	Completed   func(string)
 	Incremental bool
+}
+
+func (c Client) persist(ctx context.Context, save func() error) error {
+	if c.Persist != nil {
+		return c.Persist(ctx, save)
+	}
+	return save()
 }
 
 func (c Client) read(ctx context.Context, path string, params map[string]string) ([]byte, error) {
@@ -86,7 +94,7 @@ func (c Client) Index(ctx context.Context, db *store.Store, accountID string) ([
 		folder := store.Folder{ID: f.ID, Title: f.Title, Count: f.Count}
 		// shortcut: equal counts skip content checks; add reconciliation for same-count replacements.
 		if count, exists := counts[f.ID]; c.Incremental && exists && count == f.Count {
-			if err = db.SaveFolderMembership(ctx, accountID, folder, nil); err != nil {
+			if err = c.persist(ctx, func() error { return db.SaveFolderMembership(ctx, accountID, folder, nil) }); err != nil {
 				return nil, err
 			}
 			continue
@@ -142,14 +150,14 @@ func (c Client) Index(ctx context.Context, db *store.Store, accountID string) ([
 					videos = append(videos, v)
 				}
 			}
-			if err = db.SaveFolderMembership(ctx, accountID, pageFolder, members); err != nil {
+			if err = c.persist(ctx, func() error { return db.SaveFolderMembership(ctx, accountID, pageFolder, members) }); err != nil {
 				return nil, err
 			}
 			if !parsed.HasMore || unchanged {
 				break
 			}
 		}
-		if err = db.SaveFolderMembership(ctx, accountID, folder, nil); err != nil {
+		if err = c.persist(ctx, func() error { return db.SaveFolderMembership(ctx, accountID, folder, nil) }); err != nil {
 			return nil, err
 		}
 	}
@@ -177,7 +185,7 @@ func (c Client) save(ctx context.Context, db *store.Store, accountID, kind strin
 		}
 		works = append(works, w)
 	}
-	_, err := db.SaveWorks(ctx, accountID, kind, head, works)
+	err := c.persist(ctx, func() error { _, err := db.SaveWorks(ctx, accountID, kind, head, works); return err })
 	if err == nil && c.Changed != nil {
 		c.Changed(kind)
 	}
@@ -231,7 +239,7 @@ func (c Client) Observe(ctx context.Context, db *store.Store, accountID string, 
 		if err != nil {
 			return err
 		}
-		if err = db.SavePersonalState(ctx, accountID, video.ID, state); err != nil {
+		if err = c.persist(ctx, func() error { return db.SavePersonalState(ctx, accountID, video.ID, state) }); err != nil {
 			return err
 		}
 	}

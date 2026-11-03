@@ -15,7 +15,7 @@ export function EntryAccounts({ entry }: { entry: LibraryEntry }) {
   const preview = usePreviewOwners({ id: entry.id, kind });
   const ownerIds = fixtureName ? preview.filter((id) => !scope.accountId || id === scope.accountId) : entry.accountIds;
   const allAccounts = data?.flatMap((source) => source.accounts) ?? [];
-  const states = useQueries({ queries: allAccounts.map((account) => ({ queryKey: ["action-state", account.id, entry.id], enabled: false, queryFn: async (): Promise<ActionState> => ({ liked: false, favorited: false }) })) });
+  const states = useQueries({ queries: allAccounts.map((account) => ({ queryKey: ["action-state", account.id, entry.id], enabled: false, queryFn: async (): Promise<ActionState> => ({ liked: false, favorited: false, watchLater: false, folders: [] }) })) });
   const accounts = allAccounts.filter((account, index) => {
     if (scope.accountId && account.id !== scope.accountId) return false;
     const state = states[index].data;

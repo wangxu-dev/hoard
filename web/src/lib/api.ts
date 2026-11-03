@@ -2,7 +2,7 @@ import { Actions, Accounts, App, Library, Player, Sync, Updates, events } from "
 import type { Account, LibraryChange, SyncView } from "@mygo";
 
 export { Actions, Accounts, App, Library, Player, Sync, Updates, events };
-export type { ActionState, Account, LibraryItem, LibraryPage, LibraryQuery, LikeItem, LikesResult, LoginState, Status, SyncView, UpdateDownload, UpdateInfo } from "@mygo";
+export type { ActionState, ActionFolder, LibraryFolder, Account, LibraryItem, LibraryPage, LibraryQuery, LikeItem, LikesResult, LoginState, Status, SyncView, UpdateDownload, UpdateInfo } from "@mygo";
 
 export function onAccountsChanged(listener: (accounts: Account[]) => void): () => void {
   return events.accountsChanged.on(listener);

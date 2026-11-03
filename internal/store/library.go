@@ -22,6 +22,7 @@ type LibraryQuery struct {
 
 // LibraryItem is one row of the library grid.
 type LibraryItem struct {
+	Source      string
 	RemoteID    string
 	Kind        string
 	Title       string
@@ -83,9 +84,9 @@ func (s *Store) Library(ctx context.Context, q LibraryQuery) ([]LibraryItem, int
 	if err := s.read.QueryRowContext(ctx, `SELECT COUNT(DISTINCT w.id) `+from+filter, args...).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count library: %w", err)
 	}
-	columns := `w.remote_id,w.kind,w.title,COALESCE(a.nickname,''),COALESCE(w.cover_url,''),w.published_at,w.duration_ms,w.image_count`
+	columns := `w.source,w.remote_id,w.kind,w.title,COALESCE(a.nickname,''),COALESCE(w.cover_url,''),w.published_at,w.duration_ms,w.image_count`
 	if q.Kind == "music" {
-		columns = `w.remote_id,'music',w.title,w.author,COALESCE(w.cover_url,''),0,w.duration_ms,0`
+		columns = `w.source,w.remote_id,'music',w.title,w.author,COALESCE(w.cover_url,''),0,w.duration_ms,0`
 	}
 	rows, err := s.read.QueryContext(ctx, `SELECT `+columns+` `+from+filter+` GROUP BY w.id ORDER BY `+order+` LIMIT ? OFFSET ?`, append(args, q.Limit, q.Offset)...)
 	if err != nil {
@@ -95,7 +96,7 @@ func (s *Store) Library(ctx context.Context, q LibraryQuery) ([]LibraryItem, int
 	items := []LibraryItem{}
 	for rows.Next() {
 		var it LibraryItem
-		if err := rows.Scan(&it.RemoteID, &it.Kind, &it.Title, &it.Author, &it.CoverURL, &it.PublishedAt, &it.DurationMS, &it.ImageCount); err != nil {
+		if err := rows.Scan(&it.Source, &it.RemoteID, &it.Kind, &it.Title, &it.Author, &it.CoverURL, &it.PublishedAt, &it.DurationMS, &it.ImageCount); err != nil {
 			return nil, 0, fmt.Errorf("read library item: %w", err)
 		}
 		items = append(items, it)
@@ -147,7 +148,7 @@ func (s *Store) libraryByRelations(ctx context.Context, where string, args []any
 		return nil, 0, fmt.Errorf("count library: %w", err)
 	}
 	rows, err := s.read.QueryContext(ctx, `WITH r AS (SELECT r.work_id, r.published_at, r.seq `+from+` WHERE `+where+` ORDER BY `+order+` LIMIT ? OFFSET ?)
-SELECT w.remote_id,w.kind,w.title,COALESCE(a.nickname,''),COALESCE(w.cover_url,''),w.published_at,w.duration_ms,w.image_count
+SELECT w.source,w.remote_id,w.kind,w.title,COALESCE(a.nickname,''),COALESCE(w.cover_url,''),w.published_at,w.duration_ms,w.image_count
 FROM r JOIN works w ON w.id=r.work_id LEFT JOIN authors a ON a.id=w.author_id ORDER BY `+order, append(args, q.Limit, q.Offset)...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list library: %w", err)
@@ -156,7 +157,7 @@ FROM r JOIN works w ON w.id=r.work_id LEFT JOIN authors a ON a.id=w.author_id OR
 	items := []LibraryItem{}
 	for rows.Next() {
 		var it LibraryItem
-		if err := rows.Scan(&it.RemoteID, &it.Kind, &it.Title, &it.Author, &it.CoverURL, &it.PublishedAt, &it.DurationMS, &it.ImageCount); err != nil {
+		if err := rows.Scan(&it.Source, &it.RemoteID, &it.Kind, &it.Title, &it.Author, &it.CoverURL, &it.PublishedAt, &it.DurationMS, &it.ImageCount); err != nil {
 			return nil, 0, fmt.Errorf("read library item: %w", err)
 		}
 		items = append(items, it)
