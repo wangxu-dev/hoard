@@ -23,7 +23,11 @@ const emit = () => listeners.forEach((fn) => fn());
 export function setLibraryFilters(patch: Partial<LibraryFilters>) {
   console.debug("[hoard:ui] filters", { fields: Object.keys(patch), kind: patch.kind, type: patch.type, sort: patch.sort });
   if (patch.sort && state.kind !== "music") preferredSort = patch.sort;
+  const previousScope = state.scope;
   state = { ...state, ...patch };
+  if (state.kind !== "favorite" || (patch.scope && (patch.scope.accountId !== previousScope.accountId || patch.scope.source !== previousScope.source))) {
+    state.scope = { ...state.scope, folderId: undefined };
+  }
   state.sort = state.kind === "music" ? "recent" : preferredSort;
   if (patch.scope?.accountId) state.syncAccountId = patch.scope.accountId;
   if (patch.queryInput !== undefined) {

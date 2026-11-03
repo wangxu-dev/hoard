@@ -6,20 +6,21 @@ import { usePreviewOwners } from "@/lib/action-preview";
 import { useLibraryFilters } from "@/lib/library-filters";
 import { fixtureName } from "@/lib/demo";
 import type { ActionState } from "@/lib/api";
+import { actionField } from "@/lib/work-actions";
 import { queryKeys } from "@/lib/query";
 
 export function EntryAccounts({ entry }: { entry: LibraryEntry }) {
   const { t } = useTranslation("library");
   const { data } = useQuery({ queryKey: queryKeys.sources, queryFn: () => getLibrarySource().sources(), staleTime: 60_000 });
   const { scope, kind } = useLibraryFilters();
-  const preview = usePreviewOwners({ id: entry.id, kind });
+  const preview = usePreviewOwners({ id: entry.id, source: entry.source, kind });
   const ownerIds = fixtureName ? preview.filter((id) => !scope.accountId || id === scope.accountId) : entry.accountIds;
-  const allAccounts = data?.flatMap((source) => source.accounts) ?? [];
+  const allAccounts = data?.filter((source) => source.id === (entry.source ?? "douyin")).flatMap((source) => source.accounts) ?? [];
   const states = useQueries({ queries: allAccounts.map((account) => ({ queryKey: ["action-state", account.id, entry.id], enabled: false, queryFn: async (): Promise<ActionState> => ({ liked: false, favorited: false, watchLater: false, folders: [] }) })) });
   const accounts = allAccounts.filter((account, index) => {
     if (scope.accountId && account.id !== scope.accountId) return false;
     const state = states[index].data;
-    if (!fixtureName && state && kind !== "music") return kind === "like" ? state.liked : state.favorited;
+    if (!fixtureName && state && kind !== "music") return state[actionField(kind)];
     return ownerIds?.includes(account.id);
   });
   if (!accounts.length) return null;

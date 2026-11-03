@@ -23,13 +23,13 @@ export function VideoStage({ entry, media, onElement, onExhausted, onDoubleClick
   useEffect(() => { if (present) onElement(element); }, [element, present, onElement]);
   useEffect(() => () => releaseMedia(element), [element]);
   useEffect(() => { if (!present) element?.pause(); }, [present, element]);
-  useEffect(() => { setCandidate(0); }, [media]);
+  useEffect(() => { setCandidate(0); if (candidate === 0) element?.load(); }, [media]);
   const src = media?.videos[candidate];
   useEffect(() => {
     if (!element || !src || !present) return;
     claimPlayback(element);
     void element.play().catch(() => undefined);
-  }, [element, src]);
+  }, [element, src, media]);
   return <div className="relative size-full">
     <video ref={setElement} data-testid="viewer-video" src={src} poster={entry.cover} playsInline loop preload="auto"
     className="size-full object-contain"

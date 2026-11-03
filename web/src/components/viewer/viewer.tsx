@@ -137,7 +137,7 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
   // Keys work wherever focus is, as long as no menu is open.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (document.querySelector('[role="menu"][data-state="open"], [data-slot="popover-content"][data-state="open"], [data-slot="dialog-content"][data-state="open"]')) return;
+      if (document.querySelector('[role="menu"][data-state="open"], [role="alertdialog"], [data-slot="popover-content"][data-state="open"], [data-slot="dialog-content"][data-state="open"]')) return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       const key = event.key;
       const handled = () => { event.preventDefault(); event.stopPropagation(); wake(); };

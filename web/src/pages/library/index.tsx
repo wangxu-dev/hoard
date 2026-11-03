@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LibraryToolbar } from "@/components/library-toolbar";
 import { getLibrarySource, type LibraryCounts, type LibraryEntry, type ListKind, type SourceGroup, type SyncState, type TimelineMonth } from "@/lib/library";
 import { LibraryGrid, type GridGeometry } from "@/components/library-grid";
@@ -29,6 +30,15 @@ export function LibraryPage({ scrolled, onAddAccount, onLogin }: { scrolled: boo
   const statesQuery = useQuery({ queryKey: queryKeys.syncStates, queryFn: () => source.syncStates(), staleTime: Infinity });
   const countsQuery = useQuery({ queryKey: queryKeys.counts(filters.scope), queryFn: () => source.counts(filters.scope), placeholderData: keepPreviousData });
   const sources = sourcesQuery.data ?? noSources;
+  useQuery({
+    queryKey: ["account-session", filters.scope.accountId ?? ""],
+    queryFn: async ({ signal }) => { await source.checkSession(filters.scope.accountId, signal); if (!signal.aborted) await sourcesQuery.refetch(); return null; },
+    staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: "always",
+  });
+  const [dismissedLogin, setDismissedLogin] = useState<string | null>(null);
+  const selectedAccount = sources.flatMap((group) => group.accounts).find((account) => filters.scope.accountId ? account.id === filters.scope.accountId : account.active);
+  const signedOut = selectedAccount?.status === "signed_out" ? selectedAccount : undefined;
+  useEffect(() => { setDismissedLogin(null); }, [selectedAccount?.id, selectedAccount?.status]);
   const states = statesQuery.data ?? noStates;
   const counts = { ...noCounts, ...countsQuery.data };
   const error = (sourcesQuery.isError && !sourcesQuery.data) || (countsQuery.isError && !countsQuery.data);
@@ -37,10 +47,11 @@ export function LibraryPage({ scrolled, onAddAccount, onLogin }: { scrolled: boo
   // Months only exist for lists in publish order; music has no publish time.
   const timelineQuery = { scope: filters.scope, kind: filters.kind, type: filters.kind === "music" ? "all" as const : filters.type, query: filters.query, sort: ordering.sort };
   const dated = filters.kind !== "music" && ordering.sort === "published";
-  const monthsQuery = useQuery({ queryKey: queryKeys.timeline(JSON.stringify([filters.scope.accountId, filters.scope.source, timelineQuery.kind, timelineQuery.type, filters.query, ordering.sort])),
+  const monthsQuery = useQuery({ queryKey: queryKeys.timeline(JSON.stringify([filters.scope.accountId, filters.scope.source, filters.scope.folderId, timelineQuery.kind, timelineQuery.type, filters.query, ordering.sort])),
     queryFn: () => source.timeline(timelineQuery), placeholderData: keepPreviousData, enabled: dated });
   const [geometry, setGeometry] = useState<GridGeometry | null>(null);
   const [viewer, setViewer] = useState<{ cursor: ListCursor; index: number; from: LibraryEntry } | null>(null);
+  useEffect(() => { if (signedOut) setViewer(null); }, [signedOut?.id]);
   const [visibleVersion, setVisibleVersion] = useState(version);
   useEffect(() => { if (!viewer) setVisibleVersion(version); }, [version, viewer]);
   const items = useRef<(LibraryEntry | undefined)[]>([]);
@@ -81,6 +92,12 @@ export function LibraryPage({ scrolled, onAddAccount, onLogin }: { scrolled: boo
     <div data-testid="timeline-reserved" className="pointer-events-none absolute top-0 right-0 h-full w-12">
       <TimelineScrubber months={dated ? monthsQuery.data ?? noMonths : noMonths} geometry={geometry} active={dated && !error} />
     </div>
+    <AlertDialog open={!!signedOut && dismissedLogin !== signedOut.id} onOpenChange={(open) => { if (!open && signedOut) setDismissedLogin(signedOut.id); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader><AlertDialogTitle>{t("session.title")}</AlertDialogTitle><AlertDialogDescription>{t("session.description", { account: signedOut?.nickname })}</AlertDialogDescription></AlertDialogHeader>
+        <AlertDialogFooter><AlertDialogCancel>{t("session.later")}</AlertDialogCancel><AlertDialogAction onClick={() => { if (signedOut) onLogin(signedOut.id); }}>{t("session.login")}</AlertDialogAction></AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     {viewer && <Viewer key={`${viewer.from.kind}:${viewer.from.id}`} cursor={viewer.cursor} start={viewer.index} onClose={closeViewer} />}
   </section>;
 }

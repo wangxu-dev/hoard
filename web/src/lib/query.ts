@@ -35,6 +35,7 @@ export function mediaQuery(entry: Pick<LibraryEntry, "kind" | "id">, full = fals
     queryFn: () => getLibrarySource().media(entry.kind, entry.id, full),
     staleTime: (query) => mediaFreshness(query.state.data),
     gcTime: MEDIA_FRESH,
+    structuralSharing: false,
   });
 }
 

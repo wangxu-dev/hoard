@@ -125,14 +125,15 @@
     "errors": {
       "NEED_VERIFY": "抖音需要验证，完成后再试",
       "COOLING": "请求太频繁，稍后再试",
-      "AUTH_REQUIRED": "登录已失效，请重新登录",
+      "AUTH_REQUIRED": "暂时无法确认登录状态，请重试",
       "UNAVAILABLE": "这条内容暂时无法播放",
       "REQUEST_FAILED": "网络请求失败",
       "CANCELED": "已取消",
       "DELETED": "作品已删除",
       "PRIVATE": "作品仅作者可见",
       "REVIEWING": "作品审核中，暂时无法查看",
-      "WITHHELD": "作品暂时无法查看"
+      "WITHHELD": "作品暂时无法查看",
+      "SESSION_NOT_READY": "账号正在连接，请稍后重试"
     },
     "locate": "定位到正在播放"
   },
@@ -157,21 +158,35 @@
   "accounts": {
     "owners": "关联账号（{{count}}）"
   },
+  "folders": {
+    "label": "收藏夹",
+    "all": "全部收藏夹",
+    "choose": "选择收藏夹",
+    "save": "保存",
+    "loading": "正在加载",
+    "empty": "还没有收藏夹"
+  },
   "actions": {
     "choose": "选择操作账号",
     "preview": "交互预览 · 不修改平台数据",
     "more": "更多操作",
     "label": {
+      "bilibili_like": "点赞",
+      "watch_later": "稍后再看",
       "like": "喜欢",
       "favorite": "收藏",
       "music": "收藏音乐"
     },
     "add": {
+      "bilibili_like": "点赞",
+      "watch_later": "加入稍后再看",
       "like": "点赞",
       "favorite": "收藏",
       "music": "收藏音乐"
     },
     "remove": {
+      "bilibili_like": "取消点赞",
+      "watch_later": "移出稍后再看",
       "like": "取消喜欢",
       "favorite": "取消收藏",
       "music": "取消收藏音乐"
@@ -184,5 +199,11 @@
     "loading": "读取状态…",
     "musicUnavailable": "音乐收藏暂未接入",
     "retry": "重新读取状态"
+  },
+  "session": {
+    "title": "需要重新登录",
+    "description": "{{account}} 的登录已失效，请重新登录后继续。",
+    "later": "稍后处理",
+    "login": "重新登录"
   }
 }

@@ -1,4 +1,4 @@
-import { Accounts, App, Library, Player, Sync, onLibraryChanged, onSyncProgress } from "./api";
+import { Accounts, App, Library, Player, Sync, onLibraryChanged, onSyncProgress, type LibraryFolder } from "./api";
 import type { SyncView } from "./api";
 import i18n from "@/i18n";
 import { fixtureName } from "./demo";
@@ -11,6 +11,7 @@ export type PlayMode = "list" | "one" | "shuffle";
 export interface Scope { source?: string; accountId?: string; folderId?: string }
 export interface SourceAccount {
   id: string; source: string; nickname: string; avatarUrl: string;
+  active?: boolean;
   status: "active" | "signed_out" | "pending"; syncing: boolean;
 }
 export interface SourceGroup { id: string; name: string; kinds: ListKind[]; accounts: SourceAccount[] }
@@ -33,6 +34,8 @@ export interface MediaResult { kind: "video" | "gallery" | "music"; videos: stri
 export interface TimelineMonth { year: number; month: number; count: number; start: number }
 export interface ListQuery { scope: Scope; kind: ListKind; type: WorkType; query: string; sort: SortKey; offset: number; limit: number }
 export interface LibrarySource {
+  checkSession(accountId?: string, signal?: AbortSignal): Promise<void>;
+  folders(accountId: string): Promise<LibraryFolder[]>;
   sources(): Promise<SourceGroup[]>;
   counts(scope: Scope): Promise<LibraryCounts>;
   syncStates(): Promise<SyncState[]>;
@@ -64,11 +67,25 @@ function toState(view: SyncView): SyncState {
   };
 }
 const realSource: LibrarySource = {
+  async checkSession(accountId, signal) {
+    const accounts = await Accounts.list();
+    if (signal?.aborted) return;
+    const account = accounts.find((item) => accountId ? item.id === accountId : item.active);
+    if (!account || account.status !== "active") return;
+    if (!account.active) await Accounts.switch(account.id);
+    if (signal?.aborted) return;
+    const login = await App.checkLogin();
+    if (!login.loggedIn || signal?.aborted) return;
+    const states = await Sync.states();
+    const lastSync = Math.max(0, ...states.filter((state) => state.accountId === account.id && state.kind !== "cover").map((state) => state.lastSyncAt));
+    if (!signal?.aborted && (!lastSync || Date.now() / 1000 - lastSync > 180)) await Sync.start();
+  },
+  folders(accountId) { return Library.folders(accountId); },
   async sources() {
     const accounts = await Accounts.list();
     return ["douyin", "bilibili"].map((source): SourceGroup => ({ id: source, name: i18n.t(`library:toolbar.source.${source}`), kinds: source === "douyin" ? ["like", "favorite", "music"] : ["favorite", "watch_later"], accounts: accounts.filter((a) => a.source === source && a.status !== "pending").map((a) => ({
       id: a.id, source: a.source, nickname: a.nickname, avatarUrl: a.avatar,
-      status: a.status === "signed_out" ? "signed_out" : a.status === "pending" ? "pending" : "active", syncing: false,
+      status: a.status === "signed_out" ? "signed_out" : a.status === "pending" ? "pending" : "active", active: a.active, syncing: false,
     })) })).filter((group) => group.accounts.length > 0);
   },
   async counts(scope) {
