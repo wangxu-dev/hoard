@@ -67,7 +67,7 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
           <div data-sidebar-brand className="relative flex h-10 min-w-0 items-center justify-end overflow-hidden">
             <img data-sidebar-brand-icon src={hoardIcon} alt="" className="pointer-events-none absolute top-1 left-1 size-8 object-contain" />
             <span className="pointer-events-none absolute left-12 whitespace-nowrap text-sm font-semibold tracking-tight transition-opacity duration-base group-data-[collapsible=icon]:opacity-0">{t("appName")}</span>
-            <SidebarTrigger aria-label={t(open ? "sidebar.collapse" : "sidebar.expand")} className="size-10 shrink-0 rounded-lg hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
+            <SidebarTrigger aria-label={t(open ? "sidebar.collapse" : "sidebar.expand")} className="absolute right-0 size-10 shrink-0 rounded-lg transition-none hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:right-auto group-data-[collapsible=icon]:left-0" />
           </div>
         </SidebarHeader>
         <SidebarContent className="bg-sidebar">
