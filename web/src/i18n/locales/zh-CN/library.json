@@ -138,8 +138,7 @@
     },
     "locate": "定位到正在播放",
     "paidPreview": "此视频尚未购买，可试看 {{duration}}",
-    "parts": "选集",
-    "part": "P{{number}} · {{title}}"
+    "parts": "选集"
   },
   "grid": {
     "empty": "还没有内容",

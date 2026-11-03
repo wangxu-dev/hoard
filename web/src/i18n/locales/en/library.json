@@ -138,8 +138,7 @@
     },
     "locate": "Show in library",
     "paidPreview": "This video has not been purchased. Preview available: {{duration}}",
-    "parts": "Episodes",
-    "part": "P{{number}} · {{title}}"
+    "parts": "Episodes"
   },
   "grid": {
     "empty": "Nothing here yet. Choose Sync at the top right to bring in your Douyin items",

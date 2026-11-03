@@ -310,7 +310,7 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
             </div>}
             {parts.length > 1 && <Select value={media?.partId} onValueChange={(id) => setPart({ key: entryKey, id })}>
               <SelectTrigger size="sm" aria-label={t("viewer.parts")} className="h-8 w-48 min-w-0 border-viewer-foreground/20 bg-viewer-control text-viewer-foreground"><SelectValue /></SelectTrigger>
-              <SelectContent position="popper" side="top" className="dark z-[80] max-h-80">{parts.map((item, index) => <SelectItem key={item.id} value={item.id}>{t("viewer.part", { number: index + 1, title: item.title })}</SelectItem>)}</SelectContent>
+              <SelectContent position="popper" side="top" className="dark z-[80] max-h-80">{parts.map((item) => <SelectItem key={item.id} value={item.id}>{item.title}</SelectItem>)}</SelectContent>
             </Select>}
             {!isGallery && <SpeedMenu rate={state.rate} onRate={(rate) => { if (element) element.playbackRate = rate; }} />}
             {hasSound && <VolumeControl />}
