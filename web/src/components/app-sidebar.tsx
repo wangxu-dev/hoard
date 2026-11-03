@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/sidebar";
 import { useUpdate } from "@/lib/updates";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export type Page = "library" | "settings";
 
@@ -68,14 +67,7 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
               toggle rides the right edge until it sits centered in the collapsed rail. */}
           <div className="flex min-w-0 items-center justify-between">
             <span className="min-w-0 truncate pl-3 text-sm group-data-[collapsible=icon]:pl-0 font-semibold tracking-tight transition-opacity duration-200 group-data-[collapsible=icon]:opacity-0">{t("appName")}</span>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <SidebarTrigger aria-label={t(open ? "sidebar.collapse" : "sidebar.expand")} className="size-10 shrink-0 rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
-              </TooltipTrigger>
-              <TooltipContent side={open ? "bottom" : "right"} sideOffset={TIP_OFFSET}>
-                {t(open ? "sidebar.collapse" : "sidebar.expand")}
-              </TooltipContent>
-            </Tooltip>
+            <SidebarTrigger aria-label={t(open ? "sidebar.collapse" : "sidebar.expand")} className="size-10 shrink-0 rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
           </div>
         </SidebarHeader>
         <SidebarContent className="bg-sidebar">
