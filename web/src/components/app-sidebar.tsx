@@ -42,6 +42,7 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
   const { t } = useTranslation("common");
   const { resolvedTheme, setTheme } = useTheme();
   const [open, setOpen] = useState(() => localStorage.getItem("hoard-sidebar") !== "false");
+  const [brandHovered, setBrandHovered] = useState(false);
   const isDark = resolvedTheme === "dark";
   const { available, info } = useUpdate();
   const { t: updateText } = useTranslation("settings");
@@ -56,6 +57,7 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
   }, [available, info, onPageChange, updateText]);
 
   const updateOpen = (next: boolean) => {
+    setBrandHovered(false);
     setOpen(next);
     localStorage.setItem("hoard-sidebar", String(next));
   };
@@ -64,10 +66,10 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
     <SidebarProvider open={open} onOpenChange={updateOpen} style={{ "--sidebar-width": token("--sidebar-width"), "--sidebar-width-icon": token("--sidebar-width-icon") } as CSSProperties}>
       <Sidebar collapsible="icon" className="bg-sidebar">
         <SidebarHeader className="h-14 shrink-0 border-0 p-2">
-          <div data-sidebar-brand className="relative flex h-10 min-w-0 items-center justify-end overflow-hidden">
+          <div data-sidebar-brand data-hovered={!open && brandHovered} onPointerLeave={() => setBrandHovered(false)} className="relative flex h-10 min-w-0 items-center justify-end overflow-hidden">
             <img data-sidebar-brand-icon src={hoardIcon} alt="" className="pointer-events-none absolute top-1 left-1 size-8 object-contain" />
             <span className="pointer-events-none absolute left-12 whitespace-nowrap text-sm font-semibold tracking-tight transition-opacity duration-base group-data-[collapsible=icon]:opacity-0">{t("appName")}</span>
-            <SidebarTrigger aria-label={t(open ? "sidebar.collapse" : "sidebar.expand")} className="absolute right-0 size-10 shrink-0 rounded-lg transition-none hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:right-auto group-data-[collapsible=icon]:left-0" />
+            <SidebarTrigger onPointerMove={() => { if (!open) setBrandHovered(true); }} onKeyUp={(event) => { if (event.key === "Tab") setBrandHovered(true); }} onBlur={() => setBrandHovered(false)} aria-label={t(open ? "sidebar.collapse" : "sidebar.expand")} className="absolute right-0 size-10 shrink-0 rounded-lg transition-none hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:right-auto group-data-[collapsible=icon]:left-0" />
           </div>
         </SidebarHeader>
         <SidebarContent className="bg-sidebar">

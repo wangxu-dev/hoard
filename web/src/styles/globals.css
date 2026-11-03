@@ -141,13 +141,11 @@
   opacity: 0;
 }
 
-[data-slot="sidebar"][data-state="collapsed"] [data-sidebar="trigger"]:hover,
-[data-slot="sidebar"][data-state="collapsed"] [data-sidebar="trigger"]:focus-visible {
+[data-slot="sidebar"][data-state="collapsed"] [data-sidebar-brand][data-hovered="true"] [data-sidebar="trigger"] {
   opacity: 1;
 }
 
-[data-slot="sidebar"][data-state="collapsed"] [data-sidebar-brand]:has([data-sidebar="trigger"]:hover) [data-sidebar-brand-icon],
-[data-slot="sidebar"][data-state="collapsed"] [data-sidebar-brand]:has([data-sidebar="trigger"]:focus-visible) [data-sidebar-brand-icon] {
+[data-slot="sidebar"][data-state="collapsed"] [data-sidebar-brand][data-hovered="true"] [data-sidebar-brand-icon] {
   opacity: 0;
 }
 
