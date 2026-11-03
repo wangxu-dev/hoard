@@ -400,7 +400,7 @@ func (s *Sync) run(ctx context.Context, accountID string) {
 		} else {
 			profile = douyin.ParseProfile(reply)
 		}
-		log.Printf("[hoard:sync] self class=%s http=%d", profile.Class, reply.Status)
+		log.Printf("[hoard:sync] self class=%s %s", profile.Class, douyin.ProfileDiagnostics(reply))
 		if profile.Class != douyin.ResponseNotReady {
 			break
 		}
