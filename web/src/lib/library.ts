@@ -1,6 +1,7 @@
 import { Accounts, App, Library, Player, Sync, onLibraryChanged, onSyncProgress, type LibraryFolder } from "./api";
 import type { SyncView } from "./api";
 import i18n from "@/i18n";
+import { libraryScope } from "./library-filters";
 import { fixtureName } from "./demo";
 import { createFixtureSource } from "@/mocks/fixture";
 
@@ -42,7 +43,7 @@ export interface LibrarySource {
   onSyncProgress(fn: (s: SyncState) => void): () => void;
   list(query: ListQuery): Promise<{ items: LibraryEntry[]; total: number }>;
   timeline(query: Omit<ListQuery, "offset" | "limit">): Promise<TimelineMonth[]>;
-  media(kind: string, id: string, refresh?: boolean, partId?: string): Promise<MediaResult>;
+  media(kind: string, id: string, refresh?: boolean, partId?: string, accountId?: string): Promise<MediaResult>;
   warm(urls: string[]): Promise<void>;
   playMode(): Promise<PlayMode>;
   setPlayMode(value: PlayMode): Promise<void>;
@@ -105,7 +106,8 @@ const realSource: LibrarySource = {
       for (const account of accounts) {
         if (account.source !== entry.source) continue;
         const key = ["action-state", account.id, entry.id];
-        if (queryClient.isMutating({ mutationKey: ["work-action", account.id, entry.id] }) || (queryClient.getQueryState(key)?.dataUpdatedAt ?? 0) > started) continue;
+        const state = queryClient.getQueryState(key);
+        if (!state || queryClient.isMutating({ mutationKey: ["work-action", account.id, entry.id] }) || state.dataUpdatedAt > started) continue;
         queryClient.setQueryData(key, { liked: entry.likedAccountIds?.includes(account.id) ?? false, favorited: entry.favoritedAccountIds?.includes(account.id) ?? false, watchLater: entry.watchLaterAccountIds?.includes(account.id) ?? false, folders: [] });
       }
     }
@@ -118,7 +120,7 @@ const realSource: LibrarySource = {
   warm(urls) { return Player.warm(urls); },
   async playMode() { const mode = await App.playMode(); return mode === "one" || mode === "shuffle" ? mode : "list"; },
   setPlayMode(value) { return App.setPlayMode(value); },
-  media(kind, id, refresh = false, partId) { return (partId ? Player.part(id, partId, refresh) : refresh ? Player.refresh(kind, id) : Player.media(kind, id)) as Promise<MediaResult>; },
+  media(kind, id, refresh = false, partId, accountId = libraryScope().accountId) { return Player.resolve(kind, id, accountId ?? "", refresh, partId ?? "") as Promise<MediaResult>; },
   volume() { return App.volume(); },
   setVolume(value) { return App.setVolume(value); },
   muted() { return App.muted(); },

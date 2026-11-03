@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { LibraryEntry, MediaResult } from "@/lib/library";
+import { useLibraryFilters } from "@/lib/library-filters";
 import { mediaQuery, refreshMedia } from "@/lib/query";
 
 export interface MediaLoad { media: MediaResult | null; error: string | null; loading: boolean; refresh: (reason?: string) => void; retry: () => void }
@@ -10,7 +11,8 @@ const permanent = new Set(["DELETED", "PRIVATE", "REVIEWING", "WITHHELD", "NEED_
 
 /** Resolve media and automatically request fresh URLs once after a load or playback failure. */
 export function useMedia(entry: LibraryEntry | undefined, partId?: string): MediaLoad {
-  const key = entry ? `${entry.kind}:${entry.id}:${partId ?? ""}` : "";
+  const { scope } = useLibraryFilters();
+  const key = entry ? `${scope.accountId ?? ""}:${entry.kind}:${entry.id}:${partId ?? ""}` : "";
   const query = useQuery({ ...mediaQuery(entry ?? placeholder, false, partId), enabled: !!entry });
   const [failure, setFailure] = useState<{ key: string; reason: string } | null>(null);
   const [refreshingKey, setRefreshingKey] = useState<string | null>(null);

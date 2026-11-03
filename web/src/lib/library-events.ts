@@ -34,6 +34,7 @@ export function startLibraryEvents(): () => void {
   });
   const stopAccounts = onAccountsChanged(() => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.sources });
+    void queryClient.invalidateQueries({ queryKey: ["media"] });
     void queryClient.invalidateQueries({ queryKey: queryKeys.syncStates });
     void queryClient.invalidateQueries({ queryKey: ["counts"] });
   });

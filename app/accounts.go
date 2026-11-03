@@ -191,6 +191,13 @@ func (a *App) watchIdentity(ctx context.Context, waitForLogin bool) {
 				}
 				return
 			}
+			if a.loginBlocked != nil && (err != nil || state.Detail == "NOT_READY") {
+				if engine, ok := a.Engine.(interface {
+					PageState(context.Context) douyin.PageState
+				}); ok && engine.PageState(ctx).Captcha {
+					a.loginBlocked(ctx)
+				}
+			}
 			if err == nil && !waitForLogin && state.Detail == "AUTH_REQUIRED" {
 				return
 			}
@@ -290,6 +297,9 @@ func (s *Accounts) SignOut(id string) error {
 	if id == a.accountID {
 		a.stopLocked()
 	}
+	if a.playback != nil {
+		a.playback.closeAccount(id)
+	}
 	clearErr := a.Engine.ClearSession(account.SessionName)
 	if err := a.signedOutLocked(id); err != nil {
 		return err
@@ -328,6 +338,9 @@ func (s *Accounts) Remove(id string) error {
 	}
 	if id == a.accountID {
 		a.stopLocked()
+	}
+	if a.playback != nil {
+		a.playback.closeAccount(id)
 	}
 	if err := a.Store.DeleteAccount(ctx, id); err != nil {
 		return errors.New("STORE_FAILED")
@@ -381,14 +394,26 @@ func (a *App) restoreLocked() error {
 	}
 	id, err := a.Store.Setting(ctx, "active_account")
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil
+		id, err = "", nil
 	}
 	if err != nil {
 		return errors.New("STORE_FAILED")
 	}
 	account, err := a.Store.Account(ctx, id)
 	if err != nil {
-		return errors.New("STORE_FAILED")
+		if !errors.Is(err, sql.ErrNoRows) {
+			return errors.New("STORE_FAILED")
+		}
+		accounts, listErr := a.Store.Accounts(ctx)
+		if listErr != nil {
+			return errors.New("STORE_FAILED")
+		}
+		for _, candidate := range accounts {
+			if candidate.Status == "active" {
+				return a.activateLocked(candidate, false)
+			}
+		}
+		return nil
 	}
 	return a.activateLocked(account, false)
 }
@@ -403,4 +428,7 @@ func CloseAccounts(a *App) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.stopLocked()
+	if a.playback != nil {
+		a.playback.closeAccount("")
+	}
 }

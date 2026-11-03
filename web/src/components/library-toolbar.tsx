@@ -30,8 +30,8 @@ export function LibraryToolbar({ sources, kinds, counts, state, states, scrolled
       const types = controlWidth("types");
       const folders = controlWidth("folders");
       const sort = controlWidth(filtersCombined ? "filters" : "sort");
-      const label = element.querySelector<HTMLElement>("[data-pill-label]")?.offsetWidth ?? 0;
-      const pill = visible ? label + 38 : 0;
+      const label = element.querySelector<HTMLElement>("[data-pill-label]")?.scrollWidth ?? 0;
+      const pill = visible ? label + 38 + (!scope.accountId ? 96 : 0) : 0;
       const gaps = 12 + (types ? 12 : 0) + 8 + (visible ? 24 : 8);
       const sourceCompact = width < 640 || (width < 880 && 180 + lists + types + (searchExpanded ? 220 : 32) + sort + (visible ? 24 : 0) + gaps > available);
       const left = (sourceCompact ? 48 : 180) + lists + types + folders + (folders ? 12 : 0);
@@ -54,7 +54,7 @@ export function LibraryToolbar({ sources, kinds, counts, state, states, scrolled
       {folderFilter && <LibraryFolders />}
     </div>
     <div data-control="right" className="toolbar-right ml-auto flex min-w-0 shrink-0 items-center gap-2 pl-2">
-      <SyncPill state={state} states={states} visible={visible} compact={layout.pillCompact} onLogin={onLogin} />
+      <SyncPill accountName={!scope.accountId ? sources.flatMap((source) => source.accounts).find((account) => account.id === state?.accountId)?.nickname : undefined} state={state} states={states} visible={visible} compact={layout.pillCompact} onLogin={onLogin} />
       <div className={`min-w-0 shrink-0 ${visible ? "ml-2" : ""}`}><LibrarySearch compact={layout.searchCompact} onExpandedChange={setSearchExpanded} /></div>
       {filtersCombined ? <LibraryFilterMenu /> : <LibrarySort />}
     </div>

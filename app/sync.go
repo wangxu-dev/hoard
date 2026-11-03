@@ -87,6 +87,35 @@ func NewSync(a *App) *Sync {
 			log.Printf("[hoard:sync] auto start skipped: %v", err)
 		}
 	}
+	a.loginBlocked = func(ctx context.Context) {
+		a.mu.Lock()
+		id, current := a.accountID, a.sessionCtx
+		a.mu.Unlock()
+		if current != ctx || ctx.Err() != nil {
+			return
+		}
+		s.mu.Lock()
+		status := s.views[viewKey(id, "like")].Status
+		s.mu.Unlock()
+		if status == "blocked" || status == "verifying" {
+			return
+		}
+		records, err := a.Store.SyncRecords(ctx, id)
+		if err != nil {
+			return
+		}
+		byKind := map[string]store.SyncRecord{}
+		for _, record := range records {
+			byKind[record.Kind] = record
+		}
+		for _, kind := range syncKinds {
+			record := byKind[kind]
+			record.Kind = kind
+			view := toView(id, record)
+			view.Status, view.ErrorCode = "blocked", "NEED_VERIFY"
+			s.emit(view)
+		}
+	}
 	return s
 }
 
