@@ -119,6 +119,21 @@
   }
 }
 
+[data-slot="sidebar-container"],
+[data-slot="sidebar-gap"] {
+  transition-duration: var(--duration-slow);
+}
+
+[data-sidebar-brand-icon] {
+  transition: opacity var(--duration-sidebar) var(--ease-out);
+}
+
+[data-slot="sidebar"][data-transitioning="true"] [data-sidebar-brand-icon],
+[data-slot="sidebar"][data-transitioning="true"] [data-sidebar="trigger"] {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
 /* Collapsed rail buttons are all 40px squares 8px from the left edge, like the toggle above them. */
 [data-slot="sidebar"][data-state="collapsed"] [data-sidebar="menu"] {
   align-items: flex-start;

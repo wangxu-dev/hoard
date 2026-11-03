@@ -42,6 +42,9 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
   const { t } = useTranslation("common");
   const { resolvedTheme, setTheme } = useTheme();
   const [open, setOpen] = useState(() => localStorage.getItem("hoard-sidebar") !== "false");
+  const [transitioning, setTransitioning] = useState(false);
+  const transitionTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(transitionTimer.current), []);
   const isDark = resolvedTheme === "dark";
   const { available, info } = useUpdate();
   const { t: updateText } = useTranslation("settings");
@@ -56,20 +59,21 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
   }, [available, info, onPageChange, updateText]);
 
   const updateOpen = (next: boolean) => {
+    clearTimeout(transitionTimer.current);
+    setTransitioning(true);
+    transitionTimer.current = setTimeout(() => setTransitioning(false), Number.parseFloat(token("--duration-slow")));
     setOpen(next);
     localStorage.setItem("hoard-sidebar", String(next));
   };
 
   return (
     <SidebarProvider open={open} onOpenChange={updateOpen} style={{ "--sidebar-width": token("--sidebar-width"), "--sidebar-width-icon": token("--sidebar-width-icon") } as CSSProperties}>
-      <Sidebar collapsible="icon" className="bg-sidebar">
-        <SidebarHeader className="h-12 border-0 px-2">
+      <Sidebar collapsible="icon" data-transitioning={transitioning} className="bg-sidebar">
+        <SidebarHeader className="h-14 shrink-0 border-0 p-2">
           <div data-sidebar-brand className="relative flex h-10 min-w-0 items-center justify-end overflow-hidden">
-            <div data-sidebar-brand-icon className="pointer-events-none absolute top-0 left-0 grid size-10 place-items-center">
-              <img src={hoardIcon} alt="" className="size-6 object-contain" />
-            </div>
+            <img data-sidebar-brand-icon src={hoardIcon} alt="" className="pointer-events-none absolute top-1 left-1 size-8 object-contain" />
             <span className="pointer-events-none absolute left-12 whitespace-nowrap text-sm font-semibold tracking-tight transition-opacity duration-base group-data-[collapsible=icon]:opacity-0">{t("appName")}</span>
-            <SidebarTrigger aria-label={t(open ? "sidebar.collapse" : "sidebar.expand")} className="size-10 shrink-0 rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
+            <SidebarTrigger aria-label={t(open ? "sidebar.collapse" : "sidebar.expand")} className="size-10 shrink-0 rounded-lg hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
           </div>
         </SidebarHeader>
         <SidebarContent className="bg-sidebar">
