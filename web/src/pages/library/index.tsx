@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQueries, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -11,7 +11,7 @@ import { Viewer } from "@/components/viewer/viewer";
 import { ListCursor } from "@/lib/library-cursor";
 import { reconcileLibraryScope, setLibraryFilters, useLibraryFilters, useLibraryOrdering } from "@/lib/library-filters";
 import { useLibraryVersion } from "@/lib/library-events";
-import { queryKeys } from "@/lib/query";
+import { foldersQuery, queryKeys } from "@/lib/query";
 import { playMusic } from "@/lib/music";
 
 const noSources: SourceGroup[] = [];
@@ -30,6 +30,7 @@ export function LibraryPage({ scrolled, onAddAccount, onLogin }: { scrolled: boo
   const statesQuery = useQuery({ queryKey: queryKeys.syncStates, queryFn: () => source.syncStates(), staleTime: Infinity });
   const countsQuery = useQuery({ queryKey: queryKeys.counts(filters.scope), queryFn: () => source.counts(filters.scope), placeholderData: keepPreviousData });
   const sources = sourcesQuery.data ?? noSources;
+  useQueries({ queries: sources.filter((group) => group.id === "bilibili").flatMap((group) => group.accounts.map((account) => foldersQuery(account.id))) });
   useEffect(() => { if (sourcesQuery.data) reconcileLibraryScope(sourcesQuery.data); }, [sourcesQuery.data]);
   useQuery({
     queryKey: ["account-session", filters.scope.accountId ?? ""],

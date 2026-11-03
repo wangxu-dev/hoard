@@ -16,6 +16,9 @@ export function useLibraryVersion(): number {
 export function startLibraryEvents(): () => void {
   const source = getLibrarySource();
   const stopProgress = source.onSyncProgress((next) => {
+    if (next.kind === "favorite" && next.phase === "done" && next.status === "idle") {
+      void queryClient.invalidateQueries({ queryKey: ["folders", next.accountId] });
+    }
     queryClient.setQueryData<SyncState[]>(queryKeys.syncStates, (old = []) => [...old.filter((s) => s.accountId !== next.accountId || s.kind !== next.kind), next]);
   });
   // A fast sync changes the library many times a second; refresh about once a second.

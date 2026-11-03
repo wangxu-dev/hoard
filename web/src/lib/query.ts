@@ -20,6 +20,15 @@ export const queryKeys = {
 // update would cost more than it saves.
 queryClient.setQueryDefaults(["grid"], { structuralSharing: false });
 
+/** Folder names come from SQLite; sync and successful actions invalidate this cache. */
+export function foldersQuery(accountId: string) {
+  return queryOptions({
+    queryKey: ["folders", accountId],
+    queryFn: () => getLibrarySource().folders(accountId),
+    staleTime: Infinity,
+  });
+}
+
 // Play URLs are reused for half an hour, or until the CDN says they expire.
 const MEDIA_FRESH = 30 * 60_000;
 function mediaFreshness(media: MediaResult | undefined) {
