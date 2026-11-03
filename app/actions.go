@@ -183,6 +183,7 @@ func (s *Actions) run(accountID, workID, kind string, on bool, folderIDs []strin
 	stage = "identity"
 	identity, err := engine.Identity(ctx)
 	if err != nil || !identity.LoggedIn {
+		log.Printf("[hoard:actions] identity rejected request_failed=%t auth_required=%t", err != nil, identity.AuthRequired)
 		return empty, errors.New("AUTH_REQUIRED")
 	}
 	if identity.RemoteID != account.RemoteID && identity.UID != account.RemoteID {
