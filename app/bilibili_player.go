@@ -117,6 +117,17 @@ func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord, reque
 	}
 	playback, err := bilibili.ParsePlayback(body)
 	if err != nil {
+		var shape struct {
+			Code int `json:"code"`
+			Data struct {
+				Format  string            `json:"format"`
+				Quality int               `json:"quality"`
+				DURL    []json.RawMessage `json:"durl"`
+				DASH    json.RawMessage   `json:"dash"`
+			} `json:"data"`
+		}
+		_ = json.Unmarshal(body, &shape)
+		log.Printf("[hoard:player] Bilibili stream rejected code=%d quality=%d format=%s segments=%d dash=%t", shape.Code, shape.Data.Quality, shape.Data.Format, len(shape.Data.DURL), len(shape.Data.DASH) > 0 && string(shape.Data.DASH) != "null")
 		return MediaResult{}, playbackError(err)
 	}
 	out := MediaResult{Kind: "video", PreviewMS: playback.PreviewMS, Parts: parts, PartID: cid, Author: rec.Author, Desc: rec.Title, PublishedAt: rec.PublishedAt, Complete: true}
