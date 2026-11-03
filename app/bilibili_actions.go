@@ -160,12 +160,16 @@ func (s *actionSession) write(ctx context.Context, kind string, on bool, folderI
 }
 
 func (s *actionSession) aid(ctx context.Context) (string, error) {
+	if s.aidValue != "" {
+		return s.aidValue, nil
+	}
 	// Resolve from view to bind the AV id to the requested BV id.
 	body, err := s.bilibiliRequest(ctx, false, "/x/web-interface/view", map[string]string{"bvid": s.work.RemoteID})
 	if err != nil {
 		return "", err
 	}
-	return bilibili.ParseAID(body, s.work.RemoteID)
+	s.aidValue, err = bilibili.ParseAID(body, s.work.RemoteID)
+	return s.aidValue, err
 }
 
 func (s *actionSession) bilibiliRequest(ctx context.Context, write bool, path string, params map[string]string) (body []byte, err error) {

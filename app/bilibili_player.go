@@ -13,6 +13,13 @@ import (
 	"github.com/wangxu-dev/hoard/internal/store"
 )
 
+func playbackError(err error) error {
+	if errors.Is(err, bilibili.ErrAuth) {
+		return bilibili.ErrAuth
+	}
+	return errors.New("UNAVAILABLE")
+}
+
 func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord) (MediaResult, error) {
 	engine, ok := p.app.Engine.(interface {
 		ReadBilibili(context.Context, string, map[string]string) ([]byte, error)
@@ -20,13 +27,13 @@ func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord) (Medi
 	})
 	if !ok || engine.Source() != "bilibili" {
 		log.Printf("[hoard:player] Bilibili session unavailable supported=%t source_match=%t", ok, ok && engine.Source() == "bilibili")
-		return MediaResult{}, errors.New("AUTH_REQUIRED")
+		return MediaResult{}, errors.New("SESSION_NOT_READY")
 	}
 	p.app.mu.Lock()
 	session, accountID := p.app.sessionCtx, p.app.accountID
 	p.app.mu.Unlock()
 	if session == nil {
-		return MediaResult{}, errors.New("AUTH_REQUIRED")
+		return MediaResult{}, errors.New("SESSION_NOT_READY")
 	}
 	call, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -43,9 +50,16 @@ func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord) (Medi
 		if call.Err() != nil {
 			return nil, errors.New("CANCELED")
 		}
-		body, err := engine.ReadBilibili(call, path, params)
-		p.app.lastRequest = time.Now()
-		return body, err
+		for {
+			body, err := engine.ReadBilibili(call, path, params)
+			p.app.lastRequest = time.Now()
+			if err == nil || err.Error() != "NOT_READY" {
+				return body, err
+			}
+			if !wait(call, 300*time.Millisecond) {
+				return nil, errors.New("CANCELED")
+			}
+		}
 	}
 	if strings.HasPrefix(rec.RemoteID, "opus:") {
 		body, err := read("/x/polymer/web-dynamic/v1/opus/detail", map[string]string{"id": strings.TrimPrefix(rec.RemoteID, "opus:"), "features": "htmlNewStyle"})
@@ -53,7 +67,10 @@ func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord) (Medi
 			return MediaResult{}, errors.New("REQUEST_FAILED")
 		}
 		opus, err := bilibili.ParseOpus(body)
-		if err != nil || opus.ID != strings.TrimPrefix(rec.RemoteID, "opus:") {
+		if err != nil {
+			return MediaResult{}, playbackError(err)
+		}
+		if opus.ID != strings.TrimPrefix(rec.RemoteID, "opus:") {
 			return MediaResult{}, errors.New("UNAVAILABLE")
 		}
 		out := MediaResult{Kind: "gallery", Author: rec.Author, Desc: opus.Text, PublishedAt: opus.PublishedAt, Complete: true}
@@ -74,7 +91,7 @@ func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord) (Medi
 	}
 	cid, err := bilibili.ParseCID(body)
 	if err != nil {
-		return MediaResult{}, errors.New("UNAVAILABLE")
+		return MediaResult{}, playbackError(err)
 	}
 	body, err = read("/x/player/playurl", map[string]string{"bvid": rec.RemoteID, "cid": cid, "qn": strconv.Itoa(16), "fnval": "1", "fnver": "0", "fourk": "0", "platform": "html5"})
 	if err != nil {
@@ -82,7 +99,7 @@ func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord) (Medi
 	}
 	playback, err := bilibili.ParsePlayback(body)
 	if err != nil {
-		return MediaResult{}, errors.New("UNAVAILABLE")
+		return MediaResult{}, playbackError(err)
 	}
 	out := MediaResult{Kind: "video", Author: rec.Author, Desc: rec.Title, PublishedAt: rec.PublishedAt, Complete: true}
 	for _, raw := range playback.URLs {

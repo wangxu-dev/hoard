@@ -107,6 +107,7 @@ type actionSession struct {
 	account     store.Account
 	work        store.MediaRecord
 	lastRequest time.Time
+	aidValue    string
 }
 
 func (s *actionSession) request(ctx context.Context, call func() error) error {
