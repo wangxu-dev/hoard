@@ -133,9 +133,13 @@
       "PRIVATE": "Only the creator can see this item",
       "REVIEWING": "This item is under review",
       "WITHHELD": "This item can't be viewed right now",
-      "SESSION_NOT_READY": "Connecting to your account. Please try again shortly."
+      "SESSION_NOT_READY": "Connecting to your account. Please try again shortly.",
+      "PAID_CONTENT": "This video requires a purchase to play."
     },
-    "locate": "Show in library"
+    "locate": "Show in library",
+    "paidPreview": "This video has not been purchased. Preview available: {{duration}}",
+    "parts": "Episodes",
+    "part": "P{{number}} · {{title}}"
   },
   "grid": {
     "empty": "Nothing here yet. Choose Sync at the top right to bring in your Douyin items",

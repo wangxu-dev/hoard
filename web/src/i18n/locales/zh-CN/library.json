@@ -133,9 +133,13 @@
       "PRIVATE": "作品仅作者可见",
       "REVIEWING": "作品审核中，暂时无法查看",
       "WITHHELD": "作品暂时无法查看",
-      "SESSION_NOT_READY": "账号正在连接，请稍后重试"
+      "SESSION_NOT_READY": "账号正在连接，请稍后重试",
+      "PAID_CONTENT": "此视频尚未购买，暂时无法播放"
     },
-    "locate": "定位到正在播放"
+    "locate": "定位到正在播放",
+    "paidPreview": "此视频尚未购买，可试看 {{duration}}",
+    "parts": "选集",
+    "part": "P{{number}} · {{title}}"
   },
   "grid": {
     "empty": "还没有内容",

@@ -114,7 +114,7 @@ const media = async (_kind: string, id: string) => {
     publishedAt: item?.publishedAt ?? 0,
   };
 };
-export const Player = { media, refresh: media, warm: noop };
+export const Player = { media, refresh: media, part: async (id: string, _partId: string, _refresh: boolean) => media("video", id), warm: noop };
 export const Sync = { states: async () => [], start: noop, verify: noop };
 export const Actions = {
   state: async () => ({ liked: false, favorited: false, watchLater: false, folders: [] }),

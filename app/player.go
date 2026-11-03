@@ -38,14 +38,17 @@ type MediaMusic struct {
 // MediaResult is what the viewer needs to show and play one item. Media URLs
 // point at the local relay or cover cache, never at the CDN.
 type MediaResult struct {
-	Kind         string       `json:"kind"`
-	Videos       []string     `json:"videos"`
-	Images       []MediaImage `json:"images"`
-	Music        MediaMusic   `json:"music"`
-	Author       string       `json:"author"`
-	AuthorAvatar string       `json:"authorAvatar"`
-	Desc         string       `json:"desc"`
-	PublishedAt  int64        `json:"publishedAt"`
+	PreviewMS    int64                `json:"previewMs,omitempty"`
+	Parts        []bilibili.VideoPart `json:"parts,omitempty"`
+	PartID       string               `json:"partId,omitempty"`
+	Kind         string               `json:"kind"`
+	Videos       []string             `json:"videos"`
+	Images       []MediaImage         `json:"images"`
+	Music        MediaMusic           `json:"music"`
+	Author       string               `json:"author"`
+	AuthorAvatar string               `json:"authorAvatar"`
+	Desc         string               `json:"desc"`
+	PublishedAt  int64                `json:"publishedAt"`
 	// Complete is false when stored data stood in for the detail, so live photos
 	// and the sound title may be missing until a refresh.
 	Complete bool `json:"complete"`
@@ -130,7 +133,11 @@ func (p *Player) Refresh(kind, id string) (MediaResult, error) {
 	return p.media(kind, id, true)
 }
 
-func (p *Player) media(kind, id string, force bool) (out MediaResult, resultErr error) {
+func (p *Player) Part(id, partID string, refresh bool) (MediaResult, error) {
+	return p.media("video", id, refresh, partID)
+}
+
+func (p *Player) media(kind, id string, force bool, partID ...string) (out MediaResult, resultErr error) {
 	start, source, class := time.Now(), "detail", "OK"
 	defer func() {
 		log.Printf("[hoard:player] media kind=%s class=%s ms=%d source=%s", kind, class, time.Since(start).Milliseconds(), source)
@@ -160,7 +167,7 @@ func (p *Player) media(kind, id string, force bool) (out MediaResult, resultErr 
 	}
 	if rec.Source == "bilibili" {
 		source = "bilibili"
-		out, resultErr = p.bilibiliMedia(ctx, rec)
+		out, resultErr = p.bilibiliMedia(ctx, rec, partID...)
 		if resultErr != nil {
 			class = resultErr.Error()
 			if errors.Is(resultErr, bilibili.ErrAuth) {
@@ -168,6 +175,9 @@ func (p *Player) media(kind, id string, force bool) (out MediaResult, resultErr 
 			}
 		}
 		return
+	}
+	if len(partID) > 0 && partID[0] != "" {
+		return out, errors.New("INVALID_ARGUMENT")
 	}
 	if !force {
 		// A gallery shows its cached images at once; the viewer then asks again

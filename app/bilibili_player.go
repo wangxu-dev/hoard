@@ -14,13 +14,13 @@ import (
 )
 
 func playbackError(err error) error {
-	if errors.Is(err, bilibili.ErrAuth) {
-		return bilibili.ErrAuth
+	if errors.Is(err, bilibili.ErrAuth) || errors.Is(err, bilibili.ErrPaid) {
+		return err
 	}
 	return errors.New("UNAVAILABLE")
 }
 
-func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord) (MediaResult, error) {
+func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord, requestedPart ...string) (MediaResult, error) {
 	engine, ok := p.app.Engine.(interface {
 		ReadBilibili(context.Context, string, map[string]string) ([]byte, error)
 		Source() string
@@ -89,9 +89,27 @@ func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord) (Medi
 	if err != nil {
 		return MediaResult{}, errors.New("REQUEST_FAILED")
 	}
+	paid := bilibili.PaidVideo(body)
 	cid, err := bilibili.ParseCID(body)
 	if err != nil {
 		return MediaResult{}, playbackError(err)
+	}
+	parts, err := bilibili.ParseParts(body)
+	if err != nil {
+		return MediaResult{}, playbackError(err)
+	}
+	if len(requestedPart) > 0 && requestedPart[0] != "" {
+		found := false
+		for _, part := range parts {
+			if part.ID == requestedPart[0] {
+				cid = part.ID
+				found = true
+				break
+			}
+		}
+		if !found {
+			return MediaResult{}, errors.New("INVALID_ARGUMENT")
+		}
 	}
 	body, err = read("/x/player/playurl", map[string]string{"bvid": rec.RemoteID, "cid": cid, "qn": strconv.Itoa(16), "fnval": "1", "fnver": "0", "fourk": "0", "platform": "html5"})
 	if err != nil {
@@ -101,7 +119,15 @@ func (p *Player) bilibiliMedia(ctx context.Context, rec store.MediaRecord) (Medi
 	if err != nil {
 		return MediaResult{}, playbackError(err)
 	}
-	out := MediaResult{Kind: "video", Author: rec.Author, Desc: rec.Title, PublishedAt: rec.PublishedAt, Complete: true}
+	out := MediaResult{Kind: "video", PreviewMS: playback.PreviewMS, Parts: parts, PartID: cid, Author: rec.Author, Desc: rec.Title, PublishedAt: rec.PublishedAt, Complete: true}
+	if paid && out.PreviewMS == 0 {
+		for _, part := range parts {
+			if part.ID == cid && playback.DurationMS > 0 && playback.DurationMS+2000 < part.DurationMS {
+				out.PreviewMS = playback.DurationMS
+				break
+			}
+		}
+	}
 	for _, raw := range playback.URLs {
 		if url := p.app.Media.Register(raw); url != "" {
 			out.Videos = append(out.Videos, url)

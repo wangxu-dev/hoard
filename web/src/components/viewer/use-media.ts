@@ -6,12 +6,12 @@ import { mediaQuery, refreshMedia } from "@/lib/query";
 export interface MediaLoad { media: MediaResult | null; error: string | null; loading: boolean; refresh: (reason?: string) => void; retry: () => void }
 
 const placeholder = { kind: "video", id: "" } as const;
-const permanent = new Set(["DELETED", "PRIVATE", "REVIEWING", "WITHHELD", "NEED_VERIFY", "COOLING"]);
+const permanent = new Set(["DELETED", "PRIVATE", "REVIEWING", "WITHHELD", "NEED_VERIFY", "COOLING", "PAID_CONTENT"]);
 
 /** Resolve media and automatically request fresh URLs once after a load or playback failure. */
-export function useMedia(entry: LibraryEntry | undefined): MediaLoad {
-  const key = entry ? `${entry.kind}:${entry.id}` : "";
-  const query = useQuery({ ...mediaQuery(entry ?? placeholder), enabled: !!entry });
+export function useMedia(entry: LibraryEntry | undefined, partId?: string): MediaLoad {
+  const key = entry ? `${entry.kind}:${entry.id}:${partId ?? ""}` : "";
+  const query = useQuery({ ...mediaQuery(entry ?? placeholder, false, partId), enabled: !!entry });
   const [failure, setFailure] = useState<{ key: string; reason: string } | null>(null);
   const [refreshingKey, setRefreshingKey] = useState<string | null>(null);
   const attempt = useRef({ key, refreshed: false, pending: false });
@@ -24,7 +24,7 @@ export function useMedia(entry: LibraryEntry | undefined): MediaLoad {
     current.refreshed = true;
     setFailure(null);
     setRefreshingKey(key);
-    refreshMedia(entry)
+    refreshMedia(entry, partId)
       .then(() => { if (attempt.current === current) setFailure(null); })
       .catch((error: unknown) => {
         if (attempt.current === current) setFailure({ key, reason: error instanceof Error ? error.message : String(error) });

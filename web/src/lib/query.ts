@@ -12,7 +12,7 @@ export const queryKeys = {
   counts: (scope: Scope) => ["counts", scope.source ?? "", scope.accountId ?? ""] as const,
   grid: (filterKey: string) => ["grid", filterKey] as const,
   timeline: (filterKey: string) => ["timeline", filterKey] as const,
-  media: (kind: string, id: string) => ["media", kind, id] as const,
+  media: (kind: string, id: string, partId?: string) => partId ? ["media", kind, id, partId] as const : ["media", kind, id] as const,
 };
 
 // Grid lists hold thousands of slots and change a page at a time; comparing them deeply on every
@@ -29,10 +29,10 @@ function mediaFreshness(media: MediaResult | undefined) {
 }
 
 /** mediaQuery resolves the playable media of one item. */
-export function mediaQuery(entry: Pick<LibraryEntry, "kind" | "id">, full = false) {
+export function mediaQuery(entry: Pick<LibraryEntry, "kind" | "id">, full = false, partId?: string) {
   return queryOptions({
-    queryKey: queryKeys.media(entry.kind, entry.id),
-    queryFn: () => getLibrarySource().media(entry.kind, entry.id, full),
+    queryKey: queryKeys.media(entry.kind, entry.id, partId),
+    queryFn: () => getLibrarySource().media(entry.kind, entry.id, full, partId),
     staleTime: (query) => mediaFreshness(query.state.data),
     gcTime: MEDIA_FRESH,
     structuralSharing: false,
@@ -40,9 +40,9 @@ export function mediaQuery(entry: Pick<LibraryEntry, "kind" | "id">, full = fals
 }
 
 /** refreshMedia asks for new play URLs and replaces the cached ones. */
-export async function refreshMedia(entry: Pick<LibraryEntry, "kind" | "id">): Promise<MediaResult> {
-  const media = await getLibrarySource().media(entry.kind, entry.id, true);
-  queryClient.setQueryData(queryKeys.media(entry.kind, entry.id), media);
+export async function refreshMedia(entry: Pick<LibraryEntry, "kind" | "id">, partId?: string): Promise<MediaResult> {
+  const media = await getLibrarySource().media(entry.kind, entry.id, true, partId);
+  queryClient.setQueryData(queryKeys.media(entry.kind, entry.id, partId), media);
   return media;
 }
 

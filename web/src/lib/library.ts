@@ -29,7 +29,7 @@ export interface LibraryEntry {
   publishedAt: number; durationMs: number; imageCount: number; accountIds?: string[]; likedAccountIds?: string[]; favoritedAccountIds?: string[];
 }
 export interface MediaImage { url: string; liveUrl?: string }
-export interface MediaResult { kind: "video" | "gallery" | "music"; videos: string[]; images: MediaImage[]; music: { title: string; author: string; url: string }; author: string; authorAvatar?: string; desc: string; publishedAt: number; complete?: boolean; expiresAt?: number }
+export interface MediaResult { previewMs?: number; parts?: { id: string; title: string; durationMs: number }[]; partId?: string; kind: "video" | "gallery" | "music"; videos: string[]; images: MediaImage[]; music: { title: string; author: string; url: string }; author: string; authorAvatar?: string; desc: string; publishedAt: number; complete?: boolean; expiresAt?: number }
 /** One month of a list sorted by publish time; start is the offset of its first item. Year and month are 0 for items without a date. */
 export interface TimelineMonth { year: number; month: number; count: number; start: number }
 export interface ListQuery { scope: Scope; kind: ListKind; type: WorkType; query: string; sort: SortKey; offset: number; limit: number }
@@ -42,7 +42,7 @@ export interface LibrarySource {
   onSyncProgress(fn: (s: SyncState) => void): () => void;
   list(query: ListQuery): Promise<{ items: LibraryEntry[]; total: number }>;
   timeline(query: Omit<ListQuery, "offset" | "limit">): Promise<TimelineMonth[]>;
-  media(kind: string, id: string, refresh?: boolean): Promise<MediaResult>;
+  media(kind: string, id: string, refresh?: boolean, partId?: string): Promise<MediaResult>;
   warm(urls: string[]): Promise<void>;
   playMode(): Promise<PlayMode>;
   setPlayMode(value: PlayMode): Promise<void>;
@@ -118,7 +118,7 @@ const realSource: LibrarySource = {
   warm(urls) { return Player.warm(urls); },
   async playMode() { const mode = await App.playMode(); return mode === "one" || mode === "shuffle" ? mode : "list"; },
   setPlayMode(value) { return App.setPlayMode(value); },
-  media(kind, id, refresh = false) { return (refresh ? Player.refresh(kind, id) : Player.media(kind, id)) as Promise<MediaResult>; },
+  media(kind, id, refresh = false, partId) { return (partId ? Player.part(id, partId, refresh) : refresh ? Player.refresh(kind, id) : Player.media(kind, id)) as Promise<MediaResult>; },
   volume() { return App.volume(); },
   setVolume(value) { return App.setVolume(value); },
   muted() { return App.muted(); },
