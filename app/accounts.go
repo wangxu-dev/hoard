@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -170,6 +171,9 @@ func (a *App) activateLocked(account store.Account, show bool) error {
 func (a *App) watchIdentity(ctx context.Context, waitForLogin bool) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
+	log.Print("[hoard:accounts] startup identity watcher started")
+	defer log.Print("[hoard:accounts] startup identity watcher stopped")
+	previous := ""
 	for {
 		select {
 		case <-ctx.Done():
@@ -179,6 +183,13 @@ func (a *App) watchIdentity(ctx context.Context, waitForLogin bool) {
 				return
 			}
 			state, err := a.CheckLogin()
+			// Only record state changes; identity values stay out of diagnostics.
+			status := a.Status()
+			diagnostic := fmt.Sprintf("logged_in=%t ready=%t loading=%t detail=%s failed=%t", state.LoggedIn, status.Ready, status.Loading, state.Detail, err != nil)
+			if diagnostic != previous {
+				log.Printf("[hoard:accounts] startup identity %s", diagnostic)
+				previous = diagnostic
+			}
 			if ctx.Err() != nil {
 				return
 			}
