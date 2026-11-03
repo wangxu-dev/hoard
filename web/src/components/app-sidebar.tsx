@@ -1,3 +1,4 @@
+import hoardIcon from "../../../resources/icon.png";
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -63,10 +64,11 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
     <SidebarProvider open={open} onOpenChange={updateOpen} style={{ "--sidebar-width": token("--sidebar-width"), "--sidebar-width-icon": token("--sidebar-width-icon") } as CSSProperties}>
       <Sidebar collapsible="icon" className="bg-sidebar">
         <SidebarHeader className="h-12 border-0 px-2">
-          {/* Everything stays anchored while the width animates: the title fades and the
-              toggle rides the right edge until it sits centered in the collapsed rail. */}
-          <div className="flex min-w-0 items-center justify-between">
-            <span className="min-w-0 truncate pl-3 text-sm group-data-[collapsible=icon]:pl-0 font-semibold tracking-tight transition-opacity duration-200 group-data-[collapsible=icon]:opacity-0">{t("appName")}</span>
+          <div data-sidebar-brand className="relative flex h-10 min-w-0 items-center justify-end overflow-hidden">
+            <div data-sidebar-brand-icon className="pointer-events-none absolute top-0 left-0 grid size-10 place-items-center">
+              <img src={hoardIcon} alt="" className="size-6 object-contain" />
+            </div>
+            <span className="pointer-events-none absolute left-12 whitespace-nowrap text-sm font-semibold tracking-tight transition-opacity duration-base group-data-[collapsible=icon]:opacity-0">{t("appName")}</span>
             <SidebarTrigger aria-label={t(open ? "sidebar.collapse" : "sidebar.expand")} className="size-10 shrink-0 rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
           </div>
         </SidebarHeader>
