@@ -6,6 +6,8 @@
   const url = location.href;
   while (Date.now() < deadline) {
     if (location.href !== url) return false;
+    const savedSwitches = [...document.querySelectorAll('.trust-login-switch-button')].filter(visible);
+    if (savedSwitches.length === 1) return savedSwitches[0].classList.contains('check');
     if (clicked) {
       if (!visible(clicked)) return true;
     } else {
