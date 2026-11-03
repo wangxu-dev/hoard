@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useReducedMotion } from "motion/react";
 import { WheelGesturesPlugin } from "embla-carousel-wheel-gestures";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
@@ -67,52 +67,72 @@ export function WorkTrack({ cursor, index, entry, onSelect, onApi, children }: {
   const [api, setApi] = useState<CarouselApi>();
   const [, redraw] = useState(0);
   const reduced = useReducedMotion();
-  const initial = useRef(index > 0 ? 1 : 0);
-  const slots = [index - 1, index, index + 1].filter((n) => n >= 0 && n < cursor.total);
-  const active = slots.indexOf(index);
-  const latest = useRef({ slots, index, onSelect });
-  latest.current = { slots, index, onSelect };
-  const committing = useRef(false);
+  const size = Math.min(5, cursor.total);
+  const loop = cursor.total > size;
+  const [position, setPosition] = useState({ index, slot: loop ? 2 : index });
+  const initial = useRef(position.slot);
+  const positionRef = useRef(position);
+  const latest = useRef(onSelect);
+  latest.current = onSelect;
+  const slots = Array.from({ length: size }, (_, slot) => {
+    if (!loop) return slot;
+    let distance = slot - position.slot;
+    if (distance > 2) distance -= size;
+    if (distance < -2) distance += size;
+    return position.index + distance;
+  });
   useMouseAxis(root);
 
   useEffect(() => {
     let live = true;
     for (const n of slots) void cursor.at(n).then(() => { if (live) redraw((v) => v + 1); }).catch(() => undefined);
     return () => { live = false; };
-  }, [cursor, index]);
-
-  useLayoutEffect(() => {
-    if (!api) return;
-    // Keep slot nodes stable so regular rebasing retains the wheel plugin's momentum state.
-    if (api.slideNodes().length !== slots.length) api.reInit();
-    api.scrollTo(active, true);
-  }, [api, index, slots.length, active]);
+  }, [cursor, position.index]);
 
   useEffect(() => { onApi(api); return () => onApi(undefined); }, [api, onApi]);
   useEffect(() => {
     if (!api) return;
     let live = true;
-    const settle = () => {
-      const { slots, index, onSelect } = latest.current;
-      const next = slots[api.selectedScrollSnap()];
-      if (next === undefined || next === index || committing.current) return;
-      committing.current = true;
-      void cursor.at(next).then((value) => {
-        if (!live) return;
-        if (value) onSelect(next, value);
-        else api.scrollTo(slots.indexOf(index));
-      }).catch(() => { if (live) api.scrollTo(slots.indexOf(index)); }).finally(() => { committing.current = false; });
+    let request = 0;
+    const select = () => {
+      const previous = positionRef.current;
+      const slot = api.selectedScrollSnap();
+      let distance = slot - previous.slot;
+      if (loop && distance > 2) distance -= size;
+      if (loop && distance < -2) distance += size;
+      const next = previous.index + distance;
+      if (!distance) return;
+      if (next < 0 || next >= cursor.total) {
+        api.scrollTo(previous.slot);
+        return;
+      }
+      const selected = { index: next, slot };
+      positionRef.current = selected;
+      setPosition(selected);
+      const currentRequest = ++request;
+      const apply = (value: LibraryEntry | undefined) => {
+        if (!live || currentRequest !== request) return;
+        if (value) latest.current(next, value);
+        else {
+          positionRef.current = previous;
+          setPosition(previous);
+          api.scrollTo(previous.slot);
+        }
+      };
+      const cached = cursor.peek(next);
+      if (cached) apply(cached);
+      else void cursor.at(next).then(apply).catch(() => apply(undefined));
     };
-    api.on("settle", settle);
-    return () => { live = false; api.off("settle", settle); };
-  }, [api, cursor]);
+    api.on("select", select);
+    return () => { live = false; request++; api.off("select", select); };
+  }, [api, cursor, loop, size]);
 
   return <div ref={root} className="absolute inset-0" data-testid="viewer-work-track">
     <Carousel orientation="vertical" setApi={setApi} plugins={plugins} onKeyDownCapture={undefined}
-      opts={{ startIndex: initial.current, duration: reduced ? 0 : carouselDuration, skipSnaps: false, watchSlides: false, watchDrag }} className="size-full">
+      opts={{ startIndex: initial.current, duration: reduced ? 0 : carouselDuration, loop, skipSnaps: false, watchSlides: false, watchDrag }} className="size-full">
       <CarouselContent viewportClassName="size-full touch-none" className="mt-0 h-full" data-testid="viewer-work-slides">
         {slots.map((n, slot) => <CarouselItem key={slot} className="relative min-h-0 h-full pt-0" aria-hidden={n !== index}>
-          {n === index ? children : <img src={cursor.peek(n)?.cover ?? entry?.cover} alt="" draggable={false} className="size-full object-contain" />}
+          {n === index ? children : <img src={cursor.peek(Math.max(0, Math.min(n, cursor.total - 1)))?.cover ?? entry?.cover} alt="" draggable={false} className="size-full object-contain" />}
         </CarouselItem>)}
       </CarouselContent>
     </Carousel>
