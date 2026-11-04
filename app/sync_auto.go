@@ -21,6 +21,9 @@ func automaticSyncDue(source string, records []store.SyncRecord, now int64) bool
 		if record.Status == "unsupported" {
 			continue
 		}
+		if record.Status == "paused" || record.Status == "cooling" || record.Status == "blocked" {
+			return true
+		}
 		if record.Phase != "done" || record.LastFullAt == nil || now-*record.LastFullAt > 180 {
 			return true
 		}

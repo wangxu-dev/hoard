@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/wangxu-dev/hoard/internal/bilibili"
 )
 
 // ReadBilibili only accepts the read endpoints used by the account indexer.
@@ -64,7 +66,7 @@ func (e *Engine) requestBilibili(ctx context.Context, path string, params map[st
   }else{options.headers={'Content-Type':'application/x-www-form-urlencoded'};options.body=new URLSearchParams({...job.params,csrf:decodeURIComponent(csrf),csrf_token:decodeURIComponent(csrf)}).toString()}
  }else{url.search=new URLSearchParams(job.params||{}).toString()}
  const response=await fetch(url,options);
- if(!response.ok)return {error:response.status===429?'RATE_LIMITED':'REQUEST_FAILED'};
+ if(!response.ok)return {error:response.status===429?'RATE_LIMITED':response.status===412||response.status===403?'RISK_CONTROL':response.status===401?'AUTH_REQUIRED':'REQUEST_FAILED'};
  const body=await response.text();return body.length<=16777216?{body}:{error:'RESPONSE_TOO_LARGE'};
  }finally{clearTimeout(timer)}
 })(%s)`, job))
@@ -81,6 +83,14 @@ func (e *Engine) requestBilibili(ctx context.Context, path string, params map[st
 	}
 	if json.Unmarshal(raw, &reply) != nil || reply.Body == "" {
 		if reply.Error != "" {
+			switch reply.Error {
+			case "RATE_LIMITED":
+				return nil, bilibili.ErrRateLimited
+			case "RISK_CONTROL":
+				return nil, bilibili.ErrRiskControl
+			case "AUTH_REQUIRED":
+				return nil, bilibili.ErrAuth
+			}
 			return nil, errors.New(reply.Error)
 		}
 		return nil, errors.New("INVALID_RESPONSE")

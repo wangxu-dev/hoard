@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -185,9 +186,20 @@ func ParseOpus(body []byte) (Opus, error) {
 }
 
 func (c Client) indexOpus(ctx context.Context, db *store.Store, accountID string) error {
+	checkpoint, err := db.SyncCheckpoint(ctx, accountID, "opus")
+	if err != nil {
+		return err
+	}
+	startPage := max(checkpoint.NextPage, 1)
+	if err = c.persist(ctx, func() error {
+		return db.PutSyncCheckpoint(ctx, accountID, "opus", store.SyncCheckpoint{NextPage: startPage})
+	}); err != nil {
+		return err
+	}
 	seen := map[[32]byte]bool{}
-	for page := 1; page <= 10000; page++ {
-		body, err := c.read(ctx, opusFeed, map[string]string{"page": strconv.Itoa(page), "page_size": "20"})
+	for page := startPage; page <= 10000; page++ {
+		params := map[string]string{"page": strconv.Itoa(page), "page_size": "20"}
+		body, err := c.read(ctx, opusFeed, params)
 		if err != nil {
 			return err
 		}
@@ -198,6 +210,26 @@ func (c Client) indexOpus(ctx context.Context, db *store.Store, accountID string
 		ids := make([]string, len(works))
 		for i, w := range works {
 			ids[i] = w.RemoteID
+		}
+		if !more {
+			confirm, e := c.read(ctx, opusFeed, params)
+			if e != nil {
+				return e
+			}
+			end, hasMore, e := ParseOpusPage(confirm)
+			if e != nil {
+				return e
+			}
+			x := make([]string, len(end))
+			for i, w := range end {
+				x[i] = w.RemoteID
+			}
+			slices.Sort(x)
+			sorted := slices.Clone(ids)
+			slices.Sort(sorted)
+			if hasMore || !slices.Equal(x, sorted) {
+				return ErrInvalid
+			}
 		}
 		key := sha256.Sum256([]byte(strings.Join(ids, "\n")))
 		if seen[key] {
@@ -243,7 +275,12 @@ func (c Client) indexOpus(ctx context.Context, db *store.Store, accountID string
 			c.Changed("favorite")
 		}
 		if !more || unchanged {
-			return nil
+			return c.persist(ctx, func() error { return db.PutSyncCheckpoint(ctx, accountID, "opus", store.SyncCheckpoint{}) })
+		}
+		if err = c.persist(ctx, func() error {
+			return db.PutSyncCheckpoint(ctx, accountID, "opus", store.SyncCheckpoint{NextPage: page + 1})
+		}); err != nil {
+			return err
 		}
 	}
 	return fmt.Errorf("opus pagination limit exceeded")

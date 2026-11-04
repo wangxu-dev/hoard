@@ -34,9 +34,13 @@ func (s *Sync) runBilibili(ctx context.Context, accountID string) {
 		r := &store.SyncRecord{Kind: kind, Phase: "head", Status: "running"}
 		for _, old := range previous {
 			if old.Kind == kind {
-				r.LastFullAt = old.LastFullAt
+				*r = old
 			}
 		}
+		if !s.resumeCooling(ctx, accountID, r) {
+			return
+		}
+		r.Phase, r.Status = "head", "running"
 		records[kind] = r
 		s.save(accountID, r)
 	}
@@ -48,10 +52,7 @@ func (s *Sync) runBilibili(ctx context.Context, accountID string) {
 			}
 			r.Status, r.ErrorCode = "idle", ""
 			if err != nil {
-				r.Status, r.ErrorCode = "paused", "REQUEST_FAILED"
-				if errors.Is(err, bilibili.ErrAuth) {
-					r.Status, r.ErrorCode = "signed_out", "AUTH_REQUIRED"
-				}
+				r.Status, r.ErrorCode = bilibiliSyncFailure(err)
 			}
 			if ctx.Err() != nil {
 				r.Status, r.ErrorCode = "paused", "CANCELED"
@@ -69,22 +70,11 @@ func (s *Sync) runBilibili(ctx context.Context, accountID string) {
 	lastPath := ""
 	client := bilibili.Client{Persist: s.app.bilibiliPersistence(), Incremental: incremental, Read: func(ctx context.Context, path string, params map[string]string) ([]byte, error) {
 		lastPath = path
-		for s.app.frontRequests.Load() > 0 {
-			if !wait(ctx, 20*time.Millisecond) {
-				return nil, ctx.Err()
-			}
+		kind := "favorite"
+		if path == "/x/v2/history/toview" {
+			kind = "watch_later"
 		}
-		s.app.requestMu.Lock()
-		defer s.app.requestMu.Unlock()
-		if delay := time.Until(s.app.lastRequest.Add(pageGap)); delay > 0 && !wait(ctx, delay) {
-			return nil, ctx.Err()
-		}
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
-		body, err := engine.ReadBilibili(ctx, path, params)
-		s.app.lastRequest = time.Now()
-		return body, err
+		return s.readBilibiliSync(ctx, accountID, records[kind], func() ([]byte, error) { return engine.ReadBilibili(ctx, path, params) })
 	}, Changed: func(kind string) {
 		if ctx.Err() != nil {
 			return
@@ -108,10 +98,7 @@ func (s *Sync) runBilibili(ctx context.Context, accountID string) {
 			continue
 		}
 		if err != nil {
-			r.Status, r.ErrorCode = "paused", "REQUEST_FAILED"
-			if errors.Is(err, bilibili.ErrAuth) {
-				r.Status, r.ErrorCode = "signed_out", "AUTH_REQUIRED"
-			}
+			r.Status, r.ErrorCode = bilibiliSyncFailure(err)
 			if ctx.Err() != nil {
 				r.Status, r.ErrorCode = "paused", "CANCELED"
 			}

@@ -63,7 +63,7 @@ func TestSyncRejectsPageBeforeAction(t *testing.T) {
 	a := &App{}
 	a.actionRevision.Add(1)
 	s := &Sync{app: a}
-	if err := s.store("a", "like", false, douyin.ListPage{}, 0); err == nil || err.Error() != "ACTIONS_CHANGED" {
+	if err := s.store("a", "like", false, douyin.ListPage{}, 0, nil); err == nil || err.Error() != "ACTIONS_CHANGED" {
 		t.Fatalf("stale page: %v", err)
 	}
 }
