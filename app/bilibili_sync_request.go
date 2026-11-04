@@ -11,7 +11,7 @@ import (
 	"github.com/wangxu-dev/hoard/internal/syncpolicy"
 )
 
-const bilibiliSyncGap = 800 * time.Millisecond
+const bilibiliSyncGap = 200 * time.Millisecond
 
 func bilibiliSyncFailure(err error) (string, string) {
 	switch {

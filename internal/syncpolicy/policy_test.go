@@ -6,7 +6,7 @@ import (
 )
 
 func TestPaceAndCooldown(t *testing.T) {
-	for _, base := range []time.Duration{300 * time.Millisecond, 800 * time.Millisecond} {
+	for _, base := range []time.Duration{200 * time.Millisecond, 300 * time.Millisecond, 800 * time.Millisecond} {
 		gap := Gap(0, base)
 		for i := 0; i < 20; i++ {
 			gap = Slow(gap)
