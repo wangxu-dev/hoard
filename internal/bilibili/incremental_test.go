@@ -41,7 +41,7 @@ func TestIncrementalFolderStopsAtKnownPage(t *testing.T) {
 	if _, err = c.Index(ctx, db, "test"); err != nil {
 		t.Fatal(err)
 	}
-	if pages != 2 {
+	if pages != 3 {
 		t.Fatalf("initial pages %d", pages)
 	}
 	c.Incremental = true
@@ -49,7 +49,7 @@ func TestIncrementalFolderStopsAtKnownPage(t *testing.T) {
 	if _, err = c.Index(ctx, db, "test"); err != nil {
 		t.Fatal(err)
 	}
-	if pages != 0 {
+	if pages != 1 {
 		t.Fatalf("incremental pages %d", pages)
 	}
 	count = 3
@@ -66,7 +66,7 @@ func TestIncrementalFolderStopsAtKnownPage(t *testing.T) {
 	if _, err = c.Index(ctx, db, "test"); err != nil {
 		t.Fatal(err)
 	}
-	if pages != 1 {
+	if pages != 3 {
 		t.Fatalf("changed count should check first page: %d", pages)
 	}
 }

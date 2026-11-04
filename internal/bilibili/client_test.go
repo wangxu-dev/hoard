@@ -5,12 +5,14 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/wangxu-dev/hoard/internal/store"
 )
 
 func TestIndexAndObserve(t *testing.T) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
 	db, err := store.Open(filepath.Join(t.TempDir(), "library.db"))
 	if err != nil {
 		t.Fatal(err)
@@ -52,7 +54,7 @@ func TestIndexAndObserve(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(videos) != 1 || calls != 5 {
+	if len(videos) != 1 || calls != 8 {
 		t.Fatalf("deduplication: videos=%d calls=%d", len(videos), calls)
 	}
 	for _, kind := range []string{"watch_later", "favorite"} {

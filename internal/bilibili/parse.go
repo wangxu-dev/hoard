@@ -12,6 +12,13 @@ import (
 var ErrAuth = errors.New("AUTH_REQUIRED")
 var ErrUnavailable = errors.New("UNAVAILABLE")
 var ErrInvalid = errors.New("INVALID_RESPONSE")
+var ErrRateLimited = errors.New("RATE_LIMITED")
+var ErrRiskControl = errors.New("RISK_CONTROL")
+var ErrVerification = errors.New("VERIFICATION_REQUIRED")
+
+// CheckResponse classifies Bilibili's read envelope before pagination can advance.
+func CheckResponse(body []byte) error { _, err := payload(body); return err }
+
 var numericID = regexp.MustCompile(`^[0-9]{1,30}$`)
 var videoID = regexp.MustCompile(`^BV[0-9A-Za-z]{10}$`)
 
@@ -50,6 +57,12 @@ func payload(body []byte) (json.RawMessage, error) {
 	case 0:
 	case -101:
 		return nil, ErrAuth
+	case -509:
+		return nil, ErrRateLimited
+	case -412:
+		return nil, ErrRiskControl
+	case -352:
+		return nil, ErrVerification
 	default:
 		return nil, ErrUnavailable
 	}

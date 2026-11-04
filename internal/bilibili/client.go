@@ -6,14 +6,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"slices"
 	"strconv"
-	"time"
 
 	"github.com/wangxu-dev/hoard/internal/store"
 )
 
 // Read fetches an API path inside the account's authenticated page.
-// The caller owns session isolation and serial request scheduling.
+// The caller owns session isolation, serial scheduling, and each network timeout.
+// Scheduling may include a persisted cooldown longer than a network request.
 type Read func(context.Context, string, map[string]string) ([]byte, error)
 
 type Client struct {
@@ -35,9 +36,7 @@ func (c Client) read(ctx context.Context, path string, params map[string]string)
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	call, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
-	return c.Read(call, path, params)
+	return c.Read(ctx, path, params)
 }
 
 // shortcut: indexing is additive; reconcile removals once complete snapshots are tracked.
@@ -92,12 +91,19 @@ func (c Client) Index(ctx context.Context, db *store.Store, accountID string) ([
 			return nil, err
 		}
 		folder := store.Folder{ID: f.ID, Title: f.Title, Count: f.Count}
-		// shortcut: equal counts skip content checks; add reconciliation for same-count replacements.
-		if count, exists := counts[f.ID]; c.Incremental && exists && count == f.Count {
-			if err = c.persist(ctx, func() error { return db.SaveFolderMembership(ctx, accountID, folder, nil) }); err != nil {
-				return nil, err
-			}
-			continue
+		checkpoint, err := db.SyncCheckpoint(ctx, accountID, "folder:"+f.ID)
+		if err != nil {
+			return nil, err
+		}
+		startPage := 1
+		resuming := checkpoint.NextPage > 0
+		if checkpoint.RemoteCount == f.Count && checkpoint.NextPage > 0 {
+			startPage = checkpoint.NextPage
+		}
+		if err = c.persist(ctx, func() error {
+			return db.PutSyncCheckpoint(ctx, accountID, "folder:"+f.ID, store.SyncCheckpoint{NextPage: startPage, RemoteCount: f.Count})
+		}); err != nil {
+			return nil, err
 		}
 		pageFolder := folder
 		pageFolder.Count = 0
@@ -105,17 +111,31 @@ func (c Client) Index(ctx context.Context, db *store.Store, accountID string) ([
 			pageFolder.Count = count
 		}
 		pagesSeen := map[[32]byte]bool{}
-		for page := 1; ; page++ {
+		for page := startPage; ; page++ {
 			if page > 10000 {
 				return nil, fmt.Errorf("favorite pagination limit exceeded")
 			}
-			body, err = c.read(ctx, "/x/v3/fav/resource/list", map[string]string{"media_id": f.ID, "pn": strconv.Itoa(page), "ps": "20", "order": "mtime", "type": "0", "platform": "web"})
+			params := map[string]string{"media_id": f.ID, "pn": strconv.Itoa(page), "ps": "20", "order": "mtime", "type": "0", "platform": "web"}
+			body, err = c.read(ctx, "/x/v3/fav/resource/list", params)
 			if err != nil {
 				return nil, err
 			}
 			parsed, err := ParsePage(body)
 			if err != nil {
 				return nil, err
+			}
+			if !parsed.HasMore {
+				confirm, e := c.read(ctx, "/x/v3/fav/resource/list", params)
+				if e != nil {
+					return nil, e
+				}
+				end, e := ParsePage(confirm)
+				if e != nil {
+					return nil, e
+				}
+				if end.HasMore || !sameVideos(parsed.Videos, end.Videos) {
+					return nil, ErrInvalid
+				}
 			}
 			// A repeated response must not turn a broken pagination endpoint into a loop.
 			var envelope struct {
@@ -132,7 +152,7 @@ func (c Client) Index(ctx context.Context, db *store.Store, accountID string) ([
 				return nil, fmt.Errorf("favorite pagination stalled")
 			}
 			pagesSeen[key] = true
-			unchanged := c.Incremental && len(parsed.Videos) > 0
+			unchanged := c.Incremental && !resuming && len(parsed.Videos) > 0
 			for _, v := range parsed.Videos {
 				at, ok := previous[v.ID]
 				if !ok || at != v.FavoritedAt {
@@ -156,8 +176,18 @@ func (c Client) Index(ctx context.Context, db *store.Store, accountID string) ([
 			if !parsed.HasMore || unchanged {
 				break
 			}
+			if err = c.persist(ctx, func() error {
+				return db.PutSyncCheckpoint(ctx, accountID, "folder:"+f.ID, store.SyncCheckpoint{NextPage: page + 1, RemoteCount: f.Count})
+			}); err != nil {
+				return nil, err
+			}
 		}
-		if err = c.persist(ctx, func() error { return db.SaveFolderMembership(ctx, accountID, folder, nil) }); err != nil {
+		if err = c.persist(ctx, func() error {
+			if err := db.SaveFolderMembership(ctx, accountID, folder, nil); err != nil {
+				return err
+			}
+			return db.PutSyncCheckpoint(ctx, accountID, "folder:"+f.ID, store.SyncCheckpoint{})
+		}); err != nil {
 			return nil, err
 		}
 	}
@@ -168,6 +198,19 @@ func (c Client) Index(ctx context.Context, db *store.Store, accountID string) ([
 		c.Completed("favorite")
 	}
 	return videos, nil
+}
+
+func sameVideos(a, b []Video) bool {
+	x, y := make([]string, len(a)), make([]string, len(b))
+	for i, v := range a {
+		x[i] = v.ID
+	}
+	for i, v := range b {
+		y[i] = v.ID
+	}
+	slices.Sort(x)
+	slices.Sort(y)
+	return slices.Equal(x, y)
 }
 
 func (c Client) save(ctx context.Context, db *store.Store, accountID, kind string, head bool, videos []Video) error {

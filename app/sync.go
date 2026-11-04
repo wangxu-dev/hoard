@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
-	"math/rand/v2"
+	"slices"
 	"sync"
 	"time"
 
@@ -13,6 +13,7 @@ import (
 	"github.com/wangxu-dev/hoard/internal/covers"
 	"github.com/wangxu-dev/hoard/internal/douyin"
 	"github.com/wangxu-dev/hoard/internal/store"
+	"github.com/wangxu-dev/hoard/internal/syncpolicy"
 )
 
 // SyncEngine is the part of the account engine the list sync uses.
@@ -58,7 +59,7 @@ var syncOps = map[string]douyin.Operation{"like": douyin.OpLikes, "favorite": do
 
 const (
 	pageGap       = 1200 * time.Millisecond
-	pageJitter    = 600 * time.Millisecond
+	douyinSyncGap = 300 * time.Millisecond
 	headPageLimit = 30
 	segmentPages  = 24
 	turnPages     = 10
@@ -67,17 +68,16 @@ const (
 
 // Sync pulls likes, favorites and music of the active account into the library.
 type Sync struct {
-	app         *App
-	mu          sync.Mutex
-	generation  int
-	running     string
-	runCtx      context.Context
-	cancel      context.CancelFunc
-	views       map[string]SyncView
-	verifying   bool
-	hideOnPage  bool
-	lastRequest time.Time
-	listPages   int
+	app        *App
+	mu         sync.Mutex
+	generation int
+	running    string
+	runCtx     context.Context
+	cancel     context.CancelFunc
+	views      map[string]SyncView
+	verifying  bool
+	hideOnPage bool
+	listPages  int
 }
 
 func NewSync(a *App) *Sync {
@@ -173,7 +173,7 @@ func (s *Sync) States() ([]SyncView, error) {
 				r = store.SyncRecord{Kind: kind, Phase: "idle", Status: "idle"}
 			}
 			v := toView(account.ID, r)
-			if v.Status == "running" || v.Status == "queued" || v.Status == "cooling" || v.Status == "checking" {
+			if v.Status == "running" || v.Status == "queued" || v.Status == "checking" || (v.Status == "cooling" && v.RetryAt <= time.Now().Unix()) {
 				v.Status = "idle"
 			}
 			if account.Status == "signed_out" {
@@ -253,17 +253,18 @@ func (s *Sync) start(automatic bool) error {
 		if err != nil {
 			return
 		}
-		if account.Source == "bilibili" {
-			s.runBilibili(runCtx, accountID)
-			return
-		}
-		s.run(runCtx, accountID)
-		if runCtx.Err() == nil && s.unfinished(accountID) {
-			time.AfterFunc(retryDelay, func() {
-				if err := s.Start(); err != nil {
-					log.Printf("[hoard:sync] retry skipped: %v", err)
-				}
-			})
+		for runCtx.Err() == nil {
+			if account.Source == "bilibili" {
+				s.runBilibili(runCtx, accountID)
+			} else {
+				s.run(runCtx, accountID)
+			}
+			if runCtx.Err() != nil || !s.unfinished(accountID) {
+				return
+			}
+			if !wait(runCtx, retryDelay) {
+				return
+			}
 		}
 	}()
 	return nil
@@ -284,7 +285,7 @@ func (s *Sync) unfinished(accountID string) bool {
 		case "blocked", "verifying", "signed_out":
 			return false
 		}
-		if r.Phase != "done" && r.Status != "unsupported" {
+		if (r.Phase != "done" || r.Status == "paused" || r.Status == "cooling") && r.Status != "unsupported" {
 			left = true
 		}
 	}
@@ -327,33 +328,18 @@ func wait(ctx context.Context, d time.Duration) bool {
 	}
 }
 
-// request sends one request, one at a time, at least pageGap plus jitter apart.
-func (s *Sync) request(ctx context.Context, op douyin.Operation, params map[string]string) (douyin.PageReply, error) {
+// request sends one background request through the shared interactive-priority lane.
+func (s *Sync) request(ctx context.Context, op douyin.Operation, params map[string]string, gap time.Duration) (douyin.PageReply, error) {
 	eng := s.app.Engine.(SyncEngine)
-	for {
-		s.app.requestMu.Lock()
-		if s.app.frontRequests.Load() > 0 {
-			s.app.requestMu.Unlock()
-			if !wait(ctx, 20*time.Millisecond) {
-				return douyin.PageReply{}, ctx.Err()
-			}
-			continue
-		}
-		break
+	if err := s.lockBackground(ctx, gap); err != nil {
+		return douyin.PageReply{}, err
 	}
 	defer s.app.requestMu.Unlock()
-	if !s.app.lastRequest.IsZero() {
-		gap := pageGap + time.Duration(rand.Int64N(int64(pageJitter)))
-		if d := time.Until(s.app.lastRequest.Add(gap)); d > 0 && !wait(ctx, d) {
-			return douyin.PageReply{}, ctx.Err()
-		}
-	}
 	if ctx.Err() != nil {
 		return douyin.PageReply{}, ctx.Err()
 	}
 	reply, err := eng.Request(ctx, op, params)
 	s.app.lastRequest = time.Now()
-	s.lastRequest = s.app.lastRequest
 	return reply, err
 }
 
@@ -410,7 +396,7 @@ func (s *Sync) run(ctx context.Context, accountID string) {
 	}
 	var profile douyin.Profile
 	for attempt := 0; attempt < 3; attempt++ {
-		reply, err := s.request(ctx, douyin.OpSelf, nil)
+		reply, err := s.request(ctx, douyin.OpSelf, nil, douyinSyncGap)
 		if ctx.Err() != nil {
 			return
 		}
@@ -526,11 +512,15 @@ func (s *Sync) fetch(ctx context.Context, accountID string, r *store.SyncRecord,
 	op := syncOps[r.Kind]
 	coolings := 0
 	for attempt := 0; ; attempt++ {
+		if !s.resumeCooling(ctx, accountID, r) {
+			return douyin.ListPage{}, fetchCancel
+		}
 		if eng.PageState(ctx).Captcha {
 			r.ErrorCode = string(douyin.ResponseVerificationRequired)
 			return douyin.ListPage{}, fetchBlocked
 		}
-		reply, err := s.request(ctx, op, listParams(r.Kind, secUID, cursor))
+		started := time.Now()
+		reply, err := s.request(ctx, op, listParams(r.Kind, secUID, cursor), syncpolicy.Gap(r.DelayMS, douyinSyncGap))
 		if ctx.Err() != nil {
 			return douyin.ListPage{}, fetchCancel
 		}
@@ -538,35 +528,26 @@ func (s *Sync) fetch(ctx context.Context, accountID string, r *store.SyncRecord,
 		if err == nil {
 			page = douyin.ParseList(op, reply)
 		}
-		log.Printf("[hoard:sync] %s page=%d class=%s http=%d code=%d items=%d more=%v", r.Kind, r.Pages+1, page.Class, reply.Status, page.Code, page.Received, page.HasMore)
+		log.Printf("[hoard:sync] %s page=%d class=%s http=%d code=%d items=%d more=%v elapsed_ms=%d delay_ms=%d", r.Kind, r.Pages+1, page.Class, reply.Status, page.Code, page.Received, page.HasMore, time.Since(started).Milliseconds(), r.DelayMS)
 		if page.Class != douyin.ResponseVerificationRequired && eng.PageState(ctx).Captcha {
 			page.Class = douyin.ResponseVerificationRequired
 		}
 		r.ErrorCode = string(page.Class)
 		switch page.Class {
 		case douyin.ResponseOK:
-			r.ErrorCode, r.Failures = "", 0
+			r.ErrorCode = ""
+			recoverPace(r, douyinSyncGap)
 			return page, fetchOK
 		case douyin.ResponseRateLimited:
 			coolings++
-			r.Failures++
-			if coolings > 4 {
+			s.slow(accountID, r, douyinSyncGap)
+			if coolings >= 4 {
 				return page, fetchPaused
 			}
-			delay := time.Minute << min(r.Failures-1, 3)
-			if delay > 10*time.Minute {
-				delay = 10 * time.Minute
-			}
-			retry := time.Now().Add(delay).Unix()
-			r.Status, r.RetryAt = "cooling", &retry
-			s.save(accountID, r)
-			log.Printf("[hoard:sync] %s cooling %s", r.Kind, delay)
-			if !wait(ctx, delay) {
-				return page, fetchCancel
-			}
-			r.Status, r.RetryAt = "running", nil
-			s.save(accountID, r)
-		case douyin.ResponseVerificationRequired, douyin.ResponseRiskControl:
+		case douyin.ResponseVerificationRequired:
+			return page, fetchBlocked
+		case douyin.ResponseRiskControl:
+			s.slow(accountID, r, douyinSyncGap)
 			return page, fetchBlocked
 		case douyin.ResponseAuthRequired:
 			return page, fetchSignedOut
@@ -621,7 +602,14 @@ func pageIDs(p douyin.ListPage) []string {
 	return ids
 }
 
-func (s *Sync) store(accountID, kind string, head bool, p douyin.ListPage, revision uint64) error {
+func samePage(a, b douyin.ListPage) bool {
+	x, y := pageIDs(a), pageIDs(b)
+	slices.Sort(x)
+	slices.Sort(y)
+	return slices.Equal(x, y)
+}
+
+func (s *Sync) store(accountID, kind string, head bool, p douyin.ListPage, revision uint64, record *store.SyncRecord) error {
 	s.app.mu.Lock()
 	defer s.app.mu.Unlock()
 	if s.app.actionRevision.Load() != revision {
@@ -630,7 +618,9 @@ func (s *Sync) store(accountID, kind string, head bool, p douyin.ListPage, revis
 	ctx, cancel := accountContext()
 	defer cancel()
 	var err error
-	if kind == "music" {
+	if record != nil {
+		err = s.app.Store.SaveSyncPage(ctx, accountID, head, worksOf(p.Works), musicsOf(p.Musics), *record)
+	} else if kind == "music" {
 		_, err = s.app.Store.SaveMusics(ctx, accountID, head, musicsOf(p.Musics))
 	} else {
 		_, err = s.app.Store.SaveWorks(ctx, accountID, kind, head, worksOf(p.Works))
@@ -664,12 +654,18 @@ func (s *Sync) syncKind(ctx context.Context, accountID, secUID string, r *store.
 		s.emit(toView(accountID, *r))
 		return false, false
 	}
-	r.Status, r.ErrorCode, r.RetryAt = "running", "", nil
+	if !s.resumeCooling(ctx, accountID, r) {
+		return true, false
+	}
+	r.Status, r.ErrorCode = "running", ""
 	s.save(accountID, r)
 	failed := func(outcome fetchOutcome) bool {
 		switch outcome {
 		case fetchCancel:
 			r.Status = "idle"
+			if r.RetryAt != nil && *r.RetryAt > time.Now().Unix() {
+				r.Status = "cooling"
+			}
 			s.save(accountID, r)
 			return true
 		case fetchBlocked:
@@ -727,20 +723,18 @@ func (s *Sync) syncKind(ctx context.Context, accountID, secUID string, r *store.
 			if err != nil {
 				return fail(fetchPaused)
 			}
-			stop := false
+			stop := len(page.Works)+len(page.Musics) > 0
 			for _, w := range page.Works {
-				if known[w.ID] {
-					stop = true
-					break
+				if !known[w.ID] {
+					stop = false
+					fresh.Works = append(fresh.Works, w)
 				}
-				fresh.Works = append(fresh.Works, w)
 			}
 			for _, m := range page.Musics {
-				if known[m.ID] {
-					stop = true
-					break
+				if !known[m.ID] {
+					stop = false
+					fresh.Musics = append(fresh.Musics, m)
 				}
-				fresh.Musics = append(fresh.Musics, m)
 			}
 			if stop || !page.HasMore || page.Cursor == "" || page.Cursor == cursor {
 				break
@@ -748,7 +742,7 @@ func (s *Sync) syncKind(ctx context.Context, accountID, secUID string, r *store.
 			cursor = page.Cursor
 		}
 		if len(fresh.Works)+len(fresh.Musics) > 0 {
-			if err := s.store(accountID, r.Kind, true, fresh, revision); err != nil {
+			if err := s.store(accountID, r.Kind, true, fresh, revision, nil); err != nil {
 				log.Printf("[hoard:sync] %s head write failed", r.Kind)
 				return fail(fetchPaused)
 			}
@@ -765,6 +759,7 @@ func (s *Sync) syncKind(ctx context.Context, accountID, secUID string, r *store.
 		}
 		r.Phase = "backfill"
 		empty := 0
+		seenPages := map[string]bool{}
 		for turn := 0; ; turn++ {
 			if turn >= budget {
 				r.Status = "queued"
@@ -776,17 +771,42 @@ func (s *Sync) syncKind(ctx context.Context, accountID, secUID string, r *store.
 				return fail(outcome)
 			}
 			s.pageLanded()
-			if err := s.store(accountID, r.Kind, false, page, revision); err != nil {
+			if !page.HasMore {
+				confirmed, outcome := s.fetch(ctx, accountID, r, secUID, cursor)
+				if outcome != fetchOK {
+					return fail(outcome)
+				}
+				if confirmed.HasMore || !samePage(page, confirmed) {
+					r.ErrorCode = "END_UNCONFIRMED"
+					return fail(fetchPaused)
+				}
+			}
+			fingerprint, _ := json.Marshal(pageIDs(page))
+			if page.Received > 0 && seenPages[string(fingerprint)] {
+				r.ErrorCode = "CURSOR_STALLED"
+				return fail(fetchPaused)
+			}
+			seenPages[string(fingerprint)] = true
+			if page.HasMore && (page.Cursor == "" || page.Cursor == cursor) {
+				r.ErrorCode = "CURSOR_STALLED"
+				return fail(fetchPaused)
+			}
+			next := *r
+			next.Pages++
+			if page.Received > 0 || !page.HasMore {
+				next.BackfillCursor = page.Cursor
+			}
+			if !page.HasMore {
+				now := time.Now().Unix()
+				next.Phase, next.Status, next.BackfillCursor, next.LastFullAt = "done", "idle", "", &now
+			}
+			if err := s.store(accountID, r.Kind, false, page, revision, &next); err != nil {
 				log.Printf("[hoard:sync] %s page write failed", r.Kind)
 				return fail(fetchPaused)
 			}
-			r.Pages++
+			*r = next
 			if !page.HasMore {
 				break
-			}
-			if page.Cursor == "" || page.Cursor == cursor {
-				r.ErrorCode = "CURSOR_STALLED"
-				return fail(fetchPaused)
 			}
 			if page.Received == 0 {
 				if empty++; empty > 6 {
@@ -797,7 +817,6 @@ func (s *Sync) syncKind(ctx context.Context, accountID, secUID string, r *store.
 				empty = 0
 			}
 			cursor = page.Cursor
-			r.BackfillCursor = cursor
 			s.save(accountID, r)
 			recycle()
 		}
