@@ -22,7 +22,7 @@ INSERT INTO accounts VALUES ('test-account', 'Test account', '99', 1);
 CREATE TABLE works (uid TEXT NOT NULL, id TEXT NOT NULL, desc TEXT NOT NULL, author TEXT NOT NULL, cover TEXT NOT NULL, duration INTEGER NOT NULL, created_at INTEGER NOT NULL, aweme_type INTEGER NOT NULL, play_url TEXT NOT NULL, images TEXT NOT NULL, PRIMARY KEY(uid,id));
 CREATE INDEX works_created ON works(uid,created_at DESC);
 INSERT INTO works VALUES ('test-account','test-work','Test work','Test author','',0,1,0,'','[]');`},
-		{name: "future", setup: `PRAGMA user_version=4`, wantErr: true},
+		{name: "future", setup: `PRAGMA user_version=5`, wantErr: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "library.db")+"?_pragma=foreign_keys(ON)")
@@ -49,7 +49,7 @@ INSERT INTO works VALUES ('test-account','test-work','Test work','Test author','
 				}
 			}
 			var version int
-			if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil || version != 3 {
+			if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil || version != 4 {
 				t.Fatalf("version=%d err=%v", version, err)
 			}
 			if _, err := db.Exec(`INSERT INTO settings VALUES ('test', 'kept')`); err != nil {

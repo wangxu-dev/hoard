@@ -24,11 +24,12 @@ type SyncRecord struct {
 	Failures       int
 	LastFullAt     *int64
 	UpdatedAt      int64
+	DelayMS        int
 }
 
 // SyncRecords returns every list state of an account.
 func (s *Store) SyncRecords(ctx context.Context, accountID string) ([]SyncRecord, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT kind,phase,status,COALESCE(backfill_cursor,''),pages,items,remote_total,COALESCE(error_code,''),retry_at,failures,last_full_at,updated_at FROM sync_state WHERE account_id=?`, accountID)
+	rows, err := s.db.QueryContext(ctx, `SELECT kind,phase,status,COALESCE(backfill_cursor,''),pages,items,remote_total,COALESCE(error_code,''),retry_at,failures,last_full_at,updated_at,delay_ms FROM sync_state WHERE account_id=?`, accountID)
 	if err != nil {
 		return nil, fmt.Errorf("read sync records: %w", err)
 	}
@@ -37,7 +38,7 @@ func (s *Store) SyncRecords(ctx context.Context, accountID string) ([]SyncRecord
 	for rows.Next() {
 		var r SyncRecord
 		var total, retry, full sql.NullInt64
-		if err := rows.Scan(&r.Kind, &r.Phase, &r.Status, &r.BackfillCursor, &r.Pages, &r.Items, &total, &r.ErrorCode, &retry, &r.Failures, &full, &r.UpdatedAt); err != nil {
+		if err := rows.Scan(&r.Kind, &r.Phase, &r.Status, &r.BackfillCursor, &r.Pages, &r.Items, &total, &r.ErrorCode, &retry, &r.Failures, &full, &r.UpdatedAt, &r.DelayMS); err != nil {
 			return nil, fmt.Errorf("scan sync record: %w", err)
 		}
 		if total.Valid {
@@ -57,6 +58,14 @@ func (s *Store) SyncRecords(ctx context.Context, accountID string) ([]SyncRecord
 
 // PutSyncRecord stores a list state; items is recounted from the library.
 func (s *Store) PutSyncRecord(ctx context.Context, accountID string, r SyncRecord) error {
+	return putSyncRecord(ctx, s.db, accountID, r)
+}
+
+type syncWriter interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}
+
+func putSyncRecord(ctx context.Context, db syncWriter, accountID string, r SyncRecord) error {
 	var backfill any
 	if r.BackfillCursor != "" {
 		backfill = r.BackfillCursor
@@ -69,12 +78,12 @@ func (s *Store) PutSyncRecord(ctx context.Context, accountID string, r SyncRecor
 	if r.Kind == "music" {
 		count = `SELECT COUNT(*) FROM music_relations WHERE account_id=?1 AND ?2='music'`
 	}
-	_, err := s.db.ExecContext(ctx, `INSERT INTO sync_state(account_id,kind,phase,status,backfill_cursor,pages,items,remote_total,error_code,retry_at,failures,last_full_at,updated_at)
-VALUES(?1,?2,?3,?4,?5,?6,(`+count+`),?7,?8,?9,?10,?11,?12) ON CONFLICT(account_id,kind) DO UPDATE SET
+	_, err := db.ExecContext(ctx, `INSERT INTO sync_state(account_id,kind,phase,status,backfill_cursor,pages,items,remote_total,error_code,retry_at,failures,last_full_at,updated_at,delay_ms)
+VALUES(?1,?2,?3,?4,?5,?6,(`+count+`),?7,?8,?9,?10,?11,?12,?13) ON CONFLICT(account_id,kind) DO UPDATE SET
 phase=excluded.phase,status=excluded.status,backfill_cursor=excluded.backfill_cursor,pages=excluded.pages,items=excluded.items,
 remote_total=excluded.remote_total,error_code=excluded.error_code,retry_at=excluded.retry_at,failures=excluded.failures,
-last_full_at=excluded.last_full_at,updated_at=excluded.updated_at`,
-		accountID, r.Kind, r.Phase, r.Status, backfill, r.Pages, r.RemoteTotal, code, r.RetryAt, r.Failures, r.LastFullAt, time.Now().Unix())
+last_full_at=excluded.last_full_at,updated_at=excluded.updated_at,delay_ms=excluded.delay_ms`,
+		accountID, r.Kind, r.Phase, r.Status, backfill, r.Pages, r.RemoteTotal, code, r.RetryAt, r.Failures, r.LastFullAt, time.Now().Unix(), r.DelayMS)
 	if err != nil {
 		return fmt.Errorf("write sync record: %w", err)
 	}
@@ -130,6 +139,17 @@ func (s *Store) SaveWorks(ctx context.Context, accountID, kind string, head bool
 		return 0, fmt.Errorf("begin save works: %w", err)
 	}
 	defer tx.Rollback()
+	added, err := saveWorks(ctx, tx, accountID, kind, head, works)
+	if err != nil {
+		return 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit save works: %w", err)
+	}
+	return added, nil
+}
+
+func saveWorks(ctx context.Context, tx *sql.Tx, accountID, kind string, head bool, works []Work) (int, error) {
 	var source string
 	if err := tx.QueryRowContext(ctx, `SELECT source FROM accounts WHERE id=?`, accountID).Scan(&source); err != nil {
 		return 0, fmt.Errorf("read account: %w", err)
@@ -189,9 +209,6 @@ ON CONFLICT(account_id,kind,work_id) DO NOTHING`, accountID, id, kind, relationS
 		}
 		seq--
 	}
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("commit save works: %w", err)
-	}
 	return added, nil
 }
 
@@ -212,6 +229,17 @@ func (s *Store) SaveMusics(ctx context.Context, accountID string, head bool, mus
 		return 0, fmt.Errorf("begin save musics: %w", err)
 	}
 	defer tx.Rollback()
+	added, err := saveMusics(ctx, tx, accountID, head, musics)
+	if err != nil {
+		return 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit save musics: %w", err)
+	}
+	return added, nil
+}
+
+func saveMusics(ctx context.Context, tx *sql.Tx, accountID string, head bool, musics []Music) (int, error) {
 	var source string
 	if err := tx.QueryRowContext(ctx, `SELECT source FROM accounts WHERE id=?`, accountID).Scan(&source); err != nil {
 		return 0, fmt.Errorf("read account: %w", err)
@@ -248,9 +276,6 @@ ON CONFLICT(id) DO UPDATE SET title=excluded.title,author=excluded.author,durati
 			added++
 		}
 		seq--
-	}
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("commit save musics: %w", err)
 	}
 	return added, nil
 }
