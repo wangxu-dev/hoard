@@ -6,13 +6,16 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 // Cache is separate from the collection database, including its atomic-write temp files.
-type Cache struct{ Dir string }
+type Cache struct {
+	Dir    string
+	failIO func(stage string) error
+}
 type cacheEnvelope struct {
 	SchemaVersion int             `json:"schemaVersion"`
 	Scope         Scope           `json:"scope"`
@@ -54,13 +57,16 @@ func (c Cache) Load(scope Scope, input, rule string) (*Snapshot, error) {
 }
 func (c Cache) Save(s *Snapshot) error {
 	if err := Validate(s); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(c.Dir, 0700); err != nil {
+		scope := Scope{}
+		if s != nil {
+			scope = s.Scope
+		}
+		LogDiagnostic("cache-validate-failed", scope, err)
 		return err
 	}
 	body, err := json.Marshal(s)
 	if err != nil {
+		LogDiagnostic("cache-encode-failed", s.Scope, err)
 		return err
 	}
 	b, err := json.Marshal(cacheEnvelope{SchemaVersion: SchemaVersion, Scope: s.Scope, InputRevision: s.InputRevision, RuleHash: s.RuleHash, Checksum: checksum(body), Snapshot: body})
@@ -68,39 +74,49 @@ func (c Cache) Save(s *Snapshot) error {
 		return err
 	}
 	if len(b) > 64<<20 {
-		return errors.New("SNAPSHOT_TOO_LARGE")
+		err := errors.New("SNAPSHOT_TOO_LARGE")
+		LogDiagnostic("cache-size-limit", s.Scope, err)
+		return err
 	}
-	f, err := os.CreateTemp(c.Dir, ".snapshot-*.part")
-	if err != nil {
+	if err := c.io("mkdir", func() error { return os.MkdirAll(c.Dir, 0700) }); err != nil {
+		return err
+	}
+
+	var f *os.File
+	if err = c.io("create", func() error {
+		var createErr error
+		f, createErr = os.CreateTemp(c.Dir, ".snapshot-*.part")
+		return createErr
+	}); err != nil {
 		return err
 	}
 	name := f.Name()
-	defer os.Remove(name)
-	if err = f.Chmod(0600); err == nil {
-		_, err = f.Write(b)
+	defer func() { f.Close(); os.Remove(name) }()
+	if err = c.io("chmod", func() error { return f.Chmod(0600) }); err == nil {
+		err = c.io("write", func() error { _, e := f.Write(b); return e })
 	}
 	if err == nil {
-		err = f.Sync()
+		err = c.io("file-sync", f.Sync)
 	}
-	closeErr := f.Close()
+	closeErr := c.io("close", f.Close)
 	if err == nil {
 		err = closeErr
 	}
 	if err != nil {
 		return err
 	}
-	if err = os.Rename(name, c.path(s.Scope, s.InputRevision, s.RuleHash)); err != nil {
-		return err
-	}
-	dir, err := os.Open(c.Dir)
-	if err == nil {
-		err = dir.Sync()
-		dir.Close()
-	}
-	return err
+	return replaceCacheFile(name, c.path(s.Scope, s.InputRevision, s.RuleHash), c.io)
 }
+
+// Both are the app's native protocol, not external HTTP. Exact path/id/query
+// equality also forbids arbitrary remote URLs, fragments and cache filling.
+func validNativeAsset(ref, kind, id string) bool {
+	suffix := url.PathEscape(kind) + "/" + url.PathEscape(id) + "?cacheOnly=1"
+	return ref == "hoard-cover://localhost/"+suffix || ref == "http://hoard-cover.localhost/"+suffix
+}
+
 func Validate(s *Snapshot) error {
-	if s.SchemaVersion != SchemaVersion || s.RuleHash == "" || s.InputRevision == "" || s.SnapshotKind != "baseline" {
+	if s == nil || s.SchemaVersion != SchemaVersion || s.RuleHash == "" || s.InputRevision == "" || s.SnapshotKind != "baseline" {
 		return errors.New("SNAPSHOT_INVALID")
 	}
 
@@ -137,10 +153,10 @@ func Validate(s *Snapshot) error {
 			if works[w.ID] || w.Source != sc.Source || w.ID == "" || w.MonthKeys.SourceTime != nil || w.MonthKeys.ObservedTime != nil {
 				return errors.New("SNAPSHOT_WORK_INVALID")
 			}
-			if w.Cover != "" && !strings.HasPrefix(w.Cover, "hoard-cover://localhost/w/") {
+			if w.Cover != "" && !validNativeAsset(w.Cover, "w", w.ID) {
 				return errors.New("SNAPSHOT_ASSET_INVALID")
 			}
-			if w.Author.AvatarURL != "" && !strings.HasPrefix(w.Author.AvatarURL, "hoard-cover://localhost/a/") {
+			if w.Author.AvatarURL != "" && !validNativeAsset(w.Author.AvatarURL, "a", w.ID) {
 				return errors.New("SNAPSHOT_ASSET_INVALID")
 			}
 			works[w.ID] = true

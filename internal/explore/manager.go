@@ -20,6 +20,7 @@ type TaskView struct {
 	InputRevision string `json:"inputRevision"`
 	SnapshotID    string `json:"snapshotId"`
 	CacheHit      bool   `json:"cacheHit"`
+	CacheWarning  string `json:"cacheWarning"`
 	Error         string `json:"error"`
 }
 type task struct {
@@ -30,30 +31,32 @@ type task struct {
 	result *Snapshot
 }
 type computation struct {
-	ctx      context.Context
-	cancel   context.CancelFunc
-	done     chan struct{}
-	refs     int
-	finished bool
-	snapshot *Snapshot
-	cacheHit bool
-	err      error
+	ctx          context.Context
+	cancel       context.CancelFunc
+	done         chan struct{}
+	refs         int
+	finished     bool
+	snapshot     *Snapshot
+	cacheHit     bool
+	cacheWarning string
+	err          error
 }
 type Manager struct {
-	closed  bool
-	wg      sync.WaitGroup
-	mu      sync.Mutex
-	reader  Reader
-	cache   Cache
-	tasks   map[string]*task
-	latest  map[string]string
-	work    map[string]*computation
-	analyze func(context.Context, Scope, []store.ExploreRecord) (*Snapshot, error)
-	after   func(*Snapshot)
+	closed           bool
+	wg               sync.WaitGroup
+	mu               sync.Mutex
+	reader           Reader
+	cache            Cache
+	tasks            map[string]*task
+	latest           map[string]string
+	retryPersistence map[string]bool
+	work             map[string]*computation
+	analyze          func(context.Context, Scope, []store.ExploreRecord) (*Snapshot, error)
+	after            func(*Snapshot)
 }
 
 func NewManager(reader Reader, cache Cache, after func(*Snapshot)) *Manager {
-	return &Manager{reader: reader, cache: cache, tasks: map[string]*task{}, latest: map[string]string{}, work: map[string]*computation{}, analyze: Analyze, after: after}
+	return &Manager{reader: reader, cache: cache, tasks: map[string]*task{}, latest: map[string]string{}, work: map[string]*computation{}, retryPersistence: map[string]bool{}, analyze: Analyze, after: after}
 }
 func (m *Manager) Start(scope Scope, client string) (TaskView, error) {
 	if client == "" || len(client) > 128 || scope.Source != "" && scope.Source != "douyin" && scope.Source != "bilibili" {
@@ -137,7 +140,7 @@ func (m *Manager) run(t *task) {
 	t.view.InputRevision = input
 	t.view.State = "analyzing"
 	shared := m.work[key]
-	if shared == nil || shared.ctx.Err() != nil {
+	if shared == nil || shared.ctx.Err() != nil || (shared.finished && shared.cacheWarning != "") {
 		ctx, cancel := context.WithCancel(context.Background())
 		shared = &computation{ctx: ctx, cancel: cancel, done: make(chan struct{})}
 		m.work[key] = shared
@@ -173,36 +176,65 @@ func (m *Manager) run(t *task) {
 	}
 	if shared.err != nil {
 		t.view.State = "failed"
+		if errors.Is(shared.err, context.Canceled) {
+			t.view.State = "cancelled"
+		}
 		t.view.Error = safeError(shared.err)
 		return
 	}
 	t.result = shared.snapshot
 	t.view.State = "complete"
 	t.view.CacheHit = shared.cacheHit
+	t.view.CacheWarning = shared.cacheWarning
 	t.view.SnapshotID = shared.snapshot.SnapshotID
 }
 func (m *Manager) compute(key string, c *computation, scope Scope, rows []store.ExploreRecord, input string) {
 	defer m.wg.Done()
 	s, err := m.cache.Load(scope, input, RuleHash)
 	hit := err == nil
+	m.mu.Lock()
+	retry := m.retryPersistence[key]
+	m.mu.Unlock()
 	if !hit {
 		LogDiagnostic("cache-miss", scope, nil)
 		s, err = m.analyze(c.ctx, scope, rows)
 		if err != nil {
 			LogDiagnostic("analyze-failed", scope, err)
 		}
-		if err == nil && c.ctx.Err() == nil {
-			err = m.cache.Save(s)
-			if err != nil {
-				LogDiagnostic("cache-save-failed", scope, err)
+	}
+	warning := ""
+	if err == nil && c.ctx.Err() == nil && (!hit || retry) {
+		err = m.cache.Save(s)
+		if err != nil {
+			LogDiagnostic("cache-save-failed", scope, err)
+			var ioErr *CacheIOError
+			if errors.As(err, &ioErr) && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+				warning = ioErr.Error()
+				LogDiagnostic("cache-persist-warning-memory-available", scope, err)
+				m.mu.Lock()
+				if len(m.retryPersistence) >= 128 {
+					for old := range m.retryPersistence {
+						delete(m.retryPersistence, old)
+						break
+					}
+				}
+				m.retryPersistence[key] = true
+				m.mu.Unlock()
+				err = nil
+				hit = false
 			}
+		} else {
+			m.mu.Lock()
+			delete(m.retryPersistence, key)
+			m.mu.Unlock()
 		}
 	}
+
 	if err == nil && c.ctx.Err() != nil {
 		err = c.ctx.Err()
 	}
 	if err == nil {
-		log.Printf("[hoard:exploration] stage=complete cache_hit=%t sources=%d", hit, len(s.Scopes))
+		log.Printf("[hoard:exploration] stage=complete cache_hit=%t cache_warning=%s sources=%d", hit, warning, len(s.Scopes))
 	}
 	if err == nil && m.after != nil {
 		m.after(s)
@@ -210,6 +242,7 @@ func (m *Manager) compute(key string, c *computation, scope Scope, rows []store.
 	m.mu.Lock()
 	c.snapshot = s
 	c.cacheHit = hit
+	c.cacheWarning = warning
 	c.err = err
 	c.finished = true
 	close(c.done)
@@ -219,8 +252,8 @@ func safeError(err error) string {
 	if errors.Is(err, context.Canceled) {
 		return "CANCELLED"
 	}
-	if err.Error() == "INVALID_SCOPE" || err.Error() == "SCOPE_MISMATCH" || err.Error() == "SNAPSHOT_TOO_LARGE" {
-		return err.Error()
+	if code := DiagnosticCode(err.Error()); code != "UNKNOWN" {
+		return code
 	}
 	return "EXPLORATION_FAILED"
 }

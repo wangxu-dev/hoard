@@ -6,6 +6,7 @@ import (
 	"github.com/wangxu-dev/hoard/internal/store"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -112,7 +113,7 @@ func TestExploreCacheHitInvalidationAndCorruption(t *testing.T) {
 		t.Fatal(err)
 	}
 	info, _ := os.Stat(path)
-	if info.Mode().Perm() != 0600 {
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0600 {
 		t.Fatal("cache permissions")
 	}
 	files, _ := filepath.Glob(filepath.Join(c.Dir, "*.part"))
