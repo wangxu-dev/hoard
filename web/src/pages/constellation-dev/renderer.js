@@ -19,13 +19,6 @@ const asset=v=>v?(D.assets?.[v]||v):null,cover=w=>asset(w?.coverRef||w?.coverURL
 function image(ref){const url=asset(ref);if(!url)return null;let rec=imageCache.get(url);if(!rec){const im=new Image();im.decoding='async';im.referrerPolicy='no-referrer';rec={img:im,ready:false,failed:false};imageCache.set(url,rec);recordImage(url,0);im.onload=()=>{rec.ready=true;recordImage(url,1);invalidate();};im.onerror=()=>{rec.failed=true;recordImage(url,-1);invalidate();};im.src=url;}return rec.ready?rec.img:null;}
 function attachImage(e,url){if(!url){e.hidden=true;e.removeAttribute('src');return false;}e.hidden=false;e.referrerPolicy='no-referrer';recordImage(url,0);e.onload=()=>{recordImage(url,1);e.classList.add('ready');};e.onerror=()=>{recordImage(url,-1);e.hidden=true;e.classList.remove('ready');if(e.id==='preview-cover')$('#preview').classList.add('no-art');};e.classList.remove('ready');e.src=url;return true;}
 function glow(color){if(glows.has(color))return glows.get(color);const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),r=parseInt(color.slice(1,3),16),g=parseInt(color.slice(3,5),16),b=parseInt(color.slice(5,7),16),v=x.createRadialGradient(32,32,0,32,32,32);v.addColorStop(0,`rgba(${r},${g},${b},.75)`);v.addColorStop(.12,`rgba(${r},${g},${b},.32)`);v.addColorStop(.45,`rgba(${r},${g},${b},.075)`);v.addColorStop(1,`rgba(${r},${g},${b},0)`);x.fillStyle=v;x.fillRect(0,0,64,64);glows.set(color,c);return c;}
-const bg=Array.from({length:200},(_,i)=>({x:H.rnd('bgx'+i),y:H.rnd('bgy'+i),r:.35+H.rnd('bgr'+i)*.7,a:.1+H.rnd('bga'+i)*.27}));
-const dust=[],mist=[];
-for(const t of M.topics.values())if(t.kind==='topic'){
- for(let i=0;i<190;i++){const k=t.id+'dust'+i,a=H.normal(k+'x')*t.spread*1.25,b=H.normal(k+'y')*t.spread*.65;dust.push({pos:{x:t.center.x+a*Math.cos(t.angle)-b*Math.sin(t.angle),y:t.center.y+a*Math.sin(t.angle)+b*Math.cos(t.angle),z:t.center.z+H.normal(k+'z')*.07},color:t.color,theme:t.id,seed:H.rnd(k)});}
- for(let i=0;i<13;i++){const k=t.id+'fog'+i;mist.push({pos:{x:t.center.x+H.normal(k+'x')*t.spread*.8,y:t.center.y+H.normal(k+'y')*t.spread*.8,z:t.center.z+H.normal(k+'z')*.045},color:t.color,theme:t.id,r:.065+H.rnd(k)*.075});}
-}
-for(let i=0;i<1200;i++){const a=i%3*Math.PI*2/3+H.rnd('disk-a'+i)*2.4,r=Math.sqrt(H.rnd('disk-r'+i))*.94,ang=H.spiralAngle(r,a);dust.push({pos:{x:Math.cos(ang)*r+H.normal('diskx'+i)*.04,y:Math.sin(ang)*r+H.normal('disky'+i)*.035,z:H.normal('diskz'+i)*.065},color:i%4?'#76c7dd':'#dfebdf',theme:null,seed:H.rnd('disk'+i)});}
 const worldPoint=p=>H.rotateZ(p,worldRotation);
 const project=p=>H.project(worldPoint(p),camera,W,HH);
 function invalidate(){if(disposed)return;dirty=true;if(!frame&&!document.hidden)frame=requestAnimationFrame(draw);}
@@ -70,11 +63,7 @@ function updateCamera(dt,now){let moving=false;
 function draw(now){
  if(disposed)return;frame=0;const dt=Math.max(.001,Math.min(.05,(now-last)/1000||.016));last=now;let anim=updateCamera(dt,now);if(!dirty&&!anim){if(canOrbit())frame=requestAnimationFrame(draw);return;}dirty=false;ctx.setTransform(dpr,0,0,dpr,0,0);
  ctx.fillStyle='#0b131d';ctx.fillRect(0,0,W,HH);const b=ctx.createRadialGradient(W*.53,HH*.49,10,W*.53,HH*.49,W*.63);b.addColorStop(0,'#173545');b.addColorStop(.47,'#102330');b.addColorStop(1,'#0a121d');ctx.fillStyle=b;ctx.fillRect(0,0,W,HH);
- for(const p of bg){ctx.globalAlpha=p.a;ctx.fillStyle='#d5e8ed';ctx.fillRect(p.x*W,p.y*HH,p.r,p.r);}ctx.globalAlpha=1;
- const present=new Set(stats.map(s=>s.t.id)),response=new Set(hover?hover.w.memberships.map(m=>m.topicId):hoverTheme?[hoverTheme]:[]);
- ctx.globalCompositeOperation='screen';for(const m of mist){if(!present.has(m.theme))continue;const p=project(m.pos),r=Math.min(160,m.r*p.scale*p.p*1.8);ctx.globalAlpha=(selectedTheme&&m.theme!==selectedTheme?.11:.29)*(response.size&&!response.has(m.theme)?.7:1.1);ctx.drawImage(glow(m.color),p.x-r,p.y-r,r*2,r*2);}
- for(const d of dust){if(d.theme&&!present.has(d.theme))continue;const p=project(d.pos);if(p.x<0||p.x>W||p.y<0||p.y>HH)continue;const on=!selectedTheme||d.theme===selectedTheme;ctx.globalAlpha=(.18+d.seed*.33)*(on?1:.32);ctx.fillStyle=d.color;const r=Math.min(1.3,(.35+d.seed*.65)*p.p);ctx.fillRect(p.x,p.y,r,r);if(d.seed>.88){const r2=Math.min(14,4.5*p.p);ctx.globalAlpha=.18*(on?1:.3);ctx.drawImage(glow(d.color),p.x-r2,p.y-r2,r2*2,r2*2);}}
- ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+ const response=new Set(hover?hover.w.memberships.map(m=>m.topicId):hoverTheme?[hoverTheme]:[]);
  buffer=stars.map(w=>({...project(w.pos),w})).filter(p=>p.x>-20&&p.x<W+20&&p.y>0&&p.y<HH).sort((a,b)=>a.depth-b.depth);
  for(const p of buffer){const w=p.w,related=!selectedTheme||w.memberships.some(m=>m.topicId===selectedTheme),bright=response.size&&w.memberships.some(m=>response.has(m.topicId)),same=hover&&author(w)?.id&&author(w).id===author(hover.w)?.id;
   let f=starFade.get(w.key)??1;if(f<.997){f=reduced?1:f+(1-f)*Math.min(1,dt*8);starFade.set(w.key,f);anim=true;}
