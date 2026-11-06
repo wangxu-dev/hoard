@@ -14,12 +14,11 @@ import { useMusic } from "@/lib/music";
 import { MusicBar } from "@/components/viewer/music-bar";
 import { cn } from "@/lib/utils";
 
-const ConstellationDevPage = import.meta.env.DEV ? lazy(() => import("@/pages/constellation-dev")) : null;
-const interestDev = import.meta.env.DEV && new URLSearchParams(location.search).get("dev") === "constellation";
+const ExplorePage = lazy(() => import("@/pages/constellation-dev"));
 
 export function App() {
   const { t } = useTranslation("library");
-  const [page, setPage] = useState<Page>(interestDev ? "explore" : "library");
+  const [page, setPage] = useState<Page>("library");
   const [scrolled, setScrolled] = useState(false);
   const music = useMusic();
   const addingAccount = useRef(false);
@@ -44,7 +43,7 @@ export function App() {
       toast.error(t("error.login"));
     }
   };
-  const content = page === "explore" && interestDev && ConstellationDevPage ? <Suspense fallback={<div className="p-6 text-sm">正在准备探索…</div>}><ConstellationDevPage /></Suspense> : page === "library" ? <LibraryPage scrolled={scrolled} onAddAccount={(source) => { void login(undefined, source); }} onLogin={(accountId) => { void login(accountId); }} /> : <SettingsPage />;
+  const content = page === "explore" ? <Suspense fallback={<div className="p-6 text-sm">正在准备探索…</div>}><ExplorePage /></Suspense> : page === "library" ? <LibraryPage scrolled={scrolled} onAddAccount={(source) => { void login(undefined, source); }} onLogin={(accountId) => { void login(accountId); }} /> : <SettingsPage />;
 
   return (
     <div className="flex h-dvh min-w-0 overflow-hidden bg-background">

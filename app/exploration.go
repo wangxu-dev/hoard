@@ -31,12 +31,10 @@ func (e *Exploration) get() (*explore.Manager, error) {
 		return nil, errors.New("STORE_NOT_READY")
 	}
 	e.manager = explore.NewManager(db.ExploreInput, explore.Cache{Dir: dir}, func(s *explore.Snapshot) {
-		if os.Getenv("HOARD_INTEREST_DEV") == "1" {
-			log.Printf("[hoard:exploration] native_snapshot sources=%d schema=%d", len(s.Scopes), s.SchemaVersion)
-			if dir := os.Getenv("HOARD_INTEREST_AUDIT_DIR"); dir != "" {
-				if err := explore.WriteAudit(s, dir); err != nil {
-					log.Print("[hoard:exploration] local audit write failed")
-				}
+		// Optional local audit output is independent of the normal exploration entry.
+		if dir := os.Getenv("HOARD_INTEREST_AUDIT_DIR"); dir != "" {
+			if err := explore.WriteAudit(s, dir); err != nil {
+				log.Print("[hoard:exploration] local audit write failed")
 			}
 		}
 	})

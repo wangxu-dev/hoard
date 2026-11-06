@@ -84,7 +84,7 @@ func main() {
 			}
 		}
 		app.NewWindow()
-		if service.Store != nil && os.Getenv("HOARD_INTEREST_DEV") != "1" {
+		if service.Store != nil {
 			if err := app.RestoreAccounts(service); err != nil {
 				log.Print("[hoard:accounts] account restore failed")
 			}

@@ -30,8 +30,7 @@ interface AppSidebarProps {
   children: ReactNode;
 }
 
-const interestDev = import.meta.env.DEV && new URLSearchParams(location.search).get("dev") === "constellation";
-const navigation = [{ id: "library" as const, icon: Library }, ...(interestDev ? [{ id: "explore" as const, icon: Compass }] : [])];
+const navigation = [{ id: "library" as const, icon: Library }, { id: "explore" as const, icon: Compass }];
 // Rail buttons keep the same left padding when collapsed, so their icons never move.
 const railButton = "h-10 gap-3 px-3 group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:px-3!";
 
@@ -42,7 +41,7 @@ const TIP_OFFSET = 8;
 export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
   const { t } = useTranslation("common");
   const { resolvedTheme, setTheme } = useTheme();
-  const [open, setOpen] = useState(() => interestDev ? true : localStorage.getItem("hoard-sidebar") !== "false");
+  const [open, setOpen] = useState(() => localStorage.getItem("hoard-sidebar") !== "false");
   useEffect(() => { if (page === "explore") { setOpen(true); setBrandHovered(false); } }, [page]);
   const [brandHovered, setBrandHovered] = useState(false);
   const isDark = resolvedTheme === "dark";

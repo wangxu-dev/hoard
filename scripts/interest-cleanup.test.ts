@@ -54,8 +54,8 @@ describe("Explore clean view and single-clock motion", () => {
   expect(visible).not.toMatch(/关于这条收藏|关于这个星群|主归属|画布显示|归类依据|置信|抽样|开发预览|字面线索|误检|真实收藏时间|原生一致快照|未归类|无文案作品|[▶▼×↺▷Ⅱ⌕☷]/);
   const details=readFileSync("web/src/pages/constellation-dev/details.tsx","utf8");expect(details).toContain('from "lucide-react"');expect(details).toContain('<Button variant="ghost" size="icon"');expect(details).not.toContain("innerHTML"); expect(details).not.toContain("再看一些");
  });
- test("normal navigation and release gate remain unchanged", () => {
+ test("exploration is normal navigation in both development and release", () => {
   const side=readFileSync("web/src/components/app-sidebar.tsx","utf8"), app=readFileSync("web/src/App.tsx","utf8");
-  expect(side).toContain('if (page === "explore") { setOpen(true);');expect(side).not.toContain('setOpen(false)');expect(side).toContain('interestDev ? true : localStorage');expect(app).toContain('import.meta.env.DEV ? lazy(');
+  expect(side).toContain('if (page === "explore") { setOpen(true);');expect(side).not.toContain('setOpen(false)');expect(side).toContain('localStorage.getItem("hoard-sidebar")');expect(side).toContain('{ id: "explore" as const, icon: Compass }');expect(app).toContain('const ExplorePage = lazy(');expect(app).toContain('useState<Page>("library")');expect(app).toContain('page === "explore" ?');expect(side+app).not.toMatch(/interestDev|import\.meta\.env\.DEV|URLSearchParams/);
  });
 });

@@ -55,12 +55,15 @@ describe("native interest first slice", () => {
   expect(new Set(chosen.map(w=>w.anchor)).size).toBe(12);expect(chosen.some(w=>w.key==="source:4999")).toBe(true);
   expect(geometry.sample(works,6).map(w=>w.key)).toEqual(geometry.sample([...works].reverse(),6).map(w=>w.key));
  });
- test("native bridge only; default route and account restore guarded", () => {
+ test("native bridge is unconditional; normal landing and startup are preserved", () => {
   const load = readFileSync("web/src/pages/constellation-dev/load.ts", "utf8");
   expect(load).toContain("Exploration.start"); expect(load).toContain("Exploration.result"); expect(load).not.toContain("analyze("); expect(load).not.toContain("Library.list"); expect(load).not.toMatch(/Accounts\.|Sync\.|Player\.|fetch\(/);
   const main = readFileSync("main.go", "utf8"), side = readFileSync("web/src/components/app-sidebar.tsx", "utf8");
-  expect(main).toContain('os.Getenv("HOARD_INTEREST_DEV") != "1"');
-  expect(side).toContain('import.meta.env.DEV');
+  expect(main).toContain('mygo.Bind(service, accounts, syncer, exploration,');
+  expect(main).toContain('if service.Store != nil {');expect(main).toContain('app.RestoreAccounts(service)');
+  const window = readFileSync("app/window.go", "utf8"), backend = readFileSync("app/exploration.go", "utf8") + readFileSync("app/library.go", "utf8");
+  expect(main+window+backend+side).not.toMatch(/HOARD_INTEREST_DEV|dev=constellation|interestDev/);
+  expect(window).toContain('URL:       "/"');expect(side).toContain('{ id: "explore" as const, icon: Compass }');
   const renderer = readFileSync("web/src/pages/constellation-dev/renderer.js", "utf8");
   expect(renderer).toContain("orbit.step(now)"); expect(renderer).toContain("selected:!!(selectedTheme||selectedWork)"); expect(renderer).toContain("observer.disconnect()");
  });

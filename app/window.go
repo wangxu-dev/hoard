@@ -1,22 +1,15 @@
 package app
 
-import (
-	"github.com/egoist/mygo"
-	"os"
-)
+import "github.com/egoist/mygo"
 
 func NewWindow() *mygo.Window {
-	url := "/"
-	if os.Getenv("HOARD_INTEREST_DEV") == "1" {
-		url = "/?dev=constellation"
-	}
 	win := mygo.NewWindow(mygo.WindowOptions{
 		Title:     "Hoard",
 		Width:     1200,
 		Height:    800,
 		MinWidth:  900,
 		MinHeight: 600,
-		URL:       url,
+		URL:       "/",
 		StateKey:  "main",
 	})
 	win.Page().OnContextMenu(func(event *mygo.ContextMenuEvent) {
