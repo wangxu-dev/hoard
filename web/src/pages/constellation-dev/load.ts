@@ -6,9 +6,9 @@ let sequence=0;
 // View-state only: native code reads one transaction, analyzes, versions and caches.
 export async function readCurrentLibrary(signal: AbortSignal, progress: (count: number) => void, clientID: string, scope: ExploreScope = { accountId: "", source: "" }) {
   const report=(stage:string,error?:unknown,state="")=>{
-    const data:ExplorationDiagnostic={stage,source:scope.source,accountScoped:!!scope.accountId,sequence:request,...diagnosticError(error),state};
+    const data:ExplorationDiagnostic={stage,source:["douyin","bilibili"].includes(scope.source)?scope.source:"all",accountScoped:!!scope.accountId,sequence:request,...diagnosticError(error),state};
     console.warn("[hoard:exploration-ui]",JSON.stringify(data));
-    void App.reportExplorationDiagnostic(data).catch(error=>console.warn("[hoard:exploration-ui] native-log-unavailable",JSON.stringify(diagnosticError(error))));
+    void Promise.resolve().then(()=>App.reportExplorationDiagnostic(data)).catch(error=>console.warn("[hoard:exploration-ui] native-log-unavailable",JSON.stringify(diagnosticError(error))));
   };
   const request=++sequence;report("request");report("start-call");
   let task;

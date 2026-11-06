@@ -9,5 +9,5 @@ test("bridge errors retain useful safe detail, never identifiers, URLs, paths or
 });
 test("request and each rejecting bridge phase are logged through existing App service",()=>{
  const load=readFileSync("web/src/pages/constellation-dev/load.ts","utf8");for(const s of ["request","start-call","start-reject","status-reject","result-reject","scope-reject","late-drop","abort"])expect(load).toContain(`"${s}"`);
- expect(load).toContain("App.reportExplorationDiagnostic(data)");expect(load).toContain("native-log-unavailable");expect(load).not.toMatch(/console\.(?:warn|error)\([^\n]*error\.message/);
+ expect(load).toContain("App.reportExplorationDiagnostic(data)");expect(load).toContain("native-log-unavailable");expect(load).toContain("Promise.resolve().then(()=>App.reportExplorationDiagnostic(data))");expect(load).not.toMatch(/console\.(?:warn|error)\([^\n]*error\.message/);
 });
