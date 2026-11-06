@@ -11,8 +11,12 @@ const view:PanelView={key:"fixture-snapshot:topic",label:"摄影",work:null,work
 for (const mode of ["group","work"] as const) {
  test(`Hoard ${mode} details contain only content and existing controls`,()=>{
   const html=renderToStaticMarkup(createElement(ContentDetails,{view:{...view,work:mode==="work"?item:null}}));
-  expect(html).toContain("测试收藏标题");expect(html).toContain("测试作者");expect(html).toContain("摄影");expect(html).toContain('data-slot="button"');expect(html).toContain("lucide-x");
+  expect(html).toContain("测试收藏标题");expect(html).toContain("测试作者");if(mode==="group")expect(html).toContain("摄影");else{expect(html).not.toContain("摄影");expect(html).toContain("相关作品");}expect(html).toContain('data-slot="button"');expect(html).toContain("lucide-x");
   expect(html).not.toMatch(/<details|<summary|关于|主归属|画布显示|规则|置信|抽样|未归类|开发|tooltip/);
  });
 }
 test("no selection means no side panel",()=>{expect(renderToStaticMarkup(createElement(ContentDetails,{view:null}))).toBe("")});
+test('isolated selection has no fabricated related library or topic chips',()=>{
+ const html=renderToStaticMarkup(createElement(ContentDetails,{view:{...view,work:item,works:[]}}));
+ expect(html).toContain('暂无关联作品');expect(html).not.toContain('<article');expect(html).not.toContain('摄影');
+});
