@@ -335,8 +335,8 @@ func sparseWordGraph(ctx context.Context, docs []wordDoc) ([][]wordNeighbor, err
 	return out, nil
 }
 
-// Connected components are derived from sparse work evidence, not preset interests,
-// collection/like state, author names, or service-side categories.
+// Neighbors are the only association. No word-derived topics or theme rings:
+// works stay in flat buckets so the sky can scatter isolates and pull pairs close.
 func associateWords(ctx context.Context, s *SourceSnapshot) error {
 	docs, err := wordDocuments(ctx, s.Works)
 	if err != nil {
@@ -346,93 +346,15 @@ func associateWords(ctx context.Context, s *SourceSnapshot) error {
 	if err != nil {
 		return err
 	}
-	parent := make([]int, len(s.Works))
-	for i := range parent {
-		parent[i] = i
-	}
-	var root func(int) int
-	root = func(i int) int {
-		for parent[i] != i {
-			parent[i] = parent[parent[i]]
-			i = parent[i]
-		}
-		return i
-	}
-	evidence := make([]map[string]bool, len(s.Works))
 	for i, ns := range graph {
-		for _, n := range ns {
-			a, b := root(i), root(n.to)
-			if a > b {
-				a, b = b, a
-			}
-			parent[b] = a
-			s.Neighbors = append(s.Neighbors, WorkNeighbor{s.Works[i].ID, s.Works[n.to].ID, n.score, n.shared})
-			for _, j := range []int{i, n.to} {
-				if evidence[j] == nil {
-					evidence[j] = map[string]bool{}
-				}
-				for _, t := range n.shared {
-					evidence[j][t] = true
-				}
-			}
-		}
-	}
-	groups := map[int][]int{}
-	for i := range s.Works {
-		if len(evidence[i]) > 0 {
-			r := root(i)
-			groups[r] = append(groups[r], i)
-		}
-	}
-	keys := []int{}
-	for r := range groups {
-		keys = append(keys, r)
-	}
-	sort.Ints(keys)
-	for _, r := range keys {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		indices := groups[r]
-		ids := []string{}
-		counts := map[string]int{}
-		for _, i := range indices {
-			ids = append(ids, s.Works[i].ID)
-			for t := range evidence[i] {
-				counts[t]++
-			}
-		}
-		labels := []string{}
-		for t := range counts {
-			labels = append(labels, t)
-		}
-		sort.Slice(labels, func(i, j int) bool {
-			if counts[labels[i]] != counts[labels[j]] {
-				return counts[labels[i]] > counts[labels[j]]
-			}
-			return labels[i] < labels[j]
-		})
-		if len(labels) > 2 {
-			labels = labels[:2]
-		}
-		// Namespaced by source: identical work IDs on different platforms stay distinct.
-		id := "t_words_" + hash([]any{s.Source, ids})[:16]
-		s.Topics = append(s.Topics, Topic{ID: id, Label: strings.Join(labels, " · "), Kind: "topic", WorkCount: len(ids), WorkIDs: ids})
-		for _, i := range indices {
-			s.Works[i].AnchorTopicID = id
-			ev := []Evidence{}
-			for t := range evidence[i] {
-				ev = append(ev, Evidence{Field: "title", Excerpt: t})
-			}
-			sort.Slice(ev, func(i, j int) bool { return ev[i].Excerpt < ev[j].Excerpt })
-			if len(ev) > 4 {
-				ev = ev[:4]
-			}
-			s.TopicMembership = append(s.TopicMembership, Membership{WorkID: s.Works[i].ID, TopicID: id, Method: "local_sparse_words", Confidence: "medium", Reason: "共享独立词语", Evidence: ev})
-			s.Coverage.WorksInTopics++
+		for _, n := range ns {
+			s.Neighbors = append(s.Neighbors, WorkNeighbor{s.Works[i].ID, s.Works[n.to].ID, n.score, n.shared})
 		}
 	}
-	for _, bucket := range []struct{ id, label, reason string }{{"t_uncategorized", "未关联", "暂无足够的独立词语证据"}, {"t_no_text", "无文案", "无文案"}} {
+	for _, bucket := range []struct{ id, label, reason string }{{"t_uncategorized", "未关联", "仅保留稀疏词语邻居，不做主题分组"}, {"t_no_text", "无文案", "无文案"}} {
 		ids := []string{}
 		for i, w := range s.Works {
 			if w.AnchorTopicID != "" {
@@ -452,5 +374,6 @@ func associateWords(ctx context.Context, s *SourceSnapshot) error {
 			s.Coverage.UncategorizedWorks = len(ids)
 		}
 	}
+	s.Coverage.WorksInTopics = 0
 	return ctx.Err()
 }

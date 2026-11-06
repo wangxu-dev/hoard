@@ -37,7 +37,7 @@ func TestExploreNativeSparseCountsAndRealNeighbors(t *testing.T) {
 		}
 	}
 	c := s.Scopes[0].Coverage
-	if c.WorksTotal != 5 || c.WorksInTopics != 3 || c.UncategorizedWorks != 1 || c.WorksNoText != 1 {
+	if c.WorksTotal != 5 || c.WorksInTopics != 0 || c.UncategorizedWorks != 4 || c.WorksNoText != 1 {
 		t.Fatalf("counts %+v", c)
 	}
 	if !ClueMatch("玩 cs 游戏", "cs") || ClueMatch("classic music", "cs") || ClueMatch("瞬间", "瞬") {

@@ -102,7 +102,7 @@ func TestSparseWordsPostingAndNeighborBounds(t *testing.T) {
 	}
 }
 
-func TestNativeSparseTopicsUseOnlyRealWorksAndLocalEvidence(t *testing.T) {
+func TestNativeSparseNeighborsSkipThemeEncoding(t *testing.T) {
 	rows := []store.ExploreRecord{}
 	for _, source := range []string{"douyin", "bilibili"} {
 		rows = append(rows,
@@ -119,9 +119,8 @@ func TestNativeSparseTopicsUseOnlyRealWorksAndLocalEvidence(t *testing.T) {
 	if err = Validate(s); err != nil {
 		t.Fatal(err)
 	}
-	seenTopics := map[string]bool{}
 	for _, sc := range s.Scopes {
-		if len(sc.Works) != 4 || sc.Coverage.WorksInTopics != 2 || sc.Coverage.UncategorizedWorks != 1 || sc.Coverage.WorksNoText != 1 {
+		if len(sc.Works) != 4 || sc.Coverage.WorksInTopics != 0 || sc.Coverage.UncategorizedWorks != 3 || sc.Coverage.WorksNoText != 1 {
 			t.Fatalf("lost or invented works: %+v", sc.Coverage)
 		}
 		if len(sc.Neighbors) != 2 || len(sc.Edges) != 0 {
@@ -134,26 +133,18 @@ func TestNativeSparseTopicsUseOnlyRealWorksAndLocalEvidence(t *testing.T) {
 		}
 		for _, topic := range sc.Topics {
 			if topic.Kind == "topic" {
-				if seenTopics[topic.ID] {
-					t.Fatal("topic identity merged across sources")
-				}
-				seenTopics[topic.ID] = true
-				if topic.Label != "海水造景 · 灯光" {
-					t.Fatalf("topic label not from local shared text: %q", topic.Label)
-				}
+				t.Fatalf("word-derived theme encoded: %+v", topic)
 			}
 		}
-		for _, m := range sc.TopicMembership {
-			for _, e := range m.Evidence {
-				title := ""
-				for _, w := range sc.Works {
-					if w.ID == m.WorkID {
-						title = w.Title
-					}
+		for _, w := range sc.Works {
+			if w.TextAvailability == "none" {
+				if w.AnchorTopicID != "t_no_text" {
+					t.Fatalf("no-text anchor %q", w.AnchorTopicID)
 				}
-				if !ClueMatch(Clean(title), e.Excerpt) {
-					t.Fatal("evidence absent from real title")
-				}
+				continue
+			}
+			if w.AnchorTopicID != "t_uncategorized" {
+				t.Fatalf("text work anchored to theme %q", w.AnchorTopicID)
 			}
 		}
 	}
@@ -169,8 +160,8 @@ func TestNativeSparseTopicsUseOnlyRealWorksAndLocalEvidence(t *testing.T) {
 	if string(before) != string(after) {
 		t.Fatal("reordering input changed sparse snapshot")
 	}
-	if s.AnalysisVersion == "native-literal-baseline-v2" {
-		t.Fatal("stale fixed-topic caches not invalidated")
+	if s.AnalysisVersion == "native-literal-baseline-v2" || s.AnalysisVersion == "native-sparse-words-v3-gse-1.3.1-zh-s" {
+		t.Fatal("stale theme caches not invalidated")
 	}
 }
 

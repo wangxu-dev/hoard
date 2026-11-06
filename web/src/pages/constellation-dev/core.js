@@ -34,47 +34,31 @@ function prepare(data){
   const key=JSON.stringify([a.key,b.key].sort()),prior=pairs.get(key);
   if(!prior||n.score>prior.weight)pairs.set(key,{a,b,weight:n.score});
  }
- const real=[...topics.values()].filter(t=>t.kind==='topic').sort((a,b)=>a.id.localeCompare(b.id));
- const maxPopulation=real.reduce((n,t)=>Math.max(n,t.all.length),1),clusterScale=Math.min(.22,.6/Math.sqrt(Math.max(1,real.length)));
- real.forEach((t,i)=>{
-  // Bounded disk for any number of text-derived groups; never one remote ring per preset topic.
-  const angle=i*Math.PI*(3-Math.sqrt(5)),radius=real.length===1?0:.12+.88*Math.sqrt((i+.5)/real.length);
-  t.center={x:Math.cos(angle)*radius,y:Math.sin(angle)*radius,z:.035*Math.sin(i*1.8)};
-  t.angle=angle+.5;t.color=palette[i%palette.length];
-  t.spread=clusterScale*(.6+.4*Math.sqrt(t.all.length/maxPopulation));
- });
- for(const t of topics.values()){
-  if(t.kind!=='topic'){
-   const nt=t.id==='t_no_text';t.center={x:nt?-.98:.68,y:nt?-.49:.73,z:nt?.08:-.04};
-   t.angle=nt?-.7:.7;t.spread=nt?.13:.38;t.color=nt?'#929aa6':'#6e8eaa';
-  }
-  for(const w of t.all){
-   let x,y,z;
-   if(t.id==='t_uncategorized'){
-    const a=-.25+rnd(w.key+'arc')*3.2,r=.91+rnd(w.key+'rad')*.36;
-    x=Math.cos(a)*r;y=Math.sin(a)*r;z=normal(w.key+'dep')*.065;
-   }else{
-    const along=normal(w.key+'x')*t.spread,across=normal(w.key+'y')*t.spread*.54;
-    x=t.center.x+along*Math.cos(t.angle)-across*Math.sin(t.angle);
-    y=t.center.y+along*Math.sin(t.angle)+across*Math.cos(t.angle);
-    z=t.center.z+normal(w.key+'z')*(.032+t.spread*.12);
-   }
-   w.pos={x,y,z};w.color=t.color;
-  }
+ // Flat scatter for every real work. No topic disks, no uncategorized outer ring.
+ for(const t of topics.values()){t.center={x:0,y:0,z:0};t.angle=0;t.spread=.9;t.color=t.id==='t_no_text'?'#929aa6':palette[hash(t.id)%palette.length];}
+ for(const w of works){
+  const a=rnd(w.key+'arc')*TAU,r=Math.sqrt(rnd(w.key+'rad'))*.92;
+  w.pos={x:Math.cos(a)*r,y:Math.sin(a)*r,z:normal(w.key+'dep')*.07};
+  w.color=topics.get(w.anchor)?.color||'#6e8eaa';
+  w.neighbors=[];
  }
  // Sparse weighted relaxation uses only real work pairs. It changes proximity,
- // never adds drawable points or inferred/ornamental relationship lines.
+ // never adds drawable points, theme rings, or ornamental relationship lines.
  const adjacency=new Map(),origins=new Map();
- for(const {a,b,weight}of pairs.values())for(const [w,other]of [[a,b],[b,a]]){
-  if(!adjacency.has(w.key)){adjacency.set(w.key,[]);origins.set(w.key,{...w.pos});}
-  adjacency.get(w.key).push({other,weight});
+ for(const {a,b,weight}of pairs.values()){
+  a.neighbors.push({key:b.key,weight});b.neighbors.push({key:a.key,weight});
+  for(const [w,other]of [[a,b],[b,a]]){
+   if(!adjacency.has(w.key)){adjacency.set(w.key,[]);origins.set(w.key,{...w.pos});}
+   adjacency.get(w.key).push({other,weight});
+  }
  }
- for(let step=0;step<12;step++){
+ for(const w of works)w.neighbors.sort((x,y)=>y.weight-x.weight||x.key.localeCompare(y.key));
+ for(let step=0;step<18;step++){
   const next=new Map();
   for(const [key,neighbors]of adjacency){
    const w=byKey.get(key),origin=origins.get(key),sum={x:0,y:0,z:0};let weight=0;
    for(const n of neighbors){weight+=n.weight;for(const axis of ['x','y','z'])sum[axis]+=n.other.pos[axis]*n.weight;}
-   const pos={};for(const axis of ['x','y','z'])pos[axis]=w.pos[axis]*.55+sum[axis]/weight*.35+origin[axis]*.1;
+   const pos={};for(const axis of ['x','y','z'])pos[axis]=w.pos[axis]*.45+sum[axis]/weight*.45+origin[axis]*.1;
    next.set(key,pos);
   }
   for(const [key,pos]of next)byKey.get(key).pos=pos;

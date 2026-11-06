@@ -29,28 +29,16 @@ export function buildScope(items: LibraryItem[], source: Source) {
     // No fabricated source_saved_at or observed historical month.
     monthKeys: { source_time: null, observed_time: null }, times: [],
   }));
+  // Oracle mirrors production: no theme encoding. Flat buckets only.
   const membership: Membership[] = [];
   const topics: { id: string; label: string; kind: string; workCount: number; workIds: string[] }[] = [];
-  for (const rule of RULES.filter((r) => r.sources.includes(source))) {
-    const matches = works.map((w) => ({ w, hits: rule.clues.filter((c) => clueMatch(clean(w.title), c)) })).filter((x) => x.hits.length);
-    if (matches.length < 3) continue;
-    topics.push({ id: rule.id, label: rule.label, kind: "topic", workCount: matches.length, workIds: matches.map(({ w }) => w.id) });
-    for (const { w, hits } of matches) membership.push({ workId: w.id, topicId: rule.id, method: "literal_contains", confidence: "medium", reason: "标题含：" + hits.slice(0, 4).join("、"), evidence: hits.slice(0, 4).map((h) => ({ field: "title", excerpt: h })) });
-  }
-  const assigned = new Set(membership.map((m) => m.workId));
-  const noText = works.filter((w) => w.textAvailability === "none"), unknown = works.filter((w) => w.textAvailability === "ok" && !assigned.has(w.id));
-  for (const [id, label, list, reason] of [["t_uncategorized", "未归类", unknown, "未命中主题规则"], ["t_no_text", "无文案", noText, "无文案，无法规则归类"]] as const) {
+  const noText = works.filter((w) => w.textAvailability === "none"), unknown = works.filter((w) => w.textAvailability === "ok");
+  for (const [id, label, list, reason] of [["t_uncategorized", "未关联", unknown, "仅保留稀疏词语邻居，不做主题分组"], ["t_no_text", "无文案", noText, "无文案"]] as const) {
     topics.push({ id, label, kind: "bucket", workCount: list.length, workIds: list.map((w) => w.id) });
     for (const w of list) membership.push({ workId: w.id, topicId: id, method: "fallback", confidence: "low", reason, evidence: [] });
   }
-  const edges: { source: string; target: string; coCount: number; jaccard: number; method: string }[] = [];
-  const real = topics.filter((t) => t.kind === "topic");
-  for (let i = 0; i < real.length; i++) for (let j = i + 1; j < real.length; j++) {
-    const a = real[i], b = real[j], bs = new Set(b.workIds), co = a.workIds.filter((id) => bs.has(id)).length, jaccard = co / (a.workCount + b.workCount - co);
-    if (co >= 2 && jaccard >= .03) edges.push({ source: a.id, target: b.id, coCount: co, jaccard, method: "co_membership_jaccard" });
-  }
-  const coverage = { worksTotal: works.length, worksInTopics: assigned.size, uncategorizedWorks: unknown.length, worksNoText: noText.length, authorNames: works.filter((w) => w.author.name).length, authorIds: works.filter((w) => !!w.author.id).length, avatarRefs: works.filter((w) => w.author.avatarURL).length, coverRefs: works.filter((w) => w.cover).length };
-  return { source, works, topics, topicMembership: membership, edges: edges.sort((a, b) => b.jaccard - a.jaccard).slice(0, 40), coverage, timeCapabilities: { views: { current: true, source_time: false, observed_time: false } } };
+  const coverage = { worksTotal: works.length, worksInTopics: 0, uncategorizedWorks: unknown.length, worksNoText: noText.length, authorNames: works.filter((w) => w.author.name).length, authorIds: works.filter((w) => !!w.author.id).length, avatarRefs: works.filter((w) => w.author.avatarURL).length, coverRefs: works.filter((w) => w.cover).length };
+  return { source, works, topics, topicMembership: membership, edges: [], coverage, timeCapabilities: { views: { current: true, source_time: false, observed_time: false } } };
 }
 export async function digest(value: unknown): Promise<string> {
   const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(value)));

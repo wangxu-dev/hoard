@@ -10,8 +10,8 @@ describe("native interest first slice", () => {
   expect(clueMatch("classic music", "cs")).toBe(false);
   expect(clueMatch("玩 cs 游戏", "cs")).toBe(true);
   const scope = buildScope([item("1", "摄影旅行"), item("2", "摄影旅行"), item("3", "摄影旅行"), item("4", "无匹配的短语"), item("5", "")], "douyin");
-  expect(scope.coverage.worksInTopics).toBe(3);
-  expect(scope.coverage.uncategorizedWorks).toBe(1);
+  expect(scope.coverage.worksInTopics).toBe(0);
+  expect(scope.coverage.uncategorizedWorks).toBe(4);
   expect(scope.coverage.worksNoText).toBe(1);
   expect(scope.coverage.worksInTopics + scope.coverage.uncategorizedWorks + scope.coverage.worksNoText).toBe(5);
   expect(scope.timeCapabilities.views.source_time).toBe(false);
