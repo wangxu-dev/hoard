@@ -24,7 +24,7 @@ func makeSnapshot(t *testing.T) *Snapshot {
 	}
 	return s
 }
-func TestExploreNativeRulesCountsAndCoMembership(t *testing.T) {
+func TestExploreNativeSparseCountsAndRealNeighbors(t *testing.T) {
 	s := makeSnapshot(t)
 	if err := Validate(s); err != nil {
 		t.Fatal(err)
@@ -46,27 +46,8 @@ func TestExploreNativeRulesCountsAndCoMembership(t *testing.T) {
 	if Clean(" @someone 摄影  HTTPS://fixture.invalid/a ") != "摄影" {
 		t.Fatal("cleaning changed")
 	}
-	for _, sc := range s.Scopes {
-		for _, edge := range sc.Edges {
-			a, b := map[string]bool{}, map[string]bool{}
-			for _, m := range sc.TopicMembership {
-				if m.TopicID == edge.Source {
-					a[m.WorkID] = true
-				}
-				if m.TopicID == edge.Target {
-					b[m.WorkID] = true
-				}
-			}
-			co := 0
-			for id := range a {
-				if b[id] {
-					co++
-				}
-			}
-			if co != edge.CoCount || edge.Jaccard != float64(co)/float64(len(a)+len(b)-co) {
-				t.Fatal("coCount/Jaccard inconsistent")
-			}
-		}
+	if len(s.Scopes[0].Neighbors) != 6 || len(s.Scopes[0].Edges) != 0 {
+		t.Fatal("sparse neighbors missing or visual association lines invented")
 	}
 	rows := fixtureRows()
 	for i, j := 0, len(rows)-1; i < j; i, j = i+1, j-1 {

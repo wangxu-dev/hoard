@@ -3,7 +3,6 @@ package explore
 import (
 	"context"
 	"crypto/sha256"
-	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"regexp"
@@ -11,7 +10,6 @@ import (
 	"strings"
 	"time"
 	"unicode"
-	"unicode/utf16"
 	"unicode/utf8"
 
 	"github.com/wangxu-dev/hoard/internal/covers"
@@ -19,29 +17,12 @@ import (
 )
 
 const SchemaVersion = 2
-const AnalysisVersion = "native-literal-baseline-v2"
+const AnalysisVersion = "native-sparse-words-v3-gse-1.3.1-zh-s"
 const InputVersion = "native-library-transaction-v1"
 
-//go:embed rules.json
-var ruleJSON []byte
+// RuleHash versions the local analyzer; no topic keyword rules are loaded.
+var RuleHash = hash(AnalysisVersion)
 
-type Rule struct {
-	ID      string   `json:"id"`
-	Label   string   `json:"label"`
-	Sources []string `json:"sources"`
-	Clues   []string `json:"clues"`
-	Reason  string   `json:"reason"`
-}
-
-var Rules []Rule
-var RuleHash string
-
-func init() {
-	if err := json.Unmarshal(ruleJSON, &Rules); err != nil {
-		panic(err)
-	}
-	RuleHash = hash([]any{AnalysisVersion, Rules})
-}
 func hash(v any) string {
 	b, _ := json.Marshal(v)
 	sum := sha256.Sum256(b)
@@ -116,6 +97,7 @@ type SourceSnapshot struct {
 	Topics           []Topic          `json:"topics"`
 	TopicMembership  []Membership     `json:"topicMembership"`
 	Edges            []Edge           `json:"edges"`
+	Neighbors        []WorkNeighbor   `json:"neighbors"`
 	Coverage         Coverage         `json:"coverage"`
 	TimeCapabilities TimeCapabilities `json:"timeCapabilities"`
 }
@@ -159,23 +141,6 @@ func ClueMatch(text, clue string) bool {
 	return utf8.RuneCountInString(c) >= 2 && strings.Contains(text, c)
 }
 
-type matcher struct {
-	clue  string
-	lower string
-	re    *regexp.Regexp
-}
-
-func matchers(rule Rule) []matcher {
-	out := []matcher{}
-	for _, c := range rule.Clues {
-		m := matcher{clue: c, lower: strings.ToLower(c)}
-		if asciiClue.MatchString(m.lower) {
-			m.re = regexp.MustCompile(`(^|[^a-z0-9])` + regexp.QuoteMeta(m.lower) + `($|[^a-z0-9])`)
-		}
-		out = append(out, m)
-	}
-	return out
-}
 func Revision(scope Scope, rows []store.ExploreRecord) string {
 	copyRows := append([]store.ExploreRecord{}, rows...)
 	sort.Slice(copyRows, func(i, j int) bool {
@@ -203,8 +168,7 @@ func Analyze(ctx context.Context, scope Scope, rows []store.ExploreRecord) (*Sna
 	return s, ctx.Err()
 }
 func analyzeSource(ctx context.Context, source string, rows []store.ExploreRecord) (SourceSnapshot, error) {
-	s := SourceSnapshot{Source: source, Works: []Work{}, Topics: []Topic{}, TopicMembership: []Membership{}, Edges: []Edge{}, Coverage: Coverage{Source: source}, TimeCapabilities: TimeCapabilities{Views: map[string]bool{"current": true, "source_time": false, "observed_time": false}}}
-	texts := map[string]string{}
+	s := SourceSnapshot{Source: source, Works: []Work{}, Topics: []Topic{}, TopicMembership: []Membership{}, Edges: []Edge{}, Neighbors: []WorkNeighbor{}, Coverage: Coverage{Source: source}, TimeCapabilities: TimeCapabilities{Views: map[string]bool{"current": true, "source_time": false, "observed_time": false}}}
 	for i, r := range rows {
 		if i%128 == 0 && ctx.Err() != nil {
 			return s, ctx.Err()
@@ -235,135 +199,10 @@ func analyzeSource(ctx context.Context, source string, rows []store.ExploreRecor
 			s.Coverage.AuthorNames++
 		}
 		s.Works = append(s.Works, w)
-		texts[w.ID] = Clean(w.Title)
 	}
-	assigned := map[string]bool{}
-	for _, rule := range Rules {
-		if ctx.Err() != nil {
-			return s, ctx.Err()
-		}
-		supported := false
-		for _, src := range rule.Sources {
-			if src == source {
-				supported = true
-			}
-		}
-		if !supported {
-			continue
-		}
-		ms := matchers(rule)
-		matches := []Membership{}
-		ids := []string{}
-		for i, w := range s.Works {
-			if i%128 == 0 && ctx.Err() != nil {
-				return s, ctx.Err()
-			}
-			hits := []string{}
-			for _, m := range ms {
-				t := texts[w.ID]
-				if m.re != nil && m.re.MatchString(t) || m.re == nil && utf8.RuneCountInString(m.lower) >= 2 && strings.Contains(t, m.lower) {
-					hits = append(hits, m.clue)
-				}
-			}
-			if len(hits) == 0 {
-				continue
-			}
-			if len(hits) > 4 {
-				hits = hits[:4]
-			}
-			ev := []Evidence{}
-			for _, h := range hits {
-				ev = append(ev, Evidence{Field: "title", Excerpt: h})
-			}
-			ids = append(ids, w.ID)
-			matches = append(matches, Membership{WorkID: w.ID, TopicID: rule.ID, Method: "literal_contains", Confidence: "medium", Reason: "标题含：" + strings.Join(hits, "、"), Evidence: ev})
-		}
-		if len(matches) < 3 {
-			continue
-		}
-		s.Topics = append(s.Topics, Topic{ID: rule.ID, Label: rule.Label, Kind: "topic", WorkCount: len(ids), WorkIDs: ids})
-		s.TopicMembership = append(s.TopicMembership, matches...)
-		for _, id := range ids {
-			assigned[id] = true
-		}
-	}
-	for _, b := range []struct{ id, label, reason string }{{"t_uncategorized", "未归类", "未命中主题规则"}, {"t_no_text", "无文案", "无文案，无法规则归类"}} {
-		ids := []string{}
-		for _, w := range s.Works {
-			match := b.id == "t_no_text" && w.TextAvailability == "none" || b.id == "t_uncategorized" && w.TextAvailability != "none" && !assigned[w.ID]
-			if !match {
-				continue
-			}
-			ids = append(ids, w.ID)
-			s.TopicMembership = append(s.TopicMembership, Membership{WorkID: w.ID, TopicID: b.id, Method: "fallback", Confidence: "low", Reason: b.reason, Evidence: []Evidence{}})
-		}
-		s.Topics = append(s.Topics, Topic{ID: b.id, Label: b.label, Kind: "bucket", WorkCount: len(ids), WorkIDs: ids})
-		if b.id == "t_no_text" {
-			s.Coverage.WorksNoText = len(ids)
-		} else {
-			s.Coverage.UncategorizedWorks = len(ids)
-		}
-	}
-
-	byWork := map[string][]Membership{}
-	for _, m := range s.TopicMembership {
-		byWork[m.WorkID] = append(byWork[m.WorkID], m)
-	}
-	longest := func(m Membership) int {
-		v := 0
-		for _, e := range m.Evidence {
-			n := len(utf16.Encode([]rune(e.Excerpt)))
-			if n > v {
-				v = n
-			}
-		}
-		return v
-	}
-	for i := range s.Works {
-		list := byWork[s.Works[i].ID]
-		sort.Slice(list, func(i, j int) bool {
-			a, b := list[i], list[j]
-			if len(a.Evidence) != len(b.Evidence) {
-				return len(a.Evidence) > len(b.Evidence)
-			}
-			if longest(a) != longest(b) {
-				return longest(a) > longest(b)
-			}
-			return a.TopicID < b.TopicID
-		})
-		if len(list) > 0 {
-			s.Works[i].AnchorTopicID = list[0].TopicID
-		}
-	}
-	for i, a := range s.Topics {
-		if a.Kind != "topic" {
-			continue
-		}
-		set := map[string]bool{}
-		for _, id := range a.WorkIDs {
-			set[id] = true
-		}
-		for _, b := range s.Topics[i+1:] {
-			if b.Kind != "topic" {
-				continue
-			}
-			co := 0
-			for _, id := range b.WorkIDs {
-				if set[id] {
-					co++
-				}
-			}
-			j := float64(co) / float64(a.WorkCount+b.WorkCount-co)
-			if co >= 2 && j >= .03 {
-				s.Edges = append(s.Edges, Edge{Source: a.ID, Target: b.ID, CoCount: co, Jaccard: j, Method: "co_membership_jaccard"})
-			}
-		}
-	}
-	sort.SliceStable(s.Edges, func(i, j int) bool { return s.Edges[i].Jaccard > s.Edges[j].Jaccard })
-	if len(s.Edges) > 40 {
-		s.Edges = s.Edges[:40]
+	if err := associateWords(ctx, &s); err != nil {
+		return s, err
 	}
 	s.Coverage.WorksTotal = len(s.Works)
-	s.Coverage.WorksInTopics = len(assigned)
 	return s, nil
 }

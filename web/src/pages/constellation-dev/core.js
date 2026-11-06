@@ -11,7 +11,7 @@ function rotateZ(p,angle){const c=Math.cos(angle),s=Math.sin(angle);return {x:p.
 function materialTurn(delta){return -Math.sign(spiralWinding)*delta;}
 const palette=['#8edee5','#c6eee2','#a6d8f0','#c9e8dc','#81d9e1','#e2e9cd','#b5d3f1','#96e2ca','#e6d8b4','#96cde3','#d3e7e3'];
 function prepare(data){
- const topics=new Map(),works=[],byKey=new Map();
+ const topics=new Map(),works=[],byKey=new Map(),pairs=new Map();
  for(const sc of data.scopes){
   for(const t of sc.topics){if(!topics.has(t.id))topics.set(t.id,{id:t.id,label:t.id==='t_no_text'?'无文案':t.label,kind:t.kind,all:[],color:'#6d8498'});}
   const ms=new Map();for(const m of sc.topicMembership){if(!ms.has(m.workId))ms.set(m.workId,[]);ms.get(m.workId).push(m);}
@@ -27,13 +27,21 @@ function prepare(data){
    works.push(o);byKey.set(o.key,o);topics.get(o.anchor).all.push(o);
   }
  }
+ // Keep relations source-scoped and deduplicate reciprocal top-k neighbors.
+ for(const sc of data.scopes)for(const n of sc.neighbors||[]){
+  const a=byKey.get(sc.source+':'+n.workId),b=byKey.get(sc.source+':'+n.to);
+  if(!a||!b||a===b||!Number.isFinite(n.score)||n.score<=0)continue;
+  const key=JSON.stringify([a.key,b.key].sort()),prior=pairs.get(key);
+  if(!prior||n.score>prior.weight)pairs.set(key,{a,b,weight:n.score});
+ }
  const real=[...topics.values()].filter(t=>t.kind==='topic').sort((a,b)=>a.id.localeCompare(b.id));
+ const maxPopulation=real.reduce((n,t)=>Math.max(n,t.all.length),1),clusterScale=Math.min(.22,.6/Math.sqrt(Math.max(1,real.length)));
  real.forEach((t,i)=>{
-  const arm=i%3,step=Math.floor(i/3),angle=arm*TAU/3+.62*step+.22;
-  const radius=.29+.21*step;
+  // Bounded disk for any number of text-derived groups; never one remote ring per preset topic.
+  const angle=i*Math.PI*(3-Math.sqrt(5)),radius=real.length===1?0:.12+.88*Math.sqrt((i+.5)/real.length);
   t.center={x:Math.cos(angle)*radius,y:Math.sin(angle)*radius,z:.035*Math.sin(i*1.8)};
   t.angle=angle+.5;t.color=palette[i%palette.length];
-  const n=t.all.length;t.spread=.135+.085*Math.sqrt(n/Math.max(...real.map(t=>t.all.length),1));
+  t.spread=clusterScale*(.6+.4*Math.sqrt(t.all.length/maxPopulation));
  });
  for(const t of topics.values()){
   if(t.kind!=='topic'){
@@ -53,6 +61,23 @@ function prepare(data){
    }
    w.pos={x,y,z};w.color=t.color;
   }
+ }
+ // Sparse weighted relaxation uses only real work pairs. It changes proximity,
+ // never adds drawable points or inferred/ornamental relationship lines.
+ const adjacency=new Map(),origins=new Map();
+ for(const {a,b,weight}of pairs.values())for(const [w,other]of [[a,b],[b,a]]){
+  if(!adjacency.has(w.key)){adjacency.set(w.key,[]);origins.set(w.key,{...w.pos});}
+  adjacency.get(w.key).push({other,weight});
+ }
+ for(let step=0;step<12;step++){
+  const next=new Map();
+  for(const [key,neighbors]of adjacency){
+   const w=byKey.get(key),origin=origins.get(key),sum={x:0,y:0,z:0};let weight=0;
+   for(const n of neighbors){weight+=n.weight;for(const axis of ['x','y','z'])sum[axis]+=n.other.pos[axis]*n.weight;}
+   const pos={};for(const axis of ['x','y','z'])pos[axis]=w.pos[axis]*.55+sum[axis]/weight*.35+origin[axis]*.1;
+   next.set(key,pos);
+  }
+  for(const [key,pos]of next)byKey.get(key).pos=pos;
  }
  return {topics,works,byKey};
 }

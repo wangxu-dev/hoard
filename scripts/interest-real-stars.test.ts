@@ -30,3 +30,28 @@ test("renderer has no decorative stars, dust, or artificial topic fog", () => {
  expect((renderer.match(/ctx.fillRect\(/g)||[]).length).toBe(3);
  expect(renderer).not.toContain("H.mst(");
 });
+
+test("many text-derived groups remain inside the sky rather than unbounded preset-topic rings", () => {
+ const topics=Array.from({length:200},(_,i)=>({id:`local-${i}`,label:`shared-${i}`,kind:"topic"}));
+ const works=topics.map((t,i)=>({id:`w-${i}`,anchorTopicId:t.id,title:`synthetic-${i}`}));
+ const topicMembership=works.map(w=>({workId:w.id,topicId:w.anchorTopicId,evidence:[]}));
+ const model=geometry.prepare({schemaVersion:2,scopes:[{source:"douyin",topics,works,topicMembership}]});
+ expect(model.works).toHaveLength(200);
+ for(const t of model.topics.values())expect(Math.hypot(t.center.x,t.center.y)).toBeLessThanOrEqual(1);
+ for(const w of model.works)expect(Math.hypot(w.pos.x,w.pos.y)).toBeLessThan(1.4);
+});
+
+test("sparse pair weights affect proximity without inventing points or crossing sources", () => {
+ const scope=(source:string,neighbors:unknown[])=>({source,neighbors,
+  topics:[{id:`${source}-local`,label:"synthetic",kind:"topic"}],
+  works:[{id:"a",anchorTopicId:`${source}-local`},{id:"b",anchorTopicId:`${source}-local`}],
+  topicMembership:[{workId:"a",topicId:`${source}-local`,evidence:[]},{workId:"b",topicId:`${source}-local`,evidence:[]}],
+ });
+ const scopes=[scope("douyin",[]),scope("bilibili",[])];
+ const base=geometry.prepare({schemaVersion:2,scopes});
+ const linked=geometry.prepare({schemaVersion:2,scopes:[scope("douyin",[{workId:"a",to:"b",score:.8},{workId:"b",to:"a",score:.8}]),scopes[1]]});
+ const distance=(m:typeof base)=>{const a=m.byKey.get("douyin:a").pos,b=m.byKey.get("douyin:b").pos;return Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z);};
+ expect(distance(linked)).toBeLessThan(distance(base));
+ expect(linked.works).toHaveLength(4);
+ expect(linked.byKey.get("bilibili:a").pos).toEqual(base.byKey.get("bilibili:a").pos);
+});

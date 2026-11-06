@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -160,6 +161,26 @@ func Validate(s *Snapshot) error {
 				return errors.New("SNAPSHOT_ASSET_INVALID")
 			}
 			works[w.ID] = true
+		}
+		neighborKeys := map[string]bool{}
+		neighborCounts := map[string]int{}
+		for _, n := range sc.Neighbors {
+			key := hash([]string{n.WorkID, n.To})
+			if !works[n.WorkID] || !works[n.To] || n.WorkID == n.To || neighborKeys[key] || math.IsNaN(n.Score) || math.IsInf(n.Score, 0) || n.Score < wordMinCosine || n.Score > 1 || len(n.Shared) < 2 {
+				return errors.New("SNAPSHOT_NEIGHBOR_INVALID")
+			}
+			shared := wordDoc{base: map[string]int{}}
+			for _, term := range n.Shared {
+				shared.base[term] = 1
+			}
+			if len(canonicalWords(shared)) != len(n.Shared) {
+				return errors.New("SNAPSHOT_NEIGHBOR_INVALID")
+			}
+			neighborKeys[key] = true
+			neighborCounts[n.WorkID]++
+			if neighborCounts[n.WorkID] > wordTopK {
+				return errors.New("SNAPSHOT_NEIGHBOR_INVALID")
+			}
 		}
 		for _, m := range sc.TopicMembership {
 			if !works[m.WorkID] {
