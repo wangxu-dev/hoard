@@ -171,21 +171,22 @@ function Cover({ src, square }: { src: string; square: boolean }) {
   </div>;
 }
 
-export const EntryCard = memo(function EntryCard({ entry, onOpen, fresh = false, playing }: { entry: LibraryEntry; onOpen: (entry: LibraryEntry) => void; fresh?: boolean; playing?: "playing" | "paused" }) {
+export const EntryCard = memo(function EntryCard({ entry, onOpen, fresh = false, playing, readOnlyPreview = false }: { entry: LibraryEntry; onOpen: (entry: LibraryEntry) => void; fresh?: boolean; playing?: "playing" | "paused"; readOnlyPreview?: boolean }) {
   const { t } = useTranslation("library");
   const music = entry.kind === "music";
   const prefetchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const cancelPrefetch = () => clearTimeout(prefetchTimer.current);
   const schedulePrefetch = () => {
+    if (readOnlyPreview) return;
     cancelPrefetch();
     const delay = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--duration-slow"));
     prefetchTimer.current = setTimeout(() => { void prefetchMedia(entry).catch(() => undefined); }, delay);
   };
   useEffect(() => cancelPrefetch, [entry.kind, entry.id]);
-  return <EntryActionMenu entry={entry} onPlay={() => onOpen(entry)}><Card onPointerEnter={schedulePrefetch} onPointerLeave={cancelPrefetch} onFocus={schedulePrefetch} onBlur={cancelPrefetch} data-testid="library-card" data-entry={`${entry.kind}:${entry.id}`} tabIndex={0} onClick={() => onOpen(entry)} onKeyDown={(event) => { if (event.key === "Enter") onOpen(entry); }} className={`group group/entry relative gap-0 overflow-hidden rounded-md py-0 shadow-none transition-[transform,scale,box-shadow] duration-(--duration-slow) ease-(--ease-out) hover:z-10 hover:scale-[1.015] hover:shadow-sm motion-reduce:transition-none motion-reduce:hover:scale-100!${fresh ? " animate-in fade-in-0 zoom-in-95 duration-500 motion-reduce:animate-none" : ""}`}>
+  const card = <Card onPointerEnter={schedulePrefetch} onPointerLeave={cancelPrefetch} onFocus={schedulePrefetch} onBlur={cancelPrefetch} data-testid="library-card" data-entry={`${entry.kind}:${entry.id}`} tabIndex={0} onClick={() => onOpen(entry)} onKeyDown={(event) => { if (event.key === "Enter") onOpen(entry); }} className={`group group/entry relative gap-0 overflow-hidden rounded-md py-0 shadow-none transition-[transform,scale,box-shadow] duration-(--duration-slow) ease-(--ease-out) hover:z-10 hover:scale-[1.015] hover:shadow-sm motion-reduce:transition-none motion-reduce:hover:scale-100!${fresh ? " animate-in fade-in-0 zoom-in-95 duration-500 motion-reduce:animate-none" : ""}`}>
       <div className="relative">
-        <Cover src={coverOf(entry)} square={music} />
-        <div className="absolute top-1.5 left-1.5"><EntryAccounts entry={entry} /></div>
+        <Cover src={readOnlyPreview ? entry.cover : coverOf(entry)} square={music} />
+        {!readOnlyPreview && <div className="absolute top-1.5 left-1.5"><EntryAccounts entry={entry} /></div>}
         {playing && <NowPlaying paused={playing === "paused"} />}
         {entry.kind !== "gallery" && entry.durationMs > 0 ? <Badge variant="secondary" className="absolute right-1.5 bottom-1.5 tabular-nums">{duration(entry.durationMs)}</Badge> : null}
       </div>
@@ -197,12 +198,13 @@ export const EntryCard = memo(function EntryCard({ entry, onOpen, fresh = false,
           <AvatarFallback className="text-[10px]">{entry.author.slice(0, 1)}</AvatarFallback>
         </Avatar>}
         <span className="min-w-0 flex-1 truncate">{entry.author}</span>
-        {entry.kind === "gallery" && <span data-gallery-count className="flex shrink-0 items-center gap-1 tabular-nums" aria-label={t("grid.gallery", { count: entry.imageCount })}>
+        {entry.kind === "gallery" && (!readOnlyPreview || entry.imageCount > 0) && <span data-gallery-count className="flex shrink-0 items-center gap-1 tabular-nums" aria-label={t("grid.gallery", { count: entry.imageCount })}>
           {entry.imageCount}<Images className="size-3" aria-hidden="true" />
         </span>}
       </div>
     </CardContent>
-  </Card></EntryActionMenu>;
+  </Card>;
+  return readOnlyPreview ? card : <EntryActionMenu entry={entry} onPlay={() => onOpen(entry)}>{card}</EntryActionMenu>;
 });
 
 function indexIds(items: Slot[]) {

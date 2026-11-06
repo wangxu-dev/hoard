@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Accounts, App as BackendApp, onAccountsChanged } from "@/lib/api";
@@ -14,9 +14,12 @@ import { useMusic } from "@/lib/music";
 import { MusicBar } from "@/components/viewer/music-bar";
 import { cn } from "@/lib/utils";
 
+const ConstellationDevPage = import.meta.env.DEV ? lazy(() => import("@/pages/constellation-dev")) : null;
+const interestDev = import.meta.env.DEV && new URLSearchParams(location.search).get("dev") === "constellation";
+
 export function App() {
   const { t } = useTranslation("library");
-  const [page, setPage] = useState<Page>("library");
+  const [page, setPage] = useState<Page>(interestDev ? "explore" : "library");
   const [scrolled, setScrolled] = useState(false);
   const music = useMusic();
   const addingAccount = useRef(false);
@@ -41,15 +44,15 @@ export function App() {
       toast.error(t("error.login"));
     }
   };
-  const content = page === "library" ? <LibraryPage scrolled={scrolled} onAddAccount={(source) => { void login(undefined, source); }} onLogin={(accountId) => { void login(accountId); }} /> : <SettingsPage />;
+  const content = page === "explore" && interestDev && ConstellationDevPage ? <Suspense fallback={<div className="p-6 text-sm">正在准备探索…</div>}><ConstellationDevPage /></Suspense> : page === "library" ? <LibraryPage scrolled={scrolled} onAddAccount={(source) => { void login(undefined, source); }} onLogin={(accountId) => { void login(accountId); }} /> : <SettingsPage />;
 
   return (
     <div className="flex h-dvh min-w-0 overflow-hidden bg-background">
       <AppSidebar page={page} onPageChange={setPage}>
         <main className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
-          <div data-testid="main-scroll" onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 0)} className="scrollbar-none min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <div data-testid="main-scroll" onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 0)} className={page === "explore" ? "min-h-0 min-w-0 flex-1 overflow-hidden" : "scrollbar-none min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden"}>
             <AnimatePresence mode="wait" initial={false}>
-              <motion.div key={page} variants={pageVariants} initial="initial" animate="animate" exit="exit" className={cn("flex min-h-full min-w-0", music.queue && "pb-20")}>
+              <motion.div style={page === "explore" ? { height: "100%" } : undefined} key={page} variants={pageVariants} initial="initial" animate="animate" exit="exit" className={cn("flex min-h-full min-w-0", music.queue && "pb-20")}>
                 {content}
               </motion.div>
             </AnimatePresence>

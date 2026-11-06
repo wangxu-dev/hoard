@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"log"
+	"os"
 	"time"
 
 	"github.com/wangxu-dev/hoard/internal/covers"
@@ -42,6 +43,7 @@ type LibraryItem struct {
 	ID                   string   `json:"id"`
 	Kind                 string   `json:"kind"`
 	Title                string   `json:"title"`
+	AuthorID             string   `json:"authorId"` // source-scoped platform identity; empty if unavailable
 	Author               string   `json:"author"`
 	Cover                string   `json:"cover"`
 	AuthorAvatar         string   `json:"authorAvatar"` // cached author avatar; empty for sounds
@@ -112,7 +114,25 @@ func (l *Library) List(q LibraryQuery) (LibraryPage, error) {
 		if it.Kind != "music" && l.app.Covers != nil {
 			avatar = covers.URL("a", it.RemoteID)
 		}
-		page.Items[i] = LibraryItem{Source: it.Source, WatchLaterAccountIDs: later[it.RemoteID], ID: it.RemoteID, Kind: it.Kind, Title: it.Title, Author: it.Author, Cover: cover, AuthorAvatar: avatar, PublishedAt: it.PublishedAt, DurationMS: it.DurationMS, ImageCount: it.ImageCount, AccountIDs: owners[it.RemoteID], LikedAccountIDs: liked[it.RemoteID], FavoritedAccountIDs: favorited[it.RemoteID]}
+		page.Items[i] = LibraryItem{Source: it.Source, WatchLaterAccountIDs: later[it.RemoteID], ID: it.RemoteID, Kind: it.Kind, Title: it.Title, Author: it.Author, AuthorID: it.AuthorID, Cover: cover, AuthorAvatar: avatar, PublishedAt: it.PublishedAt, DurationMS: it.DurationMS, ImageCount: it.ImageCount, AccountIDs: owners[it.RemoteID], LikedAccountIDs: liked[it.RemoteID], FavoritedAccountIDs: favorited[it.RemoteID]}
+	}
+	if os.Getenv("HOARD_INTEREST_DEV") == "1" {
+		authorCount, authorIDCount, coverCount, avatarCount := 0, 0, 0, 0
+		for _, it := range page.Items {
+			if it.AuthorID != "" {
+				authorIDCount++
+			}
+			if it.Author != "" {
+				authorCount++
+			}
+			if it.Cover != "" {
+				coverCount++
+			}
+			if it.AuthorAvatar != "" {
+				avatarCount++
+			}
+		}
+		log.Printf("[hoard:interest] source=%s list=%s offset=%d items=%d total=%d authors=%d author_ids=%d cover_refs=%d avatar_refs=%d", q.Source, q.Kind, q.Offset, len(page.Items), page.Total, authorCount, authorIDCount, coverCount, avatarCount)
 	}
 	return page, nil
 }

@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { Library, Settings } from "lucide-react";
+import { Compass, Library, Settings } from "lucide-react";
 import { useTheme } from "next-themes";
 import {
   Sidebar,
@@ -22,7 +22,7 @@ import {
 import { useUpdate } from "@/lib/updates";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
-export type Page = "library" | "settings";
+export type Page = "library" | "settings" | "explore";
 
 interface AppSidebarProps {
   page: Page;
@@ -30,7 +30,8 @@ interface AppSidebarProps {
   children: ReactNode;
 }
 
-const navigation = [{ id: "library" as const, icon: Library }];
+const interestDev = import.meta.env.DEV && new URLSearchParams(location.search).get("dev") === "constellation";
+const navigation = [{ id: "library" as const, icon: Library }, ...(interestDev ? [{ id: "explore" as const, icon: Compass }] : [])];
 // Rail buttons keep the same left padding when collapsed, so their icons never move.
 const railButton = "h-10 gap-3 px-3 group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:px-3!";
 
@@ -41,7 +42,8 @@ const TIP_OFFSET = 8;
 export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
   const { t } = useTranslation("common");
   const { resolvedTheme, setTheme } = useTheme();
-  const [open, setOpen] = useState(() => localStorage.getItem("hoard-sidebar") !== "false");
+  const [open, setOpen] = useState(() => interestDev ? true : localStorage.getItem("hoard-sidebar") !== "false");
+  useEffect(() => { if (page === "explore") { setOpen(true); setBrandHovered(false); } }, [page]);
   const [brandHovered, setBrandHovered] = useState(false);
   const isDark = resolvedTheme === "dark";
   const { available, info } = useUpdate();
@@ -82,11 +84,11 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
                       isActive={page === id}
                       onClick={() => onPageChange(id)}
                       aria-current={page === id ? "page" : undefined}
-                      tooltip={{ children: t(`sidebar.${id}`), sideOffset: TIP_OFFSET }}
+                      tooltip={{ children: (id === "explore" ? "探索" : t(`sidebar.${id}`)), sideOffset: TIP_OFFSET }}
                       className={railButton}
                     >
                       <Icon aria-hidden="true" />
-                      <span>{t(`sidebar.${id}`)}</span>
+                      <span>{(id === "explore" ? "探索" : t(`sidebar.${id}`))}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}

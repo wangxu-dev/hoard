@@ -1,7 +1,7 @@
-import { Actions, Accounts, App, Library, Player, Sync, Updates, events } from "@mygo";
+import { Actions, Accounts, App, Exploration, Library, Player, Sync, Updates, events } from "@mygo";
 import type { Account, LibraryChange, SyncView } from "@mygo";
 
-export { Actions, Accounts, App, Library, Player, Sync, Updates, events };
+export { Actions, Accounts, App, Exploration, Library, Player, Sync, Updates, events };
 export type { ActionState, ActionFolder, LibraryFolder, Account, LibraryItem, LibraryPage, LibraryQuery, LikeItem, LikesResult, LoginState, Status, SyncView, UpdateDownload, UpdateInfo } from "@mygo";
 
 export function onAccountsChanged(listener: (accounts: Account[]) => void): () => void {
