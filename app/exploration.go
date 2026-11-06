@@ -28,6 +28,7 @@ func (e *Exploration) get() (*explore.Manager, error) {
 	}
 	db, dir := e.provider()
 	if db == nil || dir == "" {
+		log.Printf("[hoard:exploration] stage=provider store_ready=%t cache_configured=%t", db != nil, dir != "")
 		return nil, errors.New("STORE_NOT_READY")
 	}
 	e.manager = explore.NewManager(db.ExploreInput, explore.Cache{Dir: dir}, func(s *explore.Snapshot) {
@@ -45,21 +46,31 @@ func (e *Exploration) Start(scope explore.Scope, clientID string) (explore.TaskV
 	if err != nil {
 		return explore.TaskView{}, err
 	}
-	return m.Start(scope, clientID)
+	task, err := m.Start(scope, clientID)
+	explore.LogDiagnostic("start", scope, err)
+	return task, err
 }
 func (e *Exploration) Status(id string) (explore.TaskView, error) {
 	m, err := e.get()
 	if err != nil {
 		return explore.TaskView{}, err
 	}
-	return m.Status(id)
+	task, err := m.Status(id)
+	if err != nil {
+		explore.LogDiagnostic("status-failed", explore.Scope{}, err)
+	}
+	return task, err
 }
 func (e *Exploration) Result(id string) (*explore.Snapshot, error) {
 	m, err := e.get()
 	if err != nil {
 		return nil, err
 	}
-	return m.Result(id)
+	snapshot, err := m.Result(id)
+	if err != nil {
+		explore.LogDiagnostic("result-failed", explore.Scope{}, err)
+	}
+	return snapshot, err
 }
 func (e *Exploration) Cancel(id string) error {
 	m, err := e.get()

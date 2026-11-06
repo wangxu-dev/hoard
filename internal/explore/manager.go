@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"log"
 	"sync"
 	"time"
 
@@ -107,8 +108,10 @@ func (m *Manager) update(t *task, state string) {
 }
 func (m *Manager) run(t *task) {
 	defer m.wg.Done()
+	LogDiagnostic("read-start", t.view.Scope, nil)
 	rows, err := m.reader(t.ctx, t.view.Scope)
 	if err != nil {
+		LogDiagnostic("read-failed", t.view.Scope, err)
 		m.fail(t, err)
 		return
 	}
@@ -116,6 +119,13 @@ func (m *Manager) run(t *task) {
 		m.fail(t, t.ctx.Err())
 		return
 	}
+	counts := map[string]int{"douyin": 0, "bilibili": 0}
+	for _, r := range rows {
+		if _, ok := counts[r.Source]; ok {
+			counts[r.Source]++
+		}
+	}
+	log.Printf("[hoard:exploration] stage=read-ok account_scoped=%t douyin_items=%d bilibili_items=%d", t.view.Scope.AccountID != "", counts["douyin"], counts["bilibili"])
 	input := Revision(t.view.Scope, rows)
 	key := cacheKey(t.view.Scope, input, RuleHash)
 	m.mu.Lock()
@@ -158,6 +168,7 @@ func (m *Manager) run(t *task) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if t.ctx.Err() != nil || m.latest[t.client] != t.view.ID {
+		LogDiagnostic("late-drop", t.view.Scope, t.ctx.Err())
 		return
 	}
 	if shared.err != nil {
@@ -175,13 +186,23 @@ func (m *Manager) compute(key string, c *computation, scope Scope, rows []store.
 	s, err := m.cache.Load(scope, input, RuleHash)
 	hit := err == nil
 	if !hit {
+		LogDiagnostic("cache-miss", scope, nil)
 		s, err = m.analyze(c.ctx, scope, rows)
+		if err != nil {
+			LogDiagnostic("analyze-failed", scope, err)
+		}
 		if err == nil && c.ctx.Err() == nil {
 			err = m.cache.Save(s)
+			if err != nil {
+				LogDiagnostic("cache-save-failed", scope, err)
+			}
 		}
 	}
 	if err == nil && c.ctx.Err() != nil {
 		err = c.ctx.Err()
+	}
+	if err == nil {
+		log.Printf("[hoard:exploration] stage=complete cache_hit=%t sources=%d", hit, len(s.Scopes))
 	}
 	if err == nil && m.after != nil {
 		m.after(s)
