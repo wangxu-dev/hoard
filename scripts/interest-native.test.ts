@@ -65,6 +65,6 @@ describe("native interest first slice", () => {
   expect(main+window+backend+side).not.toMatch(/HOARD_INTEREST_DEV|dev=constellation|interestDev/);
   expect(window).toContain('URL:       "/"');expect(side).toContain('{ id: "explore" as const, icon: Compass }');
   const renderer = readFileSync("web/src/pages/constellation-dev/renderer.js", "utf8");
-  expect(renderer).toContain("orbit.step(now)"); expect(renderer).toContain("selected:!!(selectedTheme||selectedWork)"); expect(renderer).toContain("observer.disconnect()");
+  expect(renderer).toContain("orbit.step(now)"); expect(renderer).toContain("selected:!!selectedWork"); expect(renderer).toContain("observer.disconnect()");
  });
 });

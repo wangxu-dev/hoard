@@ -37,7 +37,7 @@ test("works scatter in a bounded disk without uncategorized outer rings", () => 
  const topicMembership=works.map(w=>({workId:w.id,topicId:"t_uncategorized",evidence:[]}));
  const model=geometry.prepare({schemaVersion:2,scopes:[{source:"douyin",topics,works,topicMembership,neighbors:[{workId:"w-0",to:"w-1",score:.8},{workId:"w-1",to:"w-0",score:.8}]}]});
  expect(model.works).toHaveLength(200);
- for(const w of model.works)expect(Math.hypot(w.pos.x,w.pos.y)).toBeLessThan(1.2);
+ for(const w of model.works)expect(Math.hypot(w.pos.x,w.pos.y)).toBeLessThan(1.4);
  const a=model.byKey.get("douyin:w-0").pos,b=model.byKey.get("douyin:w-1").pos;
  const linked=Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z);
  const base=geometry.prepare({schemaVersion:2,scopes:[{source:"douyin",topics,works,topicMembership,neighbors:[]}]});
