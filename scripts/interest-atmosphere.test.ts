@@ -20,7 +20,7 @@ test('only an opened author uses the normal native avatar resolver; external and
  for(const u of['https://example.invalid/a/1','http://hoard-cover.localhost.evil/a/1','hoard-cover://localhost/w/1?cacheOnly=1','hoard-cover://evil/a/1','hoard-cover://localhost/a/1#x',''])expect(detailAvatarURL(u)).toBe('');
 });
 test('galaxy covers have no redundant work badge or author text; selected context stays visible',()=>{
- const r=readFileSync('web/src/pages/constellation-dev/renderer.js','utf8');expect(r).toContain('imageCache.size<128');expect(r).toContain('封面未缓存');expect(r).toContain('(related?1:.83)');expect(r).not.toContain('identity-name');expect(r).not.toContain('identity-kind');expect(r).not.toContain('author-placeholder');expect(r).not.toContain('fetch(');
+ const r=readFileSync('web/src/pages/constellation-dev/renderer.js','utf8');expect(r).toContain('new ImagePool(128');expect(r).toContain('封面未缓存');expect(r).toContain('(related?1:.83)');expect(r).not.toContain('identity-name');expect(r).not.toContain('identity-kind');expect(r).not.toContain('author-placeholder');expect(r).not.toContain('fetch(');
  const css=readFileSync('web/src/pages/constellation-dev/styles.css','utf8');expect(css).toContain('.sky-identity.is-selected');
 });
 
