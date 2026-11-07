@@ -48,10 +48,10 @@ export function App() {
   return (
     <div className="flex h-dvh min-w-0 overflow-hidden bg-background">
       <AppSidebar page={page} onPageChange={setPage}>
-        <main className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
+        <main className={cn("relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background", page === "explore" && "explore-host")}>
           <div data-testid="main-scroll" onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 0)} className={page === "explore" ? "min-h-0 min-w-0 flex-1 overflow-hidden" : "scrollbar-none min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden"}>
             <AnimatePresence mode="wait" initial={false}>
-              <motion.div style={page === "explore" ? { height: "100%" } : undefined} key={page} variants={pageVariants} initial="initial" animate="animate" exit="exit" className={cn("flex min-h-full min-w-0", music.queue && "pb-20")}>
+              <motion.div style={page === "explore" ? { height: "100%" } : undefined} key={page} variants={pageVariants} initial="initial" animate="animate" exit="exit" className={cn("flex min-h-full min-w-0", music.queue && page !== "explore" && "pb-20")}>
                 {content}
               </motion.div>
             </AnimatePresence>

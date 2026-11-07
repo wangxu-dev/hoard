@@ -1,7 +1,7 @@
 // One monotonic clock. No timers, accumulated velocity, focus latch or input data.
 export class OrbitController {
   constructor(now = 0, reduced = false) {
-    this.flags = { hover: false, drag: false, selected: false, hidden: false, busy: false, reduced };
+    this.flags = { hover: false, drag: false, selected: false, hidden: false, busy: false, paused: false, reduced };
     this.lastActivity = now;
     this.lastStep = now;
     this.phase = reduced ? 'reduced' : 'waiting';
@@ -16,7 +16,7 @@ export class OrbitController {
       this.activity(now);
     }
   }
-  blocker() { return ['reduced', 'hidden', 'selected', 'drag', 'hover', 'busy'].find(key => this.flags[key]); }
+  blocker() { return ['reduced', 'hidden', 'paused', 'selected', 'drag', 'hover', 'busy'].find(key => this.flags[key]); }
   canTick() { return !this.blocker(); }
   integral(now) {
     const t = (now - this.lastActivity - this.delay) / this.ramp;

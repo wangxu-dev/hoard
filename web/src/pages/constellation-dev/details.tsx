@@ -16,7 +16,7 @@ function CachedImage({ src, alt, className, report }: { src: string; alt: string
 export function ContentDetails({ view }: { view: PanelView | null }) {
   if (!view) return null;
   const { work } = view;
-  return <aside aria-label={work ? "收藏详情" : view.label} className="absolute inset-y-4 right-4 z-30 flex w-80 max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-popover/95 text-popover-foreground shadow-lg backdrop-blur-(--glass-blur)">
+  return <aside data-explore-details aria-label={work ? "收藏详情" : view.label} className="explore-detail-surface absolute inset-y-4 right-4 z-30 flex w-80 max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-popover/95 text-popover-foreground shadow-lg backdrop-blur-(--glass-blur)">
     <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border px-4">
       {work ? <Badge variant="outline">{work.source}</Badge> : <h2 className="min-w-0 truncate text-sm font-medium">{view.label}</h2>}
       <Button variant="ghost" size="icon" onClick={view.back} aria-label="关闭"><X /></Button>

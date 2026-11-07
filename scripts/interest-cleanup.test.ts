@@ -56,6 +56,6 @@ describe("Explore clean view and single-clock motion", () => {
  });
  test("exploration is normal navigation in both development and release", () => {
   const side=readFileSync("web/src/components/app-sidebar.tsx","utf8"), app=readFileSync("web/src/App.tsx","utf8");
-  expect(side).toContain('if (page === "explore") { setOpen(true);');expect(side).not.toContain('setOpen(false)');expect(side).toContain('localStorage.getItem("hoard-sidebar")');expect(side).toContain('{ id: "explore" as const, icon: Compass }');expect(app).toContain('const ExplorePage = lazy(');expect(app).toContain('useState<Page>("library")');expect(app).toContain('page === "explore" ?');expect(side+app).not.toMatch(/interestDev|import\.meta\.env\.DEV|URLSearchParams/);
+  expect(side).toContain('if (page === "explore") return');expect(side).toContain("explore-frame");expect(side).not.toContain("setOpen(true)");expect(side).not.toContain('setOpen(false)');expect(side).toContain('localStorage.getItem("hoard-sidebar")');expect(side).toContain('{ id: "explore" as const, icon: Compass }');expect(app).toContain('const ExplorePage = lazy(');expect(app).toContain('useState<Page>("library")');expect(app).toContain('page === "explore" ?');expect(side+app).not.toMatch(/interestDev|import\.meta\.env\.DEV|URLSearchParams/);
  });
 });

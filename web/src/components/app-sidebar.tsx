@@ -42,7 +42,6 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
   const { t } = useTranslation("common");
   const { resolvedTheme, setTheme } = useTheme();
   const [open, setOpen] = useState(() => localStorage.getItem("hoard-sidebar") !== "false");
-  useEffect(() => { if (page === "explore") { setOpen(true); setBrandHovered(false); } }, [page]);
   const [brandHovered, setBrandHovered] = useState(false);
   const isDark = resolvedTheme === "dark";
   const { available, info } = useUpdate();
@@ -62,6 +61,19 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
     setOpen(next);
     localStorage.setItem("hoard-sidebar", String(next));
   };
+
+  // Exploration owns the complete webview. Navigation floats over it instead of
+  // reserving the normal library rail; the library's saved preference is untouched.
+  if (page === "explore") return <div className="explore-frame relative flex h-full w-full min-w-0">
+    <nav aria-label="探索导航" className="explore-navigation explore-glass">
+      <button type="button" onClick={() => onPageChange("library")} aria-label="返回收藏库" title="返回收藏库" className="explore-nav-brand"><img src={hoardIcon} alt="" /><span>Hoard</span></button>
+      <span className="explore-nav-divider" />
+      <button type="button" onClick={() => onPageChange("library")} aria-label="收藏库" title="收藏库"><Library /><span className="explore-nav-label">收藏库</span></button>
+      <button type="button" onClick={() => onPageChange("settings")} aria-label="设置" title="设置"><Settings />{available && <i className="explore-update-dot" />}</button>
+      <AnimatedThemeToggler className="explore-theme-toggle" theme={isDark ? "dark" : "light"} onThemeChange={setTheme} aria-label={t("theme.toggle")} />
+    </nav>
+    {children}
+  </div>;
 
   return (
     <SidebarProvider open={open} onOpenChange={updateOpen} style={{ "--sidebar-width": token("--sidebar-width"), "--sidebar-width-icon": token("--sidebar-width-icon") } as CSSProperties}>
