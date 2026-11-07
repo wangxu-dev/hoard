@@ -14,11 +14,14 @@ import { useMusic } from "@/lib/music";
 import { MusicBar } from "@/components/viewer/music-bar";
 import { cn } from "@/lib/utils";
 
+import { useWindowAppearance } from "@/lib/window-appearance";
+
 const ExplorePage = lazy(() => import("@/pages/constellation-dev"));
 
 export function App() {
   const { t } = useTranslation("library");
   const [page, setPage] = useState<Page>("library");
+  useWindowAppearance(page);
   const [scrolled, setScrolled] = useState(false);
   const music = useMusic();
   const addingAccount = useRef(false);
@@ -46,7 +49,7 @@ export function App() {
   const content = page === "explore" ? <Suspense fallback={<div className="p-6 text-sm">正在准备探索…</div>}><ExplorePage /></Suspense> : page === "library" ? <LibraryPage scrolled={scrolled} onAddAccount={(source) => { void login(undefined, source); }} onLogin={(accountId) => { void login(accountId); }} /> : <SettingsPage />;
 
   return (
-    <div className="flex h-dvh min-w-0 overflow-hidden bg-background">
+    <div data-app-shell className="flex h-dvh min-w-0 overflow-hidden bg-background">
       <AppSidebar page={page} onPageChange={setPage}>
         <main className={cn("relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background", page === "explore" && "explore-host")}>
           <div data-testid="main-scroll" onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 0)} className={page === "explore" ? "min-h-0 min-w-0 flex-1 overflow-hidden" : "scrollbar-none min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden"}>
