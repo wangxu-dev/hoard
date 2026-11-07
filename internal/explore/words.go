@@ -16,7 +16,6 @@ import (
 
 const wordTopK = 12
 const wordPostingLimit = 128
-const wordMinCosine = .25
 
 // WorkNeighbor is evidence for a work pair, not a line to draw in the sky.
 type WorkNeighbor struct {
@@ -314,11 +313,16 @@ func sparseWordGraph(ctx context.Context, docs []wordDoc) ([][]wordNeighbor, err
 					dot += vec[i][t] * w
 				}
 			}
-			if len(shared) < 2 {
+			if len(shared) == 0 {
 				continue
 			}
-			score := math.Min(1, dot/(norms[i]*norms[j]))
-			if score >= wordMinCosine {
+			// Keep one canonical valid word as weak evidence, even in a long
+			// caption. No fixed cosine floor erases it. Independent evidence
+			// raises confidence smoothly; copied tags/token pieces never do.
+			cosine := math.Min(1, dot/(norms[i]*norms[j]))
+			confidence := float64(len(shared)) / float64(len(shared)+1)
+			score := cosine * confidence
+			if score > 0 {
 				out[i] = append(out[i], wordNeighbor{j, score, shared})
 			}
 		}

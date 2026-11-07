@@ -17,7 +17,7 @@ import (
 )
 
 const SchemaVersion = 2
-const AnalysisVersion = "native-sparse-neighbors-v4-gse-1.3.1-zh-s"
+const AnalysisVersion = "native-sparse-neighbors-v5-weak-gse-1.3.1-zh-s"
 const InputVersion = "native-library-transaction-v1"
 
 // RuleHash versions the local analyzer; no topic keyword rules are loaded.

@@ -166,7 +166,7 @@ func Validate(s *Snapshot) error {
 		neighborCounts := map[string]int{}
 		for _, n := range sc.Neighbors {
 			key := hash([]string{n.WorkID, n.To})
-			if !works[n.WorkID] || !works[n.To] || n.WorkID == n.To || neighborKeys[key] || math.IsNaN(n.Score) || math.IsInf(n.Score, 0) || n.Score < wordMinCosine || n.Score > 1 || len(n.Shared) < 2 {
+			if !works[n.WorkID] || !works[n.To] || n.WorkID == n.To || neighborKeys[key] || math.IsNaN(n.Score) || math.IsInf(n.Score, 0) || n.Score <= 0 || n.Score > 1 || len(n.Shared) == 0 {
 				return errors.New("SNAPSHOT_NEIGHBOR_INVALID")
 			}
 			shared := wordDoc{base: map[string]int{}}

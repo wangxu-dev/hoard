@@ -52,21 +52,63 @@ func TestSparseWeightsDoNotCountSameEvidenceTwice(t *testing.T) {
 		t.Fatalf("duplicate provenance changed score/evidence: canonical=%+v duplicated=%+v", a, b)
 	}
 	idf := 1 + math.Log(3.0/2)
-	want := 2 / (2 + idf*idf)
+	want := (2 / (2 + idf*idf)) * (2.0 / 3)
 	if math.Abs(b[0][0].score-want) > 1e-12 {
 		t.Fatalf("score %.15f != canonical %.15f", b[0][0].score, want)
 	}
 }
 
-func TestSparseWordsRejectOneEvidenceFamily(t *testing.T) {
+func TestSparseWordsSingleCanonicalFamilyIsOneWeakEdge(t *testing.T) {
 	d := wordDoc{base: map[string]int{"海水": 1, "造景": 1}, tags: []string{"海水造景"}, phrases: []string{"海水造景"}}
 	g, err := sparseWordGraph(context.Background(), []wordDoc{d, d, {base: map[string]int{}}})
 	if err != nil {
 		t.Fatal(err)
 	}
+	for i := 0; i < 2; i++ {
+		if len(g[i]) != 1 || !reflect.DeepEqual(g[i][0].shared, []string{"海水造景"}) || math.Abs(g[i][0].score-.5) > 1e-12 {
+			t.Fatalf("one family must be exactly one weak edge: %+v", g)
+		}
+	}
+	if len(g[2]) != 0 {
+		t.Fatal("empty text invented an edge")
+	}
+}
+
+func TestSparseWordsKeepLowCosineSingleWordAndRankIndependentEvidence(t *testing.T) {
+	docs := []wordDoc{{base: map[string]int{"汽车": 1, "底盘": 1}}, {base: map[string]int{"汽车": 1, "底盘": 1}}, {base: map[string]int{"汽车": 1}}, {base: map[string]int{"爱情": 1}}}
+	for i := 0; i < 40; i++ {
+		docs[2].base[fmt.Sprintf("onlyC%d", i)] = 1
+	}
+	g, err := sparseWordGraph(context.Background(), docs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(g[0]) != 2 || g[0][0].to != 1 || g[0][1].to != 2 {
+		t.Fatalf("strong multi-word match must rank above weak car word: %+v", g[0])
+	}
+	weak := g[0][1]
+	t.Logf("synthetic independent=%.6f, single-word=%.6f", g[0][0].score, weak.score)
+	if weak.score <= 0 || weak.score >= .25 || !reflect.DeepEqual(weak.shared, []string{"汽车"}) {
+		t.Fatalf("long-caption weak match was lost/overstated: %+v", weak)
+	}
+	if len(g[3]) != 0 {
+		t.Fatal("car token linked unrelated love")
+	}
+}
+
+func TestSparseWordsExcludeStopwordsSingleCharactersAndSubstringLove(t *testing.T) {
+	works := []Work{{Title: "爱车 汽车"}, {Title: "爱情 恋爱"}, {Title: "今天 的 爱"}, {Title: "今天 的 爱"}}
+	docs, err := wordDocuments(context.Background(), works)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g, err := sparseWordGraph(context.Background(), docs)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, ns := range g {
-		if len(ns) > 0 {
-			t.Fatal("one evidence family or empty text invented an edge")
+		if len(ns) != 0 {
+			t.Fatalf("stopword, single-character, or substring ambiguity invented edge: %+v", g)
 		}
 	}
 }
@@ -123,11 +165,11 @@ func TestNativeSparseNeighborsSkipThemeEncoding(t *testing.T) {
 		if len(sc.Works) != 4 || sc.Coverage.WorksInTopics != 0 || sc.Coverage.UncategorizedWorks != 3 || sc.Coverage.WorksNoText != 1 {
 			t.Fatalf("lost or invented works: %+v", sc.Coverage)
 		}
-		if len(sc.Neighbors) != 2 || len(sc.Edges) != 0 {
+		if len(sc.Neighbors) != 6 || len(sc.Edges) != 0 {
 			t.Fatalf("neighbors=%d, visual topic edges=%d", len(sc.Neighbors), len(sc.Edges))
 		}
 		for _, n := range sc.Neighbors {
-			if n.WorkID == "c" || n.To == "c" || n.WorkID == "d" || n.To == "d" || len(n.Shared) != 2 {
+			if n.WorkID == "d" || n.To == "d" || len(n.Shared) < 1 {
 				t.Fatalf("false neighbor %+v", n)
 			}
 		}
@@ -191,6 +233,8 @@ func TestValidateRejectsInvalidSparseNeighbors(t *testing.T) {
 	}{
 		{"missing work", func(s *Snapshot) { s.Scopes[0].Neighbors[0].To = "missing" }},
 		{"self neighbor", func(s *Snapshot) { n := &s.Scopes[0].Neighbors[0]; n.To = n.WorkID }},
+		{"zero score", func(s *Snapshot) { s.Scopes[0].Neighbors[0].Score = 0 }},
+		{"empty evidence", func(s *Snapshot) { s.Scopes[0].Neighbors[0].Shared = nil }},
 		{"invalid score", func(s *Snapshot) { s.Scopes[0].Neighbors[0].Score = math.NaN() }},
 		{"duplicate provenance", func(s *Snapshot) { s.Scopes[0].Neighbors[0].Shared = []string{"摄影", "摄影"} }},
 		{"contained evidence", func(s *Snapshot) { s.Scopes[0].Neighbors[0].Shared = []string{"海水", "海水造景"} }},
@@ -220,7 +264,19 @@ func TestHashtagAndPlainCompoundUseSameEvidence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(g[0]) != 1 || math.Abs(g[0][0].score-1) > 1e-12 {
+	if len(g[0]) != 1 || math.Abs(g[0][0].score-2.0/3) > 1e-12 {
 		t.Fatal("same caption content stopped matching without hashtag")
+	}
+}
+
+func TestValidateAcceptsSingleWeakEvidenceAndInvalidatesV4(t *testing.T) {
+	s := makeSnapshot(t)
+	s.Scopes[0].Neighbors[0].Shared = []string{"汽车"}
+	s.Scopes[0].Neighbors[0].Score = .03
+	if err := Validate(s); err != nil {
+		t.Fatalf("valid one-word low-score evidence rejected: %v", err)
+	}
+	if AnalysisVersion == "native-sparse-neighbors-v4-gse-1.3.1-zh-s" {
+		t.Fatal("old two-evidence cache version retained")
 	}
 }
