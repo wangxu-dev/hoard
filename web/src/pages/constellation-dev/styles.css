@@ -53,3 +53,12 @@
 #interest-native-root .native-loading{background:#0b131d}
 .explore-frame:has([data-testid=music-bar]) .explore-controls{bottom:100px}
 @media(max-width:900px){.explore-navigation{left:14px;top:14px}.explore-nav-label{display:none}#interest-native-root .explore-controls{left:14px;bottom:14px}#interest-native-root .explore-detail-surface{top:76px;bottom:68px;width:300px}}
+#interest-native-root .sky-identities{position:absolute;inset:0;z-index:8;pointer-events:none}
+#interest-native-root .sky-identity{position:absolute;left:0;top:0;overflow:hidden;border:1px solid rgba(178,207,220,.28);border-radius:7px;background:rgba(13,27,38,.70);box-shadow:0 4px 18px #0004;color:#dcebed;pointer-events:auto;cursor:pointer;transition:border-color .18s;}
+#interest-native-root .sky-identity:hover{border-color:#b8e9e0;z-index:4}
+#interest-native-root .identity-art{position:relative;display:block;width:100%;height:100%;overflow:hidden;background:linear-gradient(140deg,#253e4b,#10232e)}
+#interest-native-root .sky-identity img{width:100%;height:100%;object-fit:cover}
+#interest-native-root .identity-fallback{position:absolute;inset:0;display:grid;place-items:center;font-size:24px;color:#819ba9}
+#interest-native-root .sky-identity.is-selected{border-color:#f5ae94;box-shadow:0 0 0 2px #f5ae9436,0 8px 30px #0005}
+#interest-native-root .sky-identity.is-related{border-color:#9ad8c999}
+#interest-native-root .sky-identity [hidden]{display:none!important}
