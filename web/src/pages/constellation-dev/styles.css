@@ -62,3 +62,11 @@
 #interest-native-root .sky-identity.is-selected{border-color:#f5ae94;box-shadow:0 0 0 2px #f5ae9436,0 8px 30px #0005}
 #interest-native-root .sky-identity.is-related{border-color:rgba(154,216,201,var(--relation-alpha,.6))}
 #interest-native-root .sky-identity [hidden]{display:none!important}
+
+/* A painted, readable loading surface exists even before the native snapshot arrives. */
+#interest-native-root .native-loading{background:radial-gradient(ellipse at 52% 48%,#142c39,#0b131d 72%)}
+#interest-native-root .explore-controls{animation:explore-controls-enter .6s ease both}
+@keyframes explore-controls-enter{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){#interest-native-root .explore-controls{animation:none}}
+
+#interest-native-root .explore-refresh-warning{position:absolute;z-index:34;right:20px;top:20px;border-radius:12px;padding:4px 12px;font-size:12px;display:flex;gap:8px;align-items:center}

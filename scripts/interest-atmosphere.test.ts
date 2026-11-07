@@ -7,7 +7,7 @@ import {detailAvatarURL} from '../web/src/pages/constellation-dev/avatar';
 const work=(key:string,community:string)=>({key,community,seed:.3,neighbors:[{key:'other'}]});
 test('nebula is projected background light, never a fake work or picking target',()=>{
  const p=atmospherePatches();expect(p.length).toBe(158);expect(p.every(x=>x.r>.05&&x.alpha>0&&Number.isFinite(x.x+x.y+x.z))).toBe(true);expect(p.every(x=>!('key'in x)&&!('neighbors'in x))).toBe(true);
- const r=readFileSync('web/src/pages/constellation-dev/renderer.js','utf8');expect(r).toContain('atmosphere.draw(ctx,project,W,HH)');expect(r).toContain('H.project(worldPoint(p),camera,W,HH)');
+ const r=readFileSync('web/src/pages/constellation-dev/renderer.js','utf8');expect(r).toContain('atmosphere.draw(ctx,project,W,HH,layers.nebula)');expect(r).toContain('H.project(worldPoint(p),camera,W,HH)');
 });
 test('cover landmarks avoid details and each other; counts include every hidden candidate',()=>{
  const works=Array.from({length:40},(_,i)=>work('w'+i,'c'+i)),points=works.map((w,i)=>({w,x:90+(i%7)*100,y:140+Math.floor(i/7)*110,depth:0}));const blocked=[{x:720,y:0,w:280,h:800}];

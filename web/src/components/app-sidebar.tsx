@@ -92,6 +92,7 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
                 {navigation.map(({ id, icon: Icon }) => (
                     <SidebarMenuItem key={id}>
                     <SidebarMenuButton
+                      aria-label={id === "explore" ? "探索" : t(`sidebar.${id}`)}
                       isActive={page === id}
                       onClick={() => onPageChange(id)}
                       aria-current={page === id ? "page" : undefined}

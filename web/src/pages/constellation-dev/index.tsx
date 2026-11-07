@@ -9,6 +9,11 @@ import { mountInterestSky, type ViewControls } from "./renderer.js";
 import { ArrowLeft, LocateFixed, Maximize2, Minus, Pause, Play, Plus } from "lucide-react";
 import "./styles.css";
 
+// Last good union snapshot is a return-transition surface, not a replacement for
+// native validation. Every entry revalidates; unchanged revisions do not remount.
+type LibrarySnapshot = Awaited<ReturnType<typeof readCurrentLibrary>>;
+let returnSnapshot: LibrarySnapshot | null = null;
+
 export default function ConstellationDevPage() {
   const host = useRef<HTMLDivElement>(null);
   const client = useRef(crypto.randomUUID());
@@ -21,10 +26,20 @@ export default function ConstellationDevPage() {
   useEffect(() => {
     const abort = new AbortController(); let dispose: (() => void) | undefined;
     setReady(false); setError(""); setPanel(null); setPaused(false);
+    let painted: LibrarySnapshot | null = null;
+    const paint = (snapshot: LibrarySnapshot) => {
+      if (abort.signal.aborted || !host.current) return;
+      dispose?.(); painted = null; setReady(false);
+      host.current.innerHTML = shell;
+      dispose = mountInterestSky(host.current, snapshot, { onPanel: setPanel, onControls: (next) => { setControls(next); if (next) setPaused(next.isPaused()); } });
+      painted = snapshot;
+      setReady(true);
+    };
+    if (returnSnapshot) paint(returnSnapshot);
     void readCurrentLibrary(abort.signal, () => {}, client.current).then((snapshot) => {
       if (abort.signal.aborted || !host.current) return;
-      host.current.innerHTML = shell;
-      dispose = mountInterestSky(host.current, snapshot, { onPanel: setPanel, onControls: setControls });
+      if (!painted || painted.inputRevision !== snapshot.inputRevision || painted.analysisVersion !== snapshot.analysisVersion) paint(snapshot);
+      returnSnapshot = snapshot;
       // Aggregate counters only, no original IDs/titles or media URLs in diagnostics.
       console.warn("[interest-dev] coverage", JSON.stringify(snapshot.meta.coverage));
       setReady(true);
@@ -32,7 +47,8 @@ export default function ConstellationDevPage() {
       if (abort.signal.aborted) return;
       const safeCode = err instanceof Error ? err.message.match(/(?:STORE_NOT_READY|INVALID_REQUEST|TASK_[A-Z_]+|INVALID_SCOPE|SCOPE_MISMATCH|SNAPSHOT_[A-Z_]+|EXPLORATION_FAILED)/)?.[0] || "BRIDGE_OR_TRANSPORT" : "UNKNOWN";
       console.warn("[interest-dev] native-error", JSON.stringify({ code: safeCode }));
-      setError("暂时无法读取收藏");
+      if (!painted) setReady(false);
+      setError(painted ? "更新失败，当前为上次读取结果" : "暂时无法读取收藏");
     });
     return () => { abort.abort(); dispose?.(); };
   }, [attempt, mountInterestSky]);
@@ -46,6 +62,7 @@ export default function ConstellationDevPage() {
       <Button variant="ghost" size="icon" onClick={() => controls && setPaused(controls.toggleRotation())} aria-label={paused ? "继续旋转" : "暂停旋转"} title={paused ? "继续旋转" : "暂停旋转"} aria-pressed={paused}>{paused ? <Play /> : <Pause />}</Button>
       <Button variant="ghost" size="icon" onClick={() => controls?.focusSelected()} disabled={!panel?.work} aria-label="聚焦选中作品" title="聚焦选中作品"><LocateFixed /></Button>
     </div>
+    {error && <div className="explore-refresh-warning explore-glass" role="status">{error}<Button variant="ghost" size="sm" onClick={() => setAttempt(n => n + 1)}>重试</Button></div>}
     <ContentDetails view={panel} />
   </>}{!ready && <div className="native-loading" role={error ? "alert" : "status"}>
     <span>{error || "正在读取收藏…"}</span>
