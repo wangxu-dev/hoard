@@ -24,4 +24,4 @@ test('galaxy covers have no redundant work badge or author text; selected contex
  const css=readFileSync('web/src/pages/constellation-dev/styles.css','utf8');expect(css).toContain('.sky-identity.is-selected');
 });
 
-test('entry/reset share an immersive view, not a whole-disk zoom escape',()=>{const r=readFileSync('web/src/pages/constellation-dev/renderer.js','utf8');expect(r).toContain('const initial={yaw:-.24,pitch:.72,zoom:1.7');expect(r).toContain('const overview={...initial}');expect(r).toContain('target=boundCamera({...overview},W,HH)');expect(r).toContain('target=boundCamera({...v.camera},W,HH)');});
+test('entry/reset share an immersive view, not a whole-disk zoom escape',()=>{const r=readFileSync('web/src/pages/constellation-dev/renderer.js','utf8');expect(r).toContain('const initial={yaw:-.24,pitch:.72,zoom:1.7');expect(r).toContain('const overview={...initial}');expect(r).toContain('flyTo({...overview})');expect(r).toContain('flyTo(restoreExplorationView(v,worldRotation))');expect(r).toContain('target=boundCamera(next,W,HH)');});

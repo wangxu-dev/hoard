@@ -9,6 +9,7 @@ export class OrbitController {
     this.ramp = 1000;
     this.speed = .055;
   }
+  resumeNatural(now) { if(this.blocker()) return; this.lastActivity=now-this.delay-this.ramp; this.lastStep=now; this.phase='rotating'; }
   activity(now) { now = Math.max(now, this.lastActivity, this.lastStep); this.lastActivity = now; this.lastStep = now; this.phase = this.blocker() || 'waiting'; }
   configure(flags, now) {
     if (Object.entries(flags).some(([key, value]) => this.flags[key] !== value)) {

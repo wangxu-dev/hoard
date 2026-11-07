@@ -6,9 +6,9 @@ test('exploration fills the webview while ordinary library sidebar preferences s
  const side=read('web/src/components/app-sidebar.tsx'),app=read('web/src/App.tsx');
  expect(side).toContain('if (page === "explore") return');expect(side).toContain('explore-navigation');expect(side).toContain('aria-label="返回收藏库"');expect(side).toContain('onPageChange("settings")');expect(side).toContain('localStorage.getItem("hoard-sidebar")');expect(side).not.toContain('setOpen(true)');expect(app).toContain('music.queue && page !== "explore"');
 });
-test('clicking a work selects without changing any camera target; focus is an explicit action',()=>{
+test('click takes one gentle real-neighbor frame without pinning or pausing selection',()=>{
  const src=read('web/src/pages/constellation-dev/renderer.js'),body=src.slice(src.indexOf('function openWork('),src.indexOf('function back('));
- expect(body).toContain('selectedWork=w');expect(body).not.toContain('target=');expect(body).not.toContain('focusWork');expect(src).toContain('focusSelected:()=>{if(selectedWork)focusWork(selectedWork);}');expect(src).toContain('selected:false,paused:userPaused');
+ expect(body).toContain('selectedWork=w');expect(body).toContain('focusWork(w)');expect(src).toContain('frameNeighborhood(w,M.byKey,camera');expect(src).toContain('selected:false,paused:userPaused');expect(src).toContain('selectedKey:null');expect(src).not.toContain('director.protect');
 });
 test('all restored view controls call live renderer operations, not placeholder controls',()=>{
  const page=read('web/src/pages/constellation-dev/index.tsx'),src=read('web/src/pages/constellation-dev/renderer.js');

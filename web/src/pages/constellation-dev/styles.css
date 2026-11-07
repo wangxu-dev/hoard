@@ -60,5 +60,5 @@
 #interest-native-root .sky-identity img{width:100%;height:100%;object-fit:cover}
 #interest-native-root .identity-fallback{position:absolute;inset:0;display:grid;place-items:center;font-size:24px;color:#819ba9}
 #interest-native-root .sky-identity.is-selected{border-color:#f5ae94;box-shadow:0 0 0 2px #f5ae9436,0 8px 30px #0005}
-#interest-native-root .sky-identity.is-related{border-color:#9ad8c999}
+#interest-native-root .sky-identity.is-related{border-color:rgba(154,216,201,var(--relation-alpha,.6))}
 #interest-native-root .sky-identity [hidden]{display:none!important}
