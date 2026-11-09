@@ -1,0 +1,19 @@
+{
+  "timeline": {
+    "label": "发布时间轴",
+    "published": "发布时间",
+    "all": "全部时间",
+    "count": "{{count}} 个作品",
+    "unknown": "未知时间 · {{count}}",
+    "play": "按月回放",
+    "pause": "暂停回放",
+    "reset": "重置时间范围",
+    "density": "每月作品数量，点击选择月份，拖动平移范围",
+    "range": "发布时间范围",
+    "start": "起始月份",
+    "end": "结束月份",
+    "monthCount": "{{month}} · {{count}} 个作品",
+    "noDates": "暂无发布时间",
+    "outside": "不在当前时间范围"
+  }
+}

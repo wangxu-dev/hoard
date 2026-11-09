@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ function AuthorIdentity({author,avatar,report}:{author:string;avatar:string;repo
 }
 
 export function ContentDetails({ view }: { view: PanelView | null }) {
+  const { t } = useTranslation("explore");
   if (!view) return null;
   const { work } = view;
   return <aside data-explore-details aria-label={work ? "收藏详情" : view.label} className="explore-detail-surface absolute inset-y-4 right-4 z-30 flex w-80 max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-popover/95 text-popover-foreground shadow-lg backdrop-blur-(--glass-blur)">
@@ -40,6 +42,7 @@ export function ContentDetails({ view }: { view: PanelView | null }) {
         {work ? <>
           <CachedImage src={work.cover} alt="收藏封面" className="mx-auto mt-4 max-h-44 w-[calc(100%-2rem)] rounded-lg object-cover" report={view.imageStatus} />
           <AuthorIdentity key={work.key} author={work.author || work.source} avatar={work.avatar} report={view.imageStatus}/>
+          {work.outsideTimeRange && <p role="status" className="px-4 pt-3 text-xs text-muted-foreground">{t("timeline.outside")}</p>}
           <p className="select-text px-4 pt-3 text-sm leading-relaxed break-words whitespace-pre-wrap text-popover-foreground">{work.title}</p>
 
         </> : null}

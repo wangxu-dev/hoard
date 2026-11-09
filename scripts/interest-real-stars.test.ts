@@ -25,7 +25,7 @@ test("renderer has no decorative stars, dust, or artificial topic fog", () => {
  expect(renderer).not.toMatch(/\b(bg|dust|mist)\b|disk-a|bgx|fog/);
  expect(renderer).toContain("buffer=stars.map(w=>");
  expect(renderer).toContain("for(const p of buffer){const w=p.w");
- expect(renderer).toContain("H.pick(buffer,x,y,11)");
+ expect(renderer).toContain("H.pick(buffer.filter(p=>timeMatches(p.w)),x,y,11)");
  // Only background surfaces may use rectangles; all point primitives use a real work.
  expect((renderer.match(/ctx.fillRect\(/g)||[]).length).toBe(3);
  expect(renderer).not.toContain("H.mst(");

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { PublicationTimeline } from "./publication-timeline";
+import type { ExplorationWork } from "@/lib/api";
 import shell from "./shell.html?raw";
 import { Button } from "@/components/ui/button";
 import { ContentDetails } from "./details";
@@ -18,6 +20,7 @@ export default function ConstellationDevPage() {
   const host = useRef<HTMLDivElement>(null);
   const client = useRef(crypto.randomUUID());
   const [attempt, setAttempt] = useState(0), [error, setError] = useState("");
+  const [timelineWorks, setTimelineWorks] = useState<ExplorationWork[]>([]);
   const [panel, setPanel] = useState<PanelView | null>(null);
   const [ready, setReady] = useState(false);
   const [controls, setControls] = useState<ViewControls | null>(null);
@@ -33,6 +36,7 @@ export default function ConstellationDevPage() {
       host.current.innerHTML = shell;
       dispose = mountInterestSky(host.current, snapshot, { onPanel: setPanel, onControls: (next) => { setControls(next); if (next) setPaused(next.isPaused()); } });
       painted = snapshot;
+      setTimelineWorks(snapshot.scopes.flatMap(scope => scope.works));
       setReady(true);
     };
     if (returnSnapshot) paint(returnSnapshot);
@@ -63,6 +67,7 @@ export default function ConstellationDevPage() {
       <Button variant="ghost" size="icon" onClick={() => controls?.focusSelected()} disabled={!panel?.work} aria-label="聚焦选中作品" title="聚焦选中作品"><LocateFixed /></Button>
     </div>
     {error && <div className="explore-refresh-warning explore-glass" role="status">{error}<Button variant="ghost" size="sm" onClick={() => setAttempt(n => n + 1)}>重试</Button></div>}
+    {controls && <PublicationTimeline works={timelineWorks} controls={controls} />}
     <ContentDetails view={panel} />
   </>}{!ready && <div className="native-loading" role={error ? "alert" : "status"}>
     <span>{error || "正在读取收藏…"}</span>

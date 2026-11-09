@@ -134,7 +134,7 @@ func Validate(s *Snapshot) error {
 			return errors.New("SNAPSHOT_SCOPE_INVALID")
 		}
 		seenSources[sc.Source] = true
-		if !sc.TimeCapabilities.Views["current"] || sc.TimeCapabilities.Views["source_time"] || sc.TimeCapabilities.Views["observed_time"] {
+		if !sc.TimeCapabilities.Views["current"] || sc.TimeCapabilities.Views["observed_time"] {
 			return errors.New("SNAPSHOT_TIME_INVALID")
 		}
 		if sc.Coverage != s.Meta.Coverage[i] {
@@ -150,8 +150,14 @@ func Validate(s *Snapshot) error {
 		}
 		works := map[string]bool{}
 		members := map[string]bool{}
+		hasPublication := false
 		for _, w := range sc.Works {
-			if works[w.ID] || w.Source != sc.Source || w.ID == "" || w.MonthKeys.SourceTime != nil || w.MonthKeys.ObservedTime != nil {
+			month := publicationMonth(w.PublishedAt)
+			if (month == nil) != (w.MonthKeys.SourceTime == nil) || month != nil && *month != *w.MonthKeys.SourceTime || w.PublishedAt < 0 || w.PublishedAt >= 253402300800 {
+				return errors.New("SNAPSHOT_TIME_INVALID")
+			}
+			hasPublication = hasPublication || month != nil
+			if works[w.ID] || w.Source != sc.Source || w.ID == "" || w.MonthKeys.ObservedTime != nil {
 				return errors.New("SNAPSHOT_WORK_INVALID")
 			}
 			if w.Cover != "" && !validNativeAsset(w.Cover, "w", w.ID) {
@@ -161,6 +167,9 @@ func Validate(s *Snapshot) error {
 				return errors.New("SNAPSHOT_ASSET_INVALID")
 			}
 			works[w.ID] = true
+		}
+		if sc.TimeCapabilities.Views["source_time"] != hasPublication {
+			return errors.New("SNAPSHOT_TIME_INVALID")
 		}
 		neighborKeys := map[string]bool{}
 		neighborCounts := map[string]int{}

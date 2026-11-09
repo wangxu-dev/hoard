@@ -1,4 +1,10 @@
 :root {
+  --explore-density-height: 1rem;
+  --explore-playback-step: 1200;
+  --explore-timeline-accent: oklch(0.83 0.08 185);
+  --explore-timeline-track: oklch(0.75 0.04 220 / 0.2);
+  --explore-timeline-selection: oklch(0.83 0.08 185 / 0.24);
+  --explore-timeline-shadow: 0 0 12px oklch(0.83 0.08 185 / 0.16);
   --window-control: oklch(0.3 0 0);
   --window-close: oklch(0.67 0.21 27);
   --window-minimize: oklch(0.82 0.17 80);
@@ -84,6 +90,12 @@
 }
 
 .dark {
+  --explore-density-height: 1rem;
+  --explore-playback-step: 1200;
+  --explore-timeline-accent: oklch(0.83 0.08 185);
+  --explore-timeline-track: oklch(0.75 0.04 220 / 0.2);
+  --explore-timeline-selection: oklch(0.83 0.08 185 / 0.24);
+  --explore-timeline-shadow: 0 0 12px oklch(0.83 0.08 185 / 0.16);
   --window-control: oklch(0.24 0 0);
   --window-close: oklch(0.62 0.19 27);
   --window-minimize: oklch(0.77 0.15 80);

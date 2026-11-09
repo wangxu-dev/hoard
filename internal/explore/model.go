@@ -16,9 +16,9 @@ import (
 	"github.com/wangxu-dev/hoard/internal/store"
 )
 
-const SchemaVersion = 2
+const SchemaVersion = 3
 const AnalysisVersion = "native-sparse-neighbors-v5-weak-gse-1.3.1-zh-s"
-const InputVersion = "native-library-transaction-v1"
+const InputVersion = "native-library-publication-v2"
 
 // RuleHash versions the local analyzer; no topic keyword rules are loaded.
 var RuleHash = hash(AnalysisVersion)
@@ -40,6 +40,7 @@ type MonthKeys struct {
 	ObservedTime *string `json:"observed_time"`
 }
 type Work struct {
+	PublishedAt      int64     `json:"publishedAt"`
 	AnchorTopicID    string    `json:"anchorTopicId"`
 	ID               string    `json:"id"`
 	Source           string    `json:"source"`
@@ -167,6 +168,15 @@ func Analyze(ctx context.Context, scope Scope, rows []store.ExploreRecord) (*Sna
 	}
 	return s, ctx.Err()
 }
+func publicationMonth(at int64) *string {
+	if at <= 0 || at >= 253402300800 {
+		return nil
+	}
+	// Match the existing library timeline's local calendar months.
+	month := time.Unix(at, 0).In(time.Local).Format("2006-01")
+	return &month
+}
+
 func analyzeSource(ctx context.Context, source string, rows []store.ExploreRecord) (SourceSnapshot, error) {
 	s := SourceSnapshot{Source: source, Works: []Work{}, Topics: []Topic{}, TopicMembership: []Membership{}, Edges: []Edge{}, Neighbors: []WorkNeighbor{}, Coverage: Coverage{Source: source}, TimeCapabilities: TimeCapabilities{Views: map[string]bool{"current": true, "source_time": false, "observed_time": false}}}
 	for i, r := range rows {
@@ -177,6 +187,11 @@ func analyzeSource(ctx context.Context, source string, rows []store.ExploreRecor
 			continue
 		}
 		w := Work{ID: r.ID, Source: source, Title: r.Title, MediaKind: "video", TextAvailability: "ok", Times: []string{}, Author: Author{Name: r.Author}}
+		w.MonthKeys.SourceTime = publicationMonth(r.PublishedAt)
+		if w.MonthKeys.SourceTime != nil {
+			w.PublishedAt = r.PublishedAt
+			s.TimeCapabilities.Views["source_time"] = true
+		}
 		if r.Kind == "gallery" {
 			w.MediaKind = "image"
 		}

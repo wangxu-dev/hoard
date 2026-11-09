@@ -1,0 +1,19 @@
+{
+  "timeline": {
+    "label": "Publication timeline",
+    "published": "Published",
+    "all": "All time",
+    "count": "{{count}} works",
+    "unknown": "Unknown date · {{count}}",
+    "play": "Play by month",
+    "pause": "Pause playback",
+    "reset": "Reset date range",
+    "density": "Works per month. Select a month or drag to move the range",
+    "range": "Publication date range",
+    "start": "Start month",
+    "end": "End month",
+    "monthCount": "{{month}} · {{count}} works",
+    "noDates": "No publication dates",
+    "outside": "Outside the selected date range"
+  }
+}

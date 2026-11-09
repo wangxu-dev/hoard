@@ -69,4 +69,41 @@
 @keyframes explore-controls-enter{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){#interest-native-root .explore-controls{animation:none}}
 
-#interest-native-root .explore-refresh-warning{position:absolute;z-index:34;right:20px;top:20px;border-radius:12px;padding:4px 12px;font-size:12px;display:flex;gap:8px;align-items:center}
+
+#interest-native-root .explore-refresh-warning{position:absolute;z-index:34;right:20px;top:20px;border-radius:var(--radius-lg);padding:.25rem .75rem;font-size:var(--site-text-sm);display:flex;gap:.5rem;align-items:center}
+/* Publication filtering changes emphasis, never the galaxy's geometry. */
+#interest-native-root .explore-timeline{position:absolute;z-index:35;left:3rem;right:3rem;bottom:1.5rem;max-width:72rem;margin-inline:auto;padding:0;min-width:0;color:var(--foreground)}
+#interest-native-root .explore-controls{bottom:8rem}
+#interest-native-root:has([data-explore-details]) .explore-timeline{right:23rem}
+#interest-native-root [data-explore-details]{bottom:8rem}
+#interest-native-root .publication-density{display:flex;align-items:flex-end;height:var(--explore-density-height);margin-top:.5rem;touch-action:none;cursor:ew-resize;position:relative}
+#interest-native-root .publication-bin{position:relative;display:flex;align-items:flex-end;justify-content:center;flex:1;min-width:0;height:100%;padding:0;cursor:inherit;border:0;background:transparent}
+#interest-native-root .publication-bin>span:first-child{display:block;width:1px;max-width:40%;min-width:1px;background:var(--explore-timeline-track);transition:background var(--duration-fast) var(--ease-out)}
+#interest-native-root .publication-bin[data-selected=true]>span:first-child{background:var(--explore-timeline-accent);box-shadow:var(--explore-timeline-shadow)}
+#interest-native-root .publication-bin:focus-visible{outline:2px solid var(--ring);outline-offset:2px;z-index:2}
+#interest-native-root .publication-month-tip{pointer-events:none;position:absolute;bottom:100%;white-space:nowrap;background:var(--popover);color:var(--foreground);padding:.25rem .5rem;border-radius:var(--radius-md);font-size:var(--site-text-xs);z-index:3}
+#interest-native-root .publication-slider{height:1.25rem}
+#interest-native-root .publication-slider [data-slot=slider-track]{height:1px;background:var(--explore-timeline-track)}
+#interest-native-root .publication-slider [data-slot=slider-range]{background:var(--explore-timeline-accent)}
+#interest-native-root .publication-slider [data-slot=slider-thumb]{background:var(--explore-timeline-accent);border:0;width:.375rem;height:.75rem;border-radius:var(--radius-sm);box-shadow:var(--explore-timeline-shadow)}
+#interest-native-root .explore-timeline [data-testid=publication-range]{font-size:var(--site-text-lg);font-weight:400;letter-spacing:.025em}
+#interest-native-root .explore-timeline button[data-slot=button]{color:var(--muted-foreground);border:0;background:transparent;box-shadow:none}
+#interest-native-root .explore-timeline button[data-slot=button]:hover{color:var(--foreground)}
+#interest-native-root .explore-timeline button[data-slot=button]:disabled{opacity:.35}
+#interest-native-root .publication-total{font-variant-numeric:tabular-nums;font-size:var(--site-text-2xs)}
+#interest-native-root .publication-years{height:.75rem;position:relative;color:var(--muted-foreground);font-size:var(--site-text-2xs);margin-inline:.375rem}
+#interest-native-root .publication-years>span{position:absolute;transform:translateX(-50%)}
+#interest-native-root .publication-years>span:first-child{transform:none}
+#interest-native-root .publication-years>span:last-child{transform:translateX(-100%)}
+[data-app-shell]:has([data-testid=music-bar]) #interest-native-root .explore-timeline{bottom:6.25rem}
+[data-app-shell]:has([data-testid=music-bar]) #interest-native-root .explore-controls{bottom:13rem}
+[data-app-shell]:has([data-testid=music-bar]) #interest-native-root [data-explore-details]{bottom:13rem}
+@media(max-width:900px){
+ #interest-native-root .explore-timeline{left:1.5rem;right:1.5rem;padding:0}
+ #interest-native-root:has([data-explore-details]) .explore-timeline{right:1.5rem}
+ #interest-native-root .explore-controls{left:.875rem;bottom:8rem}
+ #interest-native-root [data-explore-details]{bottom:11.25rem;max-height:calc(100% - 16.5rem)}
+ #interest-native-root .publication-caption{display:none}
+ #interest-native-root .publication-years>span:nth-child(even):not(:last-child){display:none}
+}
+@media(prefers-reduced-motion:reduce){#interest-native-root .publication-bin>span:first-child{transition:none}}

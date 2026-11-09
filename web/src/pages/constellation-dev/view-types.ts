@@ -1,5 +1,7 @@
 import type { LibraryEntry } from "@/lib/library";
 export interface ContentWork {
+  publishedAt?: number;
+  outsideTimeRange?: boolean;
   key: string;
   id: string;
   sourceCode: string;
@@ -22,8 +24,7 @@ export interface PanelView {
   imageStatus: (url: string, state: number) => void;
 }
 
-// The snapshot has no verified publish time, duration or image count; zero means absent.
-// Shared preview components do not render those absent values or request missing media.
+// Duration and image count remain absent from the exploration snapshot.
 export function libraryEntry(work: ContentWork): LibraryEntry {
-  return {source:work.sourceCode,id:work.id,kind:work.kind,title:work.title,author:work.author,authorAvatar:work.avatar,cover:work.cover,publishedAt:0,durationMs:0,imageCount:0};
+  return {source:work.sourceCode,id:work.id,kind:work.kind,title:work.title,author:work.author,authorAvatar:work.avatar,cover:work.cover,publishedAt:work.publishedAt || 0,durationMs:0,imageCount:0};
 }

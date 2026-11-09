@@ -60,11 +60,11 @@ func TestExploreScopeIsolationAndUnion(t *testing.T) {
 }
 func TestExploreReadTransactionConsistentDuringSyncWrite(t *testing.T) {
 	s := explorationFixture(t)
-	saveExploration(t, s, "a", "like", Work{RemoteID: "1", Kind: "video", Title: "before"})
+	saveExploration(t, s, "a", "like", Work{RemoteID: "1", Kind: "video", Title: "before", PublishedAt: 1700000000})
 	got, err := s.exploreInput(context.Background(), ExploreScope{AccountID: "a"}, func() {
-		saveExploration(t, s, "a", "like", Work{RemoteID: "1", Kind: "video", Title: "after"}, Work{RemoteID: "2", Kind: "video", Title: "new"})
+		saveExploration(t, s, "a", "like", Work{RemoteID: "1", Kind: "video", Title: "after", PublishedAt: 1800000000}, Work{RemoteID: "2", Kind: "video", Title: "new"})
 	})
-	if err != nil || len(got) != 1 || got[0].Title != "before" {
+	if err != nil || len(got) != 1 || got[0].Title != "before" || got[0].PublishedAt != 1700000000 {
 		t.Fatalf("mixed snapshot %v %v", got, err)
 	}
 	next, err := s.ExploreInput(context.Background(), ExploreScope{AccountID: "a"})

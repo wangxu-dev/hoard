@@ -41,7 +41,7 @@ func TestExplorationNativeServiceRoundTrip(t *testing.T) {
 	if err != nil || s == nil {
 		t.Fatal(err)
 	}
-	if s.SchemaVersion != 2 || len(s.Scopes) != 1 || s.Scopes[0].Works[0].Author.ID != "douyin:author-fixture" || s.Meta.Consistency != "single read-only WAL transaction" {
+	if s.SchemaVersion != explore.SchemaVersion || len(s.Scopes) != 1 || s.Scopes[0].Works[0].Author.ID != "douyin:author-fixture" || s.Meta.Consistency != "single read-only WAL transaction" {
 		t.Fatal("native DTO contract failed")
 	}
 	second, err := svc.Start(s.Scope, "view")

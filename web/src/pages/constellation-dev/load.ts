@@ -1,5 +1,5 @@
 import { App, Exploration } from "@/lib/api";
-import type { ExploreScope, ExplorationDiagnostic } from "@mygo";
+import type { ExploreScope, ExplorationDiagnostic } from "@/lib/api";
 import { diagnosticError } from "./diagnostics";
 let sequence=0;
 
@@ -30,7 +30,7 @@ export async function readCurrentLibrary(signal: AbortSignal, progress: (count: 
         try{snapshot=await Exploration.result(task.id);}catch(error){report("result-reject",error);throw error;}
         if (!snapshot) throw new Error("SNAPSHOT_MISSING");
         if (signal.aborted) {report("late-drop");throw new Error("CANCELLED");}
-        if (snapshot.schemaVersion !== 2 || snapshot.scope.accountId !== scope.accountId || snapshot.scope.source !== scope.source) {report("scope-reject",new Error("SNAPSHOT_SCOPE_INVALID"));throw new Error("SNAPSHOT_SCOPE_INVALID");}
+        if (snapshot.schemaVersion !== 3 || snapshot.scope.accountId !== scope.accountId || snapshot.scope.source !== scope.source) {report("scope-reject",new Error("SNAPSHOT_SCOPE_INVALID"));throw new Error("SNAPSHOT_SCOPE_INVALID");}
         report("result-ok");
         console.warn("[interest-dev] native-task", JSON.stringify({ state: status.state, cacheHit: status.cacheHit, cacheWarning:status.cacheWarning, schema: snapshot.schemaVersion, analysisVersion: snapshot.analysisVersion, inputVersion: snapshot.inputVersion, persistence: snapshot.meta.persistence, consistency: snapshot.meta.consistency }));
         progress(snapshot.meta.coverage.reduce((n, c) => n + c.worksTotal, 0));

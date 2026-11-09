@@ -12,7 +12,10 @@ type ExploreScope struct {
 	AccountID string `json:"accountId"`
 	Source    string `json:"source"`
 }
-type ExploreRecord struct{ Source, ID, Kind, Title, AuthorID, Author, CoverURL, AvatarURL string }
+type ExploreRecord struct {
+	Source, ID, Kind, Title, AuthorID, Author, CoverURL, AvatarURL string
+	PublishedAt                                                    int64
+}
 
 func (s *Store) ExploreInput(ctx context.Context, q ExploreScope) ([]ExploreRecord, error) {
 	return s.exploreInput(ctx, q, nil)
@@ -55,14 +58,14 @@ func (s *Store) exploreInput(ctx context.Context, q ExploreScope, barrier func()
 	if barrier != nil {
 		barrier()
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT w.source,w.remote_id,w.kind,w.title,COALESCE(a.remote_id,''),COALESCE(a.nickname,''),COALESCE(w.cover_url,''),COALESCE(a.avatar_url,'')`+from+` GROUP BY w.id ORDER BY w.source,w.remote_id`, args...)
+	rows, err := tx.QueryContext(ctx, `SELECT w.source,w.remote_id,w.kind,w.title,COALESCE(a.remote_id,''),COALESCE(a.nickname,''),COALESCE(w.cover_url,''),COALESCE(a.avatar_url,''),w.published_at`+from+` GROUP BY w.id ORDER BY w.source,w.remote_id`, args...)
 	if err != nil {
 		return nil, err
 	}
 	result := make([]ExploreRecord, 0, total)
 	for rows.Next() {
 		var r ExploreRecord
-		if err = rows.Scan(&r.Source, &r.ID, &r.Kind, &r.Title, &r.AuthorID, &r.Author, &r.CoverURL, &r.AvatarURL); err != nil {
+		if err = rows.Scan(&r.Source, &r.ID, &r.Kind, &r.Title, &r.AuthorID, &r.Author, &r.CoverURL, &r.AvatarURL, &r.PublishedAt); err != nil {
 			rows.Close()
 			return nil, err
 		}
