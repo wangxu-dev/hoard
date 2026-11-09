@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import NumberFlow from "@number-flow/react";
+import { useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import type { ViewControls } from "./renderer";
@@ -18,7 +20,7 @@ export function PublicationTimeline({ works, controls }: { works: DatedWork[]; c
   const section = useRef<HTMLElement>(null);
   const drag = useRef<{ x: number; range: [number, number]; width: number; moved: boolean; pointer: number } | null>(null);
   const range = selection.range ?? [first, last];
-  const format = useMemo(() => new Intl.DateTimeFormat(i18n.language, { year: "numeric", month: "short" }), [i18n.language]);
+  const format = useMemo(() => new Intl.DateTimeFormat(i18n.language, { year: "numeric", month: "2-digit" }), [i18n.language]);
   const label = (month: number) => format.format(monthDate(month));
   const count = useMemo(() => works.filter(work => matchesPublication(work, selection)).length, [works, selection]);
   const peak = Math.max(1, ...bins.map(bin => bin.count));
@@ -47,20 +49,33 @@ export function PublicationTimeline({ works, controls }: { works: DatedWork[]; c
   useEffect(() => { if (playing && range[1] >= last) setPlaying(false); }, [playing, range[1], last]);
   const choose = (next: [number, number]) => { setPlaying(false); setSelection(current => ({ ...current, range: clampRange(next, first, last) })); };
   const reset = () => { setPlaying(false); setSelection({ range: null, includeUnknown: false }); };
-  const yearStep = bins.length > 96 ? 2 : 1;
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const element = section.current;
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  const yearStep = Math.max(1, Math.ceil((last - first) / 12 / Math.max(1, Math.floor(width / 88))));
+  const years = bins.filter((bin, index) => index === 0 || bin.month % 12 === 0 && Math.floor(bin.month / 12) % yearStep === 0 && index / Math.max(1, bins.length - 1) * width >= 64 && (1 - index / Math.max(1, bins.length - 1)) * width >= 32);
+  const reduced = useReducedMotion();
+  const animatedMonth = (month: number) => format.formatToParts(monthDate(month)).map((part, index) => /^(year|month)$/.test(part.type) && /^\d+$/.test(part.value) ? <NumberFlow key={index} className={`publication-${part.type}`} value={Number(part.value)} locales={i18n.language} format={{ useGrouping: false, minimumIntegerDigits: part.type === "month" ? 2 : 4 }} animated={!reduced} /> : <span key={index}>{part.value}</span>);
   return <section ref={section} className="explore-timeline" aria-label={t("timeline.label")} data-playing={playing}>
-    <div className="flex min-w-0 items-center gap-2">
-      <div className="flex min-w-0 flex-1 items-baseline gap-3 text-xs">
-        <span className="publication-caption shrink-0 text-muted-foreground">{t("timeline.published")}</span>
-        <span className="truncate font-medium" data-testid="publication-range">{full ? t("timeline.all") : range[0] === range[1] ? label(range[0]) : `${label(range[0])} — ${label(range[1])}`}</span>
-        <span className="publication-total shrink-0 text-muted-foreground" data-testid="publication-count">{t("timeline.count", { count })}</span>
+    <div className="publication-header">
+      <div className="publication-summary">
+        <span className="publication-caption text-muted-foreground">{t("timeline.published")}</span>
+        <span className="publication-range" data-testid="publication-range">{full ? t("timeline.all") : <>{animatedMonth(range[0])}{range[0] !== range[1] && <> — {animatedMonth(range[1])}</>}</>}</span>
+        <span className="publication-total text-muted-foreground" data-testid="publication-count" aria-label={t("timeline.count", { count })}><NumberFlow value={count} locales={i18n.language} animated={!reduced} /> {t("timeline.countUnit")}</span>
       </div>
+      <div className="publication-actions">
       {unknown > 0 && <Button variant="ghost" size="sm" aria-pressed={selection.includeUnknown} disabled={full} onClick={() => { setPlaying(false); setSelection(current => ({ ...current, includeUnknown: !current.includeUnknown })); }}>{t("timeline.unknown", { count: unknown })}</Button>}
       <Button variant="ghost" size="icon" className="size-8 shrink-0" disabled={bins.length < 2} aria-label={t(playing ? "timeline.pause" : "timeline.play")} title={t(playing ? "timeline.pause" : "timeline.play")} onClick={() => {
         if (playing) setPlaying(false);
         else { setSelection(current => ({ ...current, range: !current.range || current.range[1] >= last ? nextPlaybackRange(current.range, first, last) : current.range })); setPlaying(true); }
       }}>{playing ? <Pause /> : <Play />}</Button>
       <Button variant="ghost" size="icon" className="size-8 shrink-0" aria-label={t("timeline.reset")} title={t("timeline.reset")} disabled={full} onClick={reset}><RotateCcw /></Button>
+      </div>
     </div>
     {bins.length > 0 ? <>
       <div className="publication-density" role="group" aria-label={t("timeline.density")}
@@ -102,7 +117,7 @@ export function PublicationTimeline({ works, controls }: { works: DatedWork[]; c
       <Slider min={first} max={last === first ? first + 1 : last} step={1} minStepsBetweenThumbs={0} value={range} disabled={bins.length < 2} onValueChange={value => choose([value[0], value[1]])} className="publication-slider" aria-label={t("timeline.range")} onFocusCapture={event => {
         if (event.target.getAttribute("role") === "slider") setPlaying(false);
       }} />
-      <div className="publication-years" aria-hidden="true">{bins.map((bin, index) => (index === 0 || index === bins.length - 1 && bin.month % 12 === 0 || bin.month % 12 === 0 && Math.floor(bin.month / 12) % yearStep === 0) && <span key={bin.month} style={{ left: `${index / Math.max(1, bins.length - 1) * 100}%` }}>{Math.floor(bin.month / 12)}</span>)}</div>
+      <div className="publication-years" aria-hidden="true">{years.map(bin => <span key={bin.month} style={{ left: `${(bin.month - first) / Math.max(1, last - first) * 100}%` }}>{Math.floor(bin.month / 12)}</span>)}</div>
       <span className="sr-only" role="status" aria-live={playing ? "off" : "polite"}>{t("timeline.count", { count })}</span>
     </> : <p className="py-2 text-xs text-muted-foreground">{t("timeline.noDates")}</p>}
   </section>;

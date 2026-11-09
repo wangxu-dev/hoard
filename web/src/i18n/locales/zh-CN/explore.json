@@ -1,6 +1,7 @@
 {
   "timeline": {
     "label": "发布时间轴",
+    "countUnit": "个作品",
     "published": "发布时间",
     "all": "全部时间",
     "count": "{{count}} 个作品",

@@ -1,6 +1,7 @@
 {
   "timeline": {
     "label": "Publication timeline",
+    "countUnit": "works",
     "published": "Published",
     "all": "All time",
     "count": "{{count}} works",
