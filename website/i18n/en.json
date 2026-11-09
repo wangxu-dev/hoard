@@ -96,6 +96,14 @@
       {
         "q": "How do I get started and update?",
         "a": "Choose a download for your system, install it and connect a platform account. Your collection syncs automatically. Get future updates in the app settings."
+      },
+      {
+        "q": "Where do Explore connections come from?",
+        "a": "Explore finds connections locally from the text in synced works. They are clues for browsing, rather than platform recommendations or an assessment of your interests."
+      },
+      {
+        "q": "Does the preview show personal account data?",
+        "a": "The website uses fictional accounts, example text and generated covers. It requires no login and cannot read collections stored on your device."
       }
     ]
   },
@@ -112,6 +120,10 @@
       {
         "title": "Data stored by the desktop app",
         "body": "Hoard stores account information, synced content indexes, covers and other caches on your device. The system WebView stores login sessions separately for each account. Do not publish databases, credentials or logs containing personal data."
+      },
+      {
+        "title": "Local exploration analysis",
+        "body": "Explore builds an analysis cache from the text and publication dates of synced works on your device. It does not upload your collection to an AI service for this analysis. Website previews use separate demo data with no personal accounts, real collections or credentials."
       },
       {
         "title": "Network requests",
@@ -131,5 +143,26 @@
       }
     ],
     "metadata": "Privacy & data — Hoard"
+  },
+  "exploration": {
+    "eyebrow": "COMING IN 0.1.9 · EXPLORE",
+    "title": "A different way to rediscover your collection.",
+    "description": "See your synced works as a galaxy. Start with one item, follow its connections, or travel back through publication dates.",
+    "imageAlt": "Hoard Explore preview with a galaxy of works, covers and a publication timeline",
+    "caption": "This preview uses fictional works and generated covers, with no personal accounts or real collections. Explore is coming in 0.1.9.",
+    "items": [
+      {
+        "title": "Let one favorite lead to another.",
+        "body": "Open a work to see its details and related content. The view moves gently closer as you follow the connections."
+      },
+      {
+        "title": "Return to a moment in time.",
+        "body": "Choose a publication month, adjust the range or play through months. Filtering changes emphasis while keeping the layout in place."
+      },
+      {
+        "title": "Organize on your own device.",
+        "body": "Explore analyzes your synced content index locally, without sending your collection to an AI service. Login, sync and playback still connect to each platform."
+      }
+    ]
   }
 }
