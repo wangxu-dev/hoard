@@ -1,9 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { Accounts, Library, Player, Sync, demoEntries } from "../demo/backend";
+import { Accounts, Exploration, Library, Player, Sync, demoEntries } from "../demo/backend";
 
 describe("website demo data", () => {
+  test("the library-only demo rejects native exploration explicitly", async () => {
+    await expect(Exploration.start()).rejects.toThrow("EXPLORATION_UNAVAILABLE_IN_DEMO");
+    await expect(Exploration.cancel()).resolves.toBeUndefined();
+  });
   test("shared player and automatic sync APIs remain available", async () => {
     const item = demoEntries[0];
     const result = await Player.resolve(item.kind, item.id, item.accountIds[0], false, "");

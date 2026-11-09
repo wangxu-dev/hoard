@@ -84,6 +84,13 @@ export const Library = {
     return months;
   },
 };
+const unavailableExploration = async () => { throw new Error("EXPLORATION_UNAVAILABLE_IN_DEMO"); };
+export const Exploration = {
+  start: unavailableExploration,
+  status: unavailableExploration,
+  result: unavailableExploration,
+  cancel: noop,
+};
 export const Accounts = {
   list: async () => accounts,
   add: noop,
