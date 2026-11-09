@@ -84,11 +84,12 @@ export const Library = {
     return months;
   },
 };
-const unavailableExploration = async () => { throw new Error("EXPLORATION_UNAVAILABLE_IN_DEMO"); };
+const explorationSeed = globalThis.crypto.getRandomValues(new Uint32Array(1))[0];
+let explorationSnapshot: Promise<ReturnType<typeof import("./exploration")["createExplorationSnapshot"]>> | undefined;
 export const Exploration = {
-  start: unavailableExploration,
-  status: unavailableExploration,
-  result: unavailableExploration,
+  start: async () => ({ id: "website-exploration", state: "complete" }),
+  status: async () => ({ id: "website-exploration", state: "complete", cacheHit: true }),
+  result: async () => explorationSnapshot ??= import("./exploration").then(({ createExplorationSnapshot }) => createExplorationSnapshot(explorationSeed, english)),
   cancel: noop,
 };
 export const Accounts = {
@@ -108,6 +109,7 @@ export const App = {
   muted: async () => false,
   setMuted: noop,
   showDouyin: noop,
+  reportExplorationDiagnostic: noop,
 };
 const media = async (_kind: string, id: string) => {
   const item = items.find((item) => item.id === id);

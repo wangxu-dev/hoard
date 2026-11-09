@@ -4,8 +4,11 @@ import { readFileSync } from "node:fs";
 import { Accounts, Exploration, Library, Player, Sync, demoEntries } from "../demo/backend";
 
 describe("website demo data", () => {
-  test("the library-only demo rejects native exploration explicitly", async () => {
-    await expect(Exploration.start()).rejects.toThrow("EXPLORATION_UNAVAILABLE_IN_DEMO");
+  test("exploration adapter returns the same sample during one visit", async () => {
+    expect((await Exploration.start()).state).toBe("complete");
+    const snapshot = await Exploration.result();
+    expect(snapshot.scopes.reduce((n, scope) => n + scope.works.length, 0)).toBe(300);
+    expect(await Exploration.result()).toBe(snapshot);
     await expect(Exploration.cancel()).resolves.toBeUndefined();
   });
   test("shared player and automatic sync APIs remain available", async () => {

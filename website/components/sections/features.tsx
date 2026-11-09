@@ -1,4 +1,5 @@
 import { Compass, CalendarRange, HardDrive } from "lucide-react";
+import { DemoFrame } from "@/components/demo-frame";
 import { LibraryPreview } from "@/components/library-preview";
 import { Reveal } from "@/components/reveal";
 import { dictionaries, type Language } from "@/lib/content";
@@ -29,8 +30,8 @@ export function Features({ language }: { language: Language }) {
       </Reveal>
       <Reveal>
         <figure>
-          <img src="/exploration-preview.png" alt={exploration.imageAlt} width={1440} height={800} loading="lazy" className="h-auto w-full rounded-xl border border-border" />
-          <figcaption className="mt-3 text-center text-xs text-muted-foreground">{exploration.caption}</figcaption>
+          <DemoFrame language={language} exploration className="aspect-video min-h-128 w-full rounded-xl border border-border bg-background" />
+          <figcaption className="mt-3 text-center text-xs text-muted-foreground">{exploration.caption} <a href={`/demo/index.html?view=explore&lang=${language}`} target="_blank" rel="noreferrer" className="underline underline-offset-4">{exploration.open}</a></figcaption>
         </figure>
       </Reveal>
       <div className="mt-12 grid gap-8 md:grid-cols-3">

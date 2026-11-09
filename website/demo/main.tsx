@@ -1,6 +1,6 @@
 import "./styles.css";
 import "../../web/src/i18n";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { MotionConfig } from "motion/react";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -8,7 +8,7 @@ import { demoEntries } from "./backend";
 import { queryKeys } from "../../web/src/lib/query";
 import { queryClient } from "../../web/src/lib/query";
 import { ThemeProvider } from "../../web/src/providers/theme-provider";
-import { AppSidebar } from "../../web/src/components/app-sidebar";
+import { AppSidebar, type Page } from "../../web/src/components/app-sidebar";
 import { LibraryPage } from "../../web/src/pages/library";
 import { Collection } from "./collection";
 import { Toaster } from "../../web/src/components/ui/sonner";
@@ -34,7 +34,10 @@ window.addEventListener("message", (event) => {
   );
 });
 
+const ExplorePage = lazy(() => import("../../web/src/pages/constellation-dev"));
+
 function Preview() {
+  const [page, setPage] = useState<Page>(() => new URLSearchParams(location.search).get("view") === "explore" ? "explore" : "library");
   const [scrolled, setScrolled] = useState(false);
   const hint = () => {};
   return (
@@ -73,8 +76,8 @@ function Preview() {
                 }
               }}
             >
-              <AppSidebar page="library" onPageChange={hint}>
-                <main className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
+              <AppSidebar page={page} onPageChange={next => { if (next !== "settings") setPage(next); }}>
+                {page === "explore" ? <Suspense fallback={<div className="h-full w-full bg-background" />}><ExplorePage /></Suspense> : <main className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
                   <div
                     data-testid="main-scroll"
                     onScroll={(event) =>
@@ -90,7 +93,7 @@ function Preview() {
                       />
                     </div>
                   </div>
-                </main>
+                </main>}
               </AppSidebar>
               <Toaster position="bottom-center" />
             </div>

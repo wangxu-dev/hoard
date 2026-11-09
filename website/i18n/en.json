@@ -103,7 +103,7 @@
       },
       {
         "q": "Does the preview show personal account data?",
-        "a": "The website uses fictional accounts, example text and generated covers. It requires no login and cannot read collections stored on your device."
+        "a": "The library uses fictional accounts and generated covers. Explore uses a separate sample of public works with identifiers replaced, creator names removed and dates simulated. The preview cannot read collections stored on your device."
       }
     ]
   },
@@ -123,7 +123,7 @@
       },
       {
         "title": "Local exploration analysis",
-        "body": "Explore builds an analysis cache from the text and publication dates of synced works on your device. It does not upload your collection to an AI service for this analysis. Website previews use separate demo data with no personal accounts, real collections or credentials."
+        "body": "Explore analyzes synced work text and publication dates on your device without uploading your collection to an AI service. The website uses a separate sample of public works with replaced identifiers, generic creator labels and simulated dates, without account sessions or credentials."
       },
       {
         "title": "Network requests",
@@ -149,7 +149,7 @@
     "title": "A different way to rediscover your collection.",
     "description": "See your synced works as a galaxy. Start with one item, follow its connections, or travel back through publication dates.",
     "imageAlt": "Hoard Explore preview with a galaxy of works, covers and a publication timeline",
-    "caption": "This preview uses fictional works and generated covers, with no personal accounts or real collections. Explore is coming in 0.1.9.",
+    "caption": "Try 300 sample works with replaced identifiers, generic creator labels and simulated dates. Each visit starts differently. Explore is coming in 0.1.9.",
     "items": [
       {
         "title": "Let one favorite lead to another.",
@@ -163,6 +163,8 @@
         "title": "Organize on your own device.",
         "body": "Explore analyzes your synced content index locally, without sending your collection to an AI service. Login, sync and playback still connect to each platform."
       }
-    ]
+    ],
+    "previewLabel": "Interactive Hoard Explore demo",
+    "open": "Open full preview"
   }
 }

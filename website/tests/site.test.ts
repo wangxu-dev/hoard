@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync } from "node:fs";
 import { dictionaries, homePath } from "../lib/content";
 import {
   downloadUrl,
@@ -18,10 +17,11 @@ function keys(value: unknown, prefix = ""): string[] {
 }
 
 describe("website content and release contract", () => {
-  test("exploration preview is bilingual and uses a bundled demonstration image", () => {
-    expect(existsSync(new URL("../public/exploration-preview.png", import.meta.url))).toBe(true);
+  test("exploration preview is bilingual and describes the sample accurately", () => {
     for (const text of Object.values(dictionaries)) {
       expect(text.exploration.items).toHaveLength(3);
+      expect(text.exploration.caption).toContain("300");
+      expect(text.exploration.previewLabel.length).toBeGreaterThan(0);
       expect(text.exploration.caption).toContain("0.1.9");
       expect(text.faq.items).toHaveLength(5);
     }
