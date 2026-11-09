@@ -19,7 +19,7 @@ const layoutFingerprint=M.works.reduce((v,w)=>Math.imul(v^H.hash(w.key+':'+[w.po
 const listeners=[];let disposed=false;
 const on=(target,type,handler,options)=>{target.addEventListener(type,handler,options);listeners.push(()=>target.removeEventListener(type,handler,options));};
 const $=s=>root.querySelector(s),make=(t,c,text)=>{const e=document.createElement(t);if(c)e.className=c;if(text!==undefined)e.textContent=text;return e;},srcName=s=>s==='bilibili'?'B站':'抖音';
-const canvas=$('#sky'),ctx=canvas.getContext('2d',{alpha:false}),reducedQuery=matchMedia('(prefers-reduced-motion: reduce)');let reduced=reducedQuery.matches;const orbit=new OrbitController(performance.now(),reduced);
+const canvas=$('#sky'),ctx=canvas.getContext('2d',{alpha:false}),reducedQuery=matchMedia('(prefers-reduced-motion: reduce)');let reduced=reducedQuery.matches;const orbitTokens=getComputedStyle(document.documentElement);const orbit=new OrbitController(performance.now(),reduced,{delay:parseFloat(orbitTokens.getPropertyValue('--explore-orbit-idle')),ramp:parseFloat(orbitTokens.getPropertyValue('--explore-orbit-ramp'))});
 let W=root.clientWidth,HH=root.clientHeight,dpr=Math.min(devicePixelRatio||1,1.5),source='all';
 const initial={yaw:-.24,pitch:.72,zoom:1.7,tx:0,ty:0,tz:0,panX:0,panY:0,cx:.5};
 const overview={...initial};

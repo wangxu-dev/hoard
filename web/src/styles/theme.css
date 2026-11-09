@@ -1,4 +1,6 @@
 :root {
+  --explore-orbit-idle: 450;
+  --explore-orbit-ramp: 650;
   --explore-density-height: 1rem;
   --explore-playback-step: 1200;
   --explore-timeline-accent: oklch(0.83 0.08 185);
@@ -90,6 +92,8 @@
 }
 
 .dark {
+  --explore-orbit-idle: 450;
+  --explore-orbit-ramp: 650;
   --explore-density-height: 1rem;
   --explore-playback-step: 1200;
   --explore-timeline-accent: oklch(0.83 0.08 185);

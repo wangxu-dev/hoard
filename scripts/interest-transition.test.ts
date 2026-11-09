@@ -4,8 +4,8 @@ import { CameraFlight } from "../web/src/pages/constellation-dev/neighborhood-ca
 
 describe("exploration transitions", () => {
  test("nebula, real stars and covers enter in coordinated order", () => {
-  expect(entranceLayers(0)).toEqual({nebula:.12,stars:0,covers:0,active:true});
-  const early=entranceLayers(200); expect(early.nebula).toBeGreaterThan(early.stars);expect(early.covers).toBe(0);
+  expect(entranceLayers(0)).toEqual({nebula:.36,stars:0,covers:0,active:true});
+  const early=entranceLayers(120); expect(early.nebula).toBeGreaterThan(early.stars);expect(early.covers).toBe(0);
   for(const key of ["nebula","stars","covers"] as const){let last=0;for(let t=0;t<=1000;t+=10){const a=entranceLayers(t)[key];expect(a).toBeGreaterThanOrEqual(last);expect(a).toBeLessThanOrEqual(1);last=a;}}
   expect(entranceLayers(1000)).toEqual({nebula:1,stars:1,covers:1,active:false});
  });

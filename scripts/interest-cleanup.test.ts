@@ -2,6 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { OrbitController } from "../web/src/pages/constellation-dev/orbit.js";
 
+test('hover exit resumes after the configured short idle and ramps smoothly',()=>{
+ const o=new OrbitController(0,false,{delay:450,ramp:650});
+ o.configure({hover:true},1000);expect(o.step(1500)).toBe(0);
+ o.configure({hover:false},1500);expect(o.step(1950)).toBe(0);
+ expect(o.step(2050)).toBeGreaterThan(0);expect(o.step(2050)).toBe(0);
+ o.configure({paused:true},2100);expect(o.step(5000)).toBe(0);
+});
+
 function advance(controller: OrbitController, from: number, to: number, fps=60) {
   let angle = 0, now=from;
   while(now < to) { now=Math.min(to,now+1000/fps); angle+=controller.step(now); }

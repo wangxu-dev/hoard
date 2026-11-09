@@ -1,12 +1,12 @@
 // One monotonic clock. No timers, accumulated velocity, focus latch or input data.
 export class OrbitController {
-  constructor(now = 0, reduced = false) {
+  constructor(now = 0, reduced = false, { delay = 3000, ramp = 1000 } = {}) {
     this.flags = { hover: false, drag: false, selected: false, hidden: false, busy: false, paused: false, reduced };
     this.lastActivity = now;
     this.lastStep = now;
     this.phase = reduced ? 'reduced' : 'waiting';
-    this.delay = 3000;
-    this.ramp = 1000;
+    this.delay = delay;
+    this.ramp = ramp;
     this.speed = .055;
   }
   resumeNatural(now) { if(this.blocker()) return; this.lastActivity=now-this.delay-this.ramp; this.lastStep=now; this.phase='rotating'; }

@@ -2,7 +2,7 @@
 const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
 export function entranceLayers(elapsed,reduced=false){
  if(reduced)return {nebula:1,stars:1,covers:1,active:false};
- return {nebula:.12+.88*smooth(elapsed/620),stars:smooth((elapsed-70)/620),covers:smooth((elapsed-240)/660),active:elapsed<900};
+ return {nebula:.36+.64*smooth(elapsed/420),stars:smooth((elapsed-40)/480),covers:smooth((elapsed-180)/480),active:elapsed<660};
 }
 let remembered=null;
 export function rememberView(camera,rotation,paused){remembered={camera:{...camera},rotation,paused};}
