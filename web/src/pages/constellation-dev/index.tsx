@@ -15,6 +15,19 @@ import "./styles.css";
 // native validation. Every entry revalidates; unchanged revisions do not remount.
 type LibrarySnapshot = Awaited<ReturnType<typeof readCurrentLibrary>>;
 let returnSnapshot: LibrarySnapshot | null = null;
+let preloadTask: Promise<LibrarySnapshot> | null = null;
+
+export async function preloadExploration(signal: AbortSignal) {
+  if (returnSnapshot || preloadTask || signal.aborted) return;
+  const task = readCurrentLibrary(signal, () => {}, crypto.randomUUID());
+  preloadTask = task;
+  try {
+    const snapshot = await task;
+    if (!signal.aborted && !returnSnapshot) returnSnapshot = snapshot;
+  } finally {
+    if (preloadTask === task) preloadTask = null;
+  }
+}
 
 export default function ConstellationDevPage() {
   const host = useRef<HTMLDivElement>(null);
@@ -40,7 +53,7 @@ export default function ConstellationDevPage() {
       setReady(true);
     };
     if (returnSnapshot) paint(returnSnapshot);
-    void readCurrentLibrary(abort.signal, () => {}, client.current).then((snapshot) => {
+    void (preloadTask ?? readCurrentLibrary(abort.signal, () => {}, client.current)).then((snapshot) => {
       if (abort.signal.aborted || !host.current) return;
       if (!painted || painted.inputRevision !== snapshot.inputRevision || painted.analysisVersion !== snapshot.analysisVersion) paint(snapshot);
       returnSnapshot = snapshot;

@@ -15,7 +15,8 @@ import { cn } from "@/lib/utils";
 
 import { useWindowAppearance } from "@/lib/window-appearance";
 
-const ExplorePage = lazy(() => import("@/pages/constellation-dev"));
+const loadExplore = () => import("@/pages/constellation-dev");
+const ExplorePage = lazy(loadExplore);
 
 class ExploreBoundary extends Component<{ children: React.ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -48,6 +49,15 @@ export function App() {
   const music = useMusic();
   const addingAccount = useRef(false);
   useEffect(startLibraryEvents, []);
+  useEffect(() => {
+    const abort = new AbortController();
+    const timer = window.setTimeout(() => {
+      void loadExplore().then(module => {
+        if (!abort.signal.aborted) return module.preloadExploration(abort.signal);
+      }).catch(() => {});
+    }, 1000);
+    return () => { clearTimeout(timer); abort.abort(); };
+  }, []);
   useEffect(() => onAccountsChanged((accounts) => {
     if (!addingAccount.current) return;
     const active = accounts.find((account) => account.active && account.status === "active");
