@@ -1,4 +1,4 @@
-import catalog from "./catalog.json";
+import { createExplorationSnapshot } from "./exploration";
 
 const params = new URLSearchParams(globalThis.location?.search ?? "");
 const english = params.get("lang") === "en";
@@ -11,21 +11,25 @@ const accounts = ["douyin", "bilibili"].map((source, i) => ({
   status: "active",
   active: i === 0,
 }));
-const items = Array.from({ length: catalog.count }, (_, index) => ({
-  source: accounts[index % 2].source,
-  id: `demo-work-${index + 1}`,
-  kind: index % 3 === 0 ? "gallery" : "video",
-  title: catalog.titles[english ? "en" : "zh-CN"][index],
-  author: (english ? ["Coastal notebook", "Forest letters", "Morning walks", "Slow days"] : ["海岸手记", "山野来信", "清晨散步", "慢一点生活"])[index % 4],
-  authorAvatar: `/demo-avatars/avatar-${index % 4 + 3}.webp`,
-  cover: `/covers/cover-${String(index + 1).padStart(2, "0")}.webp`,
-  publishedAt: 1782864000 - index * 86400 * 20,
-  durationMs: index % 3 === 0 ? 0 : (45 + index * 7) * 1000,
+const seedParam = params.get("seed");
+const explorationSeed = seedParam && /^\d{1,10}$/.test(seedParam) && Number(seedParam) <= 0xffffffff
+  ? Number(seedParam) : globalThis.crypto.getRandomValues(new Uint32Array(1))[0];
+const explorationSnapshot = createExplorationSnapshot(explorationSeed, english);
+const items = explorationSnapshot.scopes.flatMap(scope => scope.works.map(work => ({
+  source: work.source,
+  id: work.id,
+  kind: work.mediaKind === "image" ? "gallery" : work.mediaKind,
+  title: work.title,
+  author: work.author.name,
+  authorAvatar: work.author.avatarURL,
+  cover: work.cover,
+  publishedAt: work.publishedAt,
+  durationMs: 0,
   imageCount: 1,
-  accountIds: [accounts[index % 2].id],
+  accountIds: [`demo-${work.source}`],
   likedAccountIds: [],
   favoritedAccountIds: [],
-}));
+}))).sort((a, b) => b.publishedAt - a.publishedAt);
 export const demoEntries = items;
 type Query = {
   query?: string;
@@ -84,12 +88,10 @@ export const Library = {
     return months;
   },
 };
-const explorationSeed = globalThis.crypto.getRandomValues(new Uint32Array(1))[0];
-let explorationSnapshot: Promise<ReturnType<typeof import("./exploration")["createExplorationSnapshot"]>> | undefined;
 export const Exploration = {
   start: async () => ({ id: "website-exploration", state: "complete" }),
   status: async () => ({ id: "website-exploration", state: "complete", cacheHit: true }),
-  result: async () => explorationSnapshot ??= import("./exploration").then(({ createExplorationSnapshot }) => createExplorationSnapshot(explorationSeed, english)),
+  result: async () => explorationSnapshot,
   cancel: noop,
 };
 export const Accounts = {

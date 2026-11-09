@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { dictionaries, type Language } from "@/lib/content";
 
+let visitSeed: number | undefined;
+
 export function DemoFrame({
   language,
   collection = false,
@@ -16,15 +18,17 @@ export function DemoFrame({
   className: string;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
-  const [visible, setVisible] = useState(!exploration);
+  const [seed, setSeed] = useState<number | null>(null);
+  useEffect(() => { setSeed(visitSeed ??= crypto.getRandomValues(new Uint32Array(1))[0]); }, []);
+  const [visible, setVisible] = useState(collection);
   useEffect(() => {
-    if (!exploration || visible || !frame.current) return;
+    if (collection || visible || !frame.current) return;
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) { setVisible(true); observer.disconnect(); }
-    }, { rootMargin: "200px" });
+    });
     observer.observe(frame.current);
     return () => observer.disconnect();
-  }, [exploration, visible]);
+  }, [collection, visible]);
   const { resolvedTheme } = useTheme();
   const syncTheme = () =>
     frame.current?.contentWindow?.postMessage(
@@ -37,10 +41,10 @@ export function DemoFrame({
   useEffect(syncTheme, [resolvedTheme]);
   return (
     <iframe
-      loading={exploration ? "lazy" : "eager"}
+      loading={collection ? "eager" : "lazy"}
       ref={frame}
       src={
-        visible ? "/demo/index.html?lang=" +
+        visible && seed !== null ? "/demo/index.html?seed=" + seed + "&lang=" +
         language +
         (collection ? "&view=collection" : exploration ? "&view=explore" : "") : undefined
       }
