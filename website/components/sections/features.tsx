@@ -1,5 +1,5 @@
-import { Compass, CalendarRange, HardDrive } from "lucide-react";
-import { DemoFrame } from "@/components/demo-frame";
+import { Compass, CalendarRange } from "lucide-react";
+import { DemoFrame, ExploreCaption } from "@/components/demo-frame";
 import { LibraryPreview } from "@/components/library-preview";
 import { Reveal } from "@/components/reveal";
 import { dictionaries, type Language } from "@/lib/content";
@@ -31,12 +31,12 @@ export function Features({ language }: { language: Language }) {
       <Reveal>
         <figure>
           <DemoFrame language={language} exploration className="aspect-video min-h-128 w-full rounded-xl border border-border bg-background" />
-          <figcaption className="mt-3 text-center text-xs text-muted-foreground">{exploration.caption} <a href={`/demo/index.html?view=explore&lang=${language}`} target="_blank" rel="noreferrer" className="underline underline-offset-4">{exploration.open}</a></figcaption>
+          <ExploreCaption language={language} />
         </figure>
       </Reveal>
-      <div className="mt-12 grid gap-8 md:grid-cols-3">
+      <div className="mt-12 grid gap-8 md:grid-cols-2">
         {exploration.items.map((point, index) => {
-          const Icon = [Compass, CalendarRange, HardDrive][index];
+          const Icon = [Compass, CalendarRange][index];
           return <Reveal key={point.title}>
             <Icon className="mb-4 size-5 text-muted-foreground" aria-hidden="true" />
             <h3 className="text-base font-medium">{point.title}</h3>

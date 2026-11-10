@@ -48,8 +48,7 @@
     "future": "More sources are being explored.",
     "xiaohongshu": "Xiaohongshu",
     "connected": "Available",
-    "exploring": "Exploring",
-    "statusNote": "Highlighted platforms are supported. More to follow."
+    "exploring": "Exploring"
   },
   "features": {
     "eyebrow": "MADE FOR REDISCOVERY",
@@ -70,7 +69,7 @@
   "download": {
     "eyebrow": "A NEW HOME FOR YOUR FAVORITES",
     "title": "Download Hoard",
-    "description": "Free to download. MIT licensed. Contributions and feedback are welcome.",
+    "description": "MIT licensed. Contributions and feedback are welcome.",
     "mac": "macOS",
     "windows": "Windows",
     "linux": "Linux",
@@ -96,14 +95,6 @@
       {
         "q": "How do I get started and update?",
         "a": "Choose a download for your system, install it and connect a platform account. Your collection syncs automatically. Get future updates in the app settings."
-      },
-      {
-        "q": "Where do Explore connections come from?",
-        "a": "Explore finds connections locally from the text in synced works. They are clues for browsing, rather than platform recommendations or an assessment of your interests."
-      },
-      {
-        "q": "Does the preview show personal account data?",
-        "a": "The library and Explore share the same 300 public sample works, with identifiers replaced, creator names removed and dates simulated. The preview cannot read collections stored on your device."
       }
     ]
   },
@@ -119,11 +110,11 @@
     "sections": [
       {
         "title": "Data stored by the desktop app",
-        "body": "Hoard stores account information, synced content indexes, covers and other caches on your device. The system WebView stores login sessions separately for each account. Do not publish databases, credentials or logs containing personal data."
+        "body": "Hoard stores account information, synced content and covers on your device. Login sessions are stored separately for each account."
       },
       {
-        "title": "Local exploration analysis",
-        "body": "Explore analyzes synced work text and publication dates on your device without uploading your collection to an AI service. The website uses a separate sample of public works with replaced identifiers, generic creator labels and simulated dates, without account sessions or credentials."
+        "title": "Explore",
+        "body": "Explore runs on your device and does not upload your collection."
       },
       {
         "title": "Network requests",
@@ -131,11 +122,11 @@
       },
       {
         "title": "This website",
-        "body": "The current website has no analytics, advertising or account system. Language is selected through the page URL and the theme preference is stored in your browser. The hosting provider and linked services such as GitHub may log requests under their own policies."
+        "body": "This website has no analytics, advertising or account system. The host and sites such as GitHub may log requests under their own policies."
       },
       {
         "title": "Removal and cleanup",
-        "body": "Signing out in the desktop app removes the corresponding local session and associated data through the account removal flow. To remove all application data, exit the app first and consult the project documentation for data locations and backup considerations."
+        "body": "Signing out removes that account's local data."
       },
       {
         "title": "Questions",
@@ -145,23 +136,18 @@
     "metadata": "Privacy & data — Hoard"
   },
   "exploration": {
-    "eyebrow": "COMING IN 0.1.9 · EXPLORE",
+    "eyebrow": "Explore",
     "title": "A different way to rediscover your collection.",
     "description": "See your synced works as a galaxy. Start with one item, follow its connections, or travel back through publication dates.",
     "imageAlt": "Hoard Explore preview with a galaxy of works, covers and a publication timeline",
-    "caption": "Try 300 sample works with replaced identifiers, generic creator labels and simulated dates. Each visit starts differently. Explore is coming in 0.1.9.",
     "items": [
       {
         "title": "Let one favorite lead to another.",
-        "body": "Open a work to see its details and related content. The view moves gently closer as you follow the connections."
+        "body": "Open a work to see its details and related content."
       },
       {
         "title": "Return to a moment in time.",
-        "body": "Choose a publication month, adjust the range or play through months. Filtering changes emphasis while keeping the layout in place."
-      },
-      {
-        "title": "Organize on your own device.",
-        "body": "Explore analyzes your synced content index locally, without sending your collection to an AI service. Login, sync and playback still connect to each platform."
+        "body": "Choose a publication month, adjust the range, or play through months."
       }
     ],
     "previewLabel": "Interactive Hoard Explore demo",

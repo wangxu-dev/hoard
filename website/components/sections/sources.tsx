@@ -46,7 +46,6 @@ export function Sources({ language }: { language: Language }) {
             </span>
           ))}
         </Marquee>
-        <p className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">{text.statusNote}</p>
       </div>
     </section>
   );

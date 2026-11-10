@@ -1,3 +1,4 @@
+import appConfig from "../../mygo.json";
 import { createExplorationSnapshot } from "./exploration";
 
 const params = new URLSearchParams(globalThis.location?.search ?? "");
@@ -136,7 +137,7 @@ export const Actions = {
 export const Updates = {
   check: async () => ({
     status: "current",
-    current: "0.1.5",
+    current: appConfig.version,
     nextCheckAt: Date.now() + 86400000,
   }),
   downloadStatus: async () => ({ status: "idle", enabled: false }),

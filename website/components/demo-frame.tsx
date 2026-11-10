@@ -59,3 +59,16 @@ export function DemoFrame({
     />
   );
 }
+
+export function ExploreCaption({ language }: { language: Language }) {
+  const [seed, setSeed] = useState<number | null>(null);
+  useEffect(() => { setSeed(visitSeed ??= crypto.getRandomValues(new Uint32Array(1))[0]); }, []);
+  const href = seed === null ? undefined : `/demo/index.html?seed=${seed}&view=explore&lang=${language}`;
+  return (
+    <figcaption className="mt-3 text-center text-xs text-muted-foreground">
+      <a href={href} target="_blank" rel="noreferrer" className="underline underline-offset-4">
+        {dictionaries[language].exploration.open}
+      </a>
+    </figcaption>
+  );
+}
