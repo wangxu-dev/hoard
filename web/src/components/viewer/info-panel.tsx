@@ -16,7 +16,7 @@ function Chip({ icon: Icon, children }: { icon: typeof Music2; children: React.R
 }
 
 /** InfoPanel shows who made an item, when, and what it says. */
-export function InfoPanel({ entry, media }: { entry: LibraryEntry; media: MediaResult | null }) {
+export function InfoPanel({ entry, media, readOnlyPreview = false }: { entry: LibraryEntry; media: MediaResult | null; readOnlyPreview?: boolean }) {
   const { t, i18n } = useTranslation("library");
   const author = media?.author || entry.author;
   const avatar = entry.authorAvatar || media?.authorAvatar;
@@ -39,7 +39,7 @@ export function InfoPanel({ entry, media }: { entry: LibraryEntry; media: MediaR
       {desc ? <Caption text={desc} /> : <p className="text-sm text-viewer-muted">{t("grid.untitled")}</p>}
       <div className="mt-5 flex flex-wrap gap-2">
         {entry.kind === "gallery"
-          ? <Chip icon={Images}>{t("viewer.galleryCount", { count })}</Chip>
+          ? (!readOnlyPreview || count > 0 ? <Chip icon={Images}>{t("viewer.galleryCount", { count })}</Chip> : null)
           : <Chip icon={Clapperboard}>{entry.durationMs > 0 ? `${t("viewer.video")} · ${formatClock(entry.durationMs / 1000)}` : t("viewer.video")}</Chip>}
         {entry.kind === "gallery" && media?.music.title && <Chip icon={Music2}>{media.music.author ? `${media.music.title} · ${media.music.author}` : media.music.title}</Chip>}
       </div>

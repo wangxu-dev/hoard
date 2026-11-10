@@ -31,9 +31,14 @@ func main() {
 	service := &app.App{Media: media, Engine: source.NewEngine()}
 	accounts := app.NewAccounts(service)
 	syncer := app.NewSync(service)
-	mygo.Bind(service, accounts, syncer, app.NewLibrary(service), app.NewPlayer(service), app.NewUpdates(), app.NewActions(service))
+	var explorationCache string
+	var mainWindow *mygo.Window
+	windowAppearance := app.NewWindowAppearance(func() *mygo.Window { return mainWindow })
+	exploration := app.NewExploration(func() (*store.Store, string) { return service.Store, explorationCache })
+	mygo.Bind(service, accounts, syncer, exploration, windowAppearance, app.NewLibrary(service), app.NewPlayer(service), app.NewUpdates(), app.NewActions(service))
 	mygo.App.OnBeforeQuit(func(_ *mygo.QuitEvent) { app.CloseAccounts(service) })
 	mygo.App.OnQuit(func() {
+		app.CloseExploration(exploration)
 		if service.Store != nil {
 			_ = service.Store.Close()
 		}
@@ -52,6 +57,7 @@ func main() {
 	}
 	mygo.App.WhenReady(func() {
 		if dir, err := mygo.App.Path(mygo.PathUserData); err == nil {
+			explorationCache = filepath.Join(dir, "analysis", "exploration-v2")
 			// Preserve diagnostics across the old and new update processes.
 			if err := os.MkdirAll(dir, 0700); err == nil {
 				logPath := filepath.Join(dir, "hoard.log")
@@ -79,7 +85,7 @@ func main() {
 				log.Print("[hoard:cover] cache open failed")
 			}
 		}
-		app.NewWindow()
+		mainWindow = app.NewWindow()
 		if service.Store != nil {
 			if err := app.RestoreAccounts(service); err != nil {
 				log.Print("[hoard:accounts] account restore failed")

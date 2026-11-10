@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { dictionaries, homePath, type Language } from "./content";
-import app from "../../mygo.json";
-
 export const repository = "https://github.com/wangxu-dev/hoard";
-export const version = app.version;
+// Downloads follow the published release while the app prepares its next version.
+export const version = "0.1.8";
 const configuredUrl = process.env.NEXT_PUBLIC_SITE_URL;
 export const siteUrl = configuredUrl ? new URL(configuredUrl) : undefined;
 if (

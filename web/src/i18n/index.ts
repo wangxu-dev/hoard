@@ -1,6 +1,8 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import { App } from "@mygo";
+import exploreZh from "./locales/zh-CN/explore.json";
+import exploreEn from "./locales/en/explore.json";
 import commonZh from "./locales/zh-CN/common.json";
 import libraryZh from "./locales/zh-CN/library.json";
 import settingsZh from "./locales/zh-CN/settings.json";
@@ -9,8 +11,8 @@ import libraryEn from "./locales/en/library.json";
 import settingsEn from "./locales/en/settings.json";
 
 const resources = {
-  "zh-CN": { common: commonZh, library: libraryZh, settings: settingsZh },
-  en: { common: commonEn, library: libraryEn, settings: settingsEn },
+  "zh-CN": { explore: exploreZh, common: commonZh, library: libraryZh, settings: settingsZh },
+  en: { explore: exploreEn, common: commonEn, library: libraryEn, settings: settingsEn },
 };
 
 // The language lives in the library database, so a stale page storage value

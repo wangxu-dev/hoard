@@ -17,6 +17,17 @@ function keys(value: unknown, prefix = ""): string[] {
 }
 
 describe("website content and release contract", () => {
+  test("exploration preview is bilingual and describes the sample accurately", () => {
+    for (const text of Object.values(dictionaries)) {
+      expect(text.exploration.items).toHaveLength(3);
+      expect(text.exploration.caption).toContain("300");
+      expect(text.exploration.previewLabel.length).toBeGreaterThan(0);
+      expect(text.exploration.caption).toContain("0.1.9");
+      expect(text.faq.items).toHaveLength(5);
+    }
+    expect(version).toBe("0.1.8");
+  });
+
   test("both languages have the same copy structure", () => {
     expect(keys(dictionaries.en)).toEqual(keys(dictionaries["zh-CN"]));
     expect(homePath("zh-CN")).toBe("/");

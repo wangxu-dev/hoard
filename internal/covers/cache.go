@@ -300,12 +300,19 @@ func (c *Cache) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	cacheOnly := r.URL.Query().Get("cacheOnly") == "1"
 	p := c.find(kind, id, urls)
 	if p != "" {
 		c.hits.Add(1)
-		now := time.Now()
-		_ = os.Chtimes(p, now, now)
+		if !cacheOnly {
+			now := time.Now()
+			_ = os.Chtimes(p, now, now)
+		}
 	} else {
+		if cacheOnly {
+			http.NotFound(w, r)
+			return
+		}
 		c.misses.Add(1)
 		if p, err = c.fetch(r.Context(), kind, id, urls); err != nil {
 			http.Error(w, "cover unavailable", http.StatusBadGateway)

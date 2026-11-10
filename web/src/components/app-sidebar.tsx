@@ -1,9 +1,10 @@
+import "@/pages/constellation-dev/styles.css";
 import hoardIcon from "../../../resources/icon.png";
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { Library, Settings } from "lucide-react";
+import { Compass, Library, Settings } from "lucide-react";
 import { useTheme } from "next-themes";
 import {
   Sidebar,
@@ -22,7 +23,7 @@ import {
 import { useUpdate } from "@/lib/updates";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
-export type Page = "library" | "settings";
+export type Page = "library" | "settings" | "explore";
 
 interface AppSidebarProps {
   page: Page;
@@ -30,7 +31,7 @@ interface AppSidebarProps {
   children: ReactNode;
 }
 
-const navigation = [{ id: "library" as const, icon: Library }];
+const navigation = [{ id: "library" as const, icon: Library }, { id: "explore" as const, icon: Compass }];
 // Rail buttons keep the same left padding when collapsed, so their icons never move.
 const railButton = "h-10 gap-3 px-3 group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:px-3!";
 
@@ -62,6 +63,19 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
     localStorage.setItem("hoard-sidebar", String(next));
   };
 
+  // Exploration owns the complete webview. Navigation floats over it instead of
+  // reserving the normal library rail; the library's saved preference is untouched.
+  if (page === "explore") return <div className="explore-frame relative flex h-full w-full min-w-0">
+    <nav aria-label="探索导航" className="explore-navigation explore-glass">
+      <button type="button" onClick={() => onPageChange("library")} aria-label="返回收藏库" title="返回收藏库" className="explore-nav-brand"><img src={hoardIcon} width={24} height={24} className="size-6 shrink-0 object-contain" alt="" /><span>Hoard</span></button>
+      <span className="explore-nav-divider" />
+      <button type="button" onClick={() => onPageChange("library")} aria-label="收藏库" title="收藏库"><Library /><span className="explore-nav-label">收藏库</span></button>
+      <button type="button" onClick={() => onPageChange("settings")} aria-label="设置" title="设置"><Settings />{available && <i className="explore-update-dot" />}</button>
+      <AnimatedThemeToggler className="explore-theme-toggle" theme={isDark ? "dark" : "light"} onThemeChange={setTheme} aria-label={t("theme.toggle")} />
+    </nav>
+    {children}
+  </div>;
+
   return (
     <SidebarProvider open={open} onOpenChange={updateOpen} style={{ "--sidebar-width": token("--sidebar-width"), "--sidebar-width-icon": token("--sidebar-width-icon") } as CSSProperties}>
       <Sidebar collapsible="icon" className="bg-sidebar">
@@ -79,14 +93,15 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
                 {navigation.map(({ id, icon: Icon }) => (
                     <SidebarMenuItem key={id}>
                     <SidebarMenuButton
+                      aria-label={id === "explore" ? "探索" : t(`sidebar.${id}`)}
                       isActive={page === id}
                       onClick={() => onPageChange(id)}
                       aria-current={page === id ? "page" : undefined}
-                      tooltip={{ children: t(`sidebar.${id}`), sideOffset: TIP_OFFSET }}
+                      tooltip={{ children: (id === "explore" ? "探索" : t(`sidebar.${id}`)), sideOffset: TIP_OFFSET }}
                       className={railButton}
                     >
                       <Icon aria-hidden="true" />
-                      <span>{t(`sidebar.${id}`)}</span>
+                      <span>{(id === "explore" ? "探索" : t(`sidebar.${id}`))}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}

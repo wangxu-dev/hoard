@@ -1,0 +1,172 @@
+[
+  {
+    "id": "t_photo_travel",
+    "label": "摄影与旅行",
+    "sources": [
+      "douyin",
+      "bilibili"
+    ],
+    "clues": [
+      "摄影",
+      "风景",
+      "航拍",
+      "拍摄",
+      "照片",
+      "瞬间",
+      "旅行",
+      "新疆",
+      "城市",
+      "治愈"
+    ],
+    "reason": "文案同时或单独命中摄影/旅行相关线索"
+  },
+  {
+    "id": "t_film",
+    "label": "影视与二次元",
+    "sources": [
+      "douyin",
+      "bilibili"
+    ],
+    "clues": [
+      "电影",
+      "动漫",
+      "混剪",
+      "动画"
+    ],
+    "reason": "文案命中影视、动漫或混剪线索"
+  },
+  {
+    "id": "t_school",
+    "label": "校园与升学",
+    "sources": [
+      "douyin",
+      "bilibili"
+    ],
+    "clues": [
+      "高考",
+      "校园",
+      "毕业",
+      "倒计时",
+      "读书",
+      "考研",
+      "期末",
+      "复习",
+      "公开课"
+    ],
+    "reason": "文案命中升学、校园或备考线索"
+  },
+  {
+    "id": "t_game",
+    "label": "游戏",
+    "sources": [
+      "douyin"
+    ],
+    "clues": [
+      "游戏",
+      "cs"
+    ],
+    "reason": "文案命中游戏相关线索"
+  },
+  {
+    "id": "t_tech",
+    "label": "科技与编程",
+    "sources": [
+      "douyin",
+      "bilibili"
+    ],
+    "clues": [
+      "科技",
+      "科普",
+      "物理",
+      "程序员",
+      "计算机",
+      "数据结构",
+      "网络",
+      "代码",
+      "前端",
+      "全栈",
+      "开发",
+      "python",
+      "github",
+      "嵌入式",
+      "系统",
+      "电子"
+    ],
+    "reason": "文案命中科技、计算机或编程学习线索"
+  },
+  {
+    "id": "t_math",
+    "label": "数学理工",
+    "sources": [
+      "bilibili"
+    ],
+    "clues": [
+      "数学建模",
+      "概率论与数理统计",
+      "线性代数"
+    ],
+    "reason": "文案命中具体数学课程短语"
+  },
+  {
+    "id": "t_econ",
+    "label": "经济与交易",
+    "sources": [
+      "bilibili"
+    ],
+    "clues": [
+      "经济",
+      "交易"
+    ],
+    "reason": "文案命中经济或交易线索"
+  },
+  {
+    "id": "t_music_sport",
+    "label": "音乐与运动",
+    "sources": [
+      "douyin"
+    ],
+    "clues": [
+      "音乐",
+      "运动",
+      "乒乓球"
+    ],
+    "reason": "文案命中音乐或运动线索"
+  },
+  {
+    "id": "t_auto",
+    "label": "汽车",
+    "sources": [
+      "douyin"
+    ],
+    "clues": [
+      "汽车"
+    ],
+    "reason": "文案命中汽车线索"
+  },
+  {
+    "id": "t_family",
+    "label": "亲子与家庭",
+    "sources": [
+      "douyin"
+    ],
+    "clues": [
+      "孩子",
+      "妈妈",
+      "爸爸",
+      "父母"
+    ],
+    "reason": "文案命中家庭成员相关线索"
+  },
+  {
+    "id": "t_romance",
+    "label": "情感关系",
+    "sources": [
+      "douyin"
+    ],
+    "clues": [
+      "恋爱",
+      "情侣"
+    ],
+    "reason": "文案命中恋爱/情侣线索"
+  }
+]
