@@ -35,7 +35,7 @@ class ExploreBoundary extends Component<{ children: React.ReactNode }, { failed:
 function PageSurface({ children, explore }: { children: React.ReactNode; explore: boolean }) {
   const present = useIsPresent();
   const reduced = useReducedMotion();
-  return <motion.div className="absolute inset-0 flex min-h-0 min-w-0" inert={!present}
+  return <motion.div data-page-surface="" className="absolute inset-0 flex min-h-0 min-w-0" inert={!present}
     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
     transition={{ duration: reduced ? 0 : (explore ? .38 : .28), ease: "easeInOut" }}
     style={{ pointerEvents: present ? "auto" : "none" }}>{children}</motion.div>;

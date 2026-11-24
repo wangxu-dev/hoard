@@ -7,26 +7,44 @@ import { ContentDetails } from "./details";
 import type { PanelView } from "./view-types";
 import { onLibraryChanged } from "@/lib/api";
 import { readCurrentLibrary } from "./load";
-import { mountInterestSky, type ViewControls } from "./renderer.js";
+import { mountInterestSky, prepareExploration, type ViewControls } from "./renderer.js";
 import { ArrowLeft, LocateFixed, Maximize2, Minus, Pause, Play, Plus } from "lucide-react";
 import "./styles.css";
 
 // Last good union snapshot is a return-transition surface, not a replacement for
 // native validation. Every entry revalidates; unchanged revisions do not remount.
 type LibrarySnapshot = Awaited<ReturnType<typeof readCurrentLibrary>>;
+type PreparedExploration = Awaited<ReturnType<typeof prepareExploration>>;
 let returnSnapshot: LibrarySnapshot | null = null;
-let preloadTask: Promise<LibrarySnapshot> | null = null;
+let returnPrepared: { key: string; model: PreparedExploration } | null = null;
+let preparationTask: Promise<{ key: string; model: PreparedExploration }> | null = null;
+let preloadTask: Promise<{ snapshot: LibrarySnapshot; model: PreparedExploration }> | null = null;
+const snapshotKey = (snapshot: LibrarySnapshot) => `${snapshot.scope.accountId}:${snapshot.scope.source}:${snapshot.inputRevision}:${snapshot.analysisVersion}`;
+
+function prepareSnapshot(snapshot: LibrarySnapshot): Promise<PreparedExploration> {
+  const key = snapshotKey(snapshot);
+  if (returnPrepared?.key === key) return Promise.resolve(returnPrepared.model);
+  if (preparationTask) return preparationTask.then((result) => result.key === key ? result.model : prepareSnapshot(snapshot));
+  const task = prepareExploration(snapshot).then((model) => {
+    returnPrepared = { key, model };
+    return { key, model };
+  });
+  preparationTask = task;
+  void task.finally(() => { if (preparationTask === task) preparationTask = null; }).catch(() => {});
+  return task.then((result) => result.model);
+}
 
 export async function preloadExploration(signal: AbortSignal) {
-  if (returnSnapshot || preloadTask || signal.aborted) return;
-  const task = readCurrentLibrary(signal, () => {}, crypto.randomUUID());
+  if ((returnSnapshot && returnPrepared?.key === snapshotKey(returnSnapshot)) || signal.aborted) return;
+  if (preloadTask) return preloadTask;
+  const task = readCurrentLibrary(signal, () => {}, crypto.randomUUID()).then(async (snapshot) => {
+    const model = await prepareSnapshot(snapshot);
+    if (!signal.aborted) returnSnapshot = snapshot;
+    return { snapshot, model };
+  });
   preloadTask = task;
-  try {
-    const snapshot = await task;
-    if (!signal.aborted && !returnSnapshot) returnSnapshot = snapshot;
-  } finally {
-    if (preloadTask === task) preloadTask = null;
-  }
+  try { await task; }
+  finally { if (preloadTask === task) preloadTask = null; }
 }
 
 export default function ConstellationDevPage() {
@@ -43,19 +61,26 @@ export default function ConstellationDevPage() {
     const abort = new AbortController(); let dispose: (() => void) | undefined;
     setReady(false); setError(""); setPanel(null); setPaused(false);
     let painted: LibrarySnapshot | null = null;
-    const paint = (snapshot: LibrarySnapshot) => {
+    const paint = (snapshot: LibrarySnapshot, model: PreparedExploration) => {
       if (abort.signal.aborted || !host.current) return;
       dispose?.(); painted = null; setReady(false);
       host.current.innerHTML = shell;
-      dispose = mountInterestSky(host.current, snapshot, { onPanel: setPanel, onControls: (next) => { setControls(next); if (next) setPaused(next.isPaused()); } });
+      dispose = mountInterestSky(host.current, snapshot, model, { onPanel: setPanel, onControls: (next) => { setControls(next); if (next) setPaused(next.isPaused()); } });
       painted = snapshot;
       setTimelineWorks(snapshot.scopes.flatMap(scope => scope.works));
       setReady(true);
     };
-    if (returnSnapshot) paint(returnSnapshot);
-    void (preloadTask ?? readCurrentLibrary(abort.signal, () => {}, client.current)).then((snapshot) => {
+    if (returnSnapshot && returnPrepared?.key === snapshotKey(returnSnapshot)) {
+      const cachedSnapshot = returnSnapshot, cachedModel = returnPrepared.model;
+      queueMicrotask(() => paint(cachedSnapshot, cachedModel));
+    }
+    const load = preloadTask ?? Promise.resolve().then(() => {
+      if (abort.signal.aborted) throw new Error("CANCELLED");
+      return readCurrentLibrary(abort.signal, () => {}, client.current);
+    }).then(async (snapshot) => ({ snapshot, model: await prepareSnapshot(snapshot) }));
+    void load.then(({ snapshot, model }) => {
       if (abort.signal.aborted || !host.current) return;
-      if (!painted || painted.inputRevision !== snapshot.inputRevision || painted.analysisVersion !== snapshot.analysisVersion) paint(snapshot);
+      if (!painted || painted.inputRevision !== snapshot.inputRevision || painted.analysisVersion !== snapshot.analysisVersion) paint(snapshot, model);
       returnSnapshot = snapshot;
       // Aggregate counters only, no original IDs/titles or media URLs in diagnostics.
       console.warn("[interest-dev] coverage", JSON.stringify(snapshot.meta.coverage));

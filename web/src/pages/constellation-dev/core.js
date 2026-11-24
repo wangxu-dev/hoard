@@ -29,7 +29,8 @@ function prepare(data){
  for(const {a,b,weight}of sortedPairs.values()){a.neighbors.push({key:b.key,weight});b.neighbors.push({key:a.key,weight});}
  for(const w of works)w.neighbors.sort((x,y)=>y.weight-x.weight||x.key.localeCompare(y.key));
  const layout=graphLayout(works,sortedPairs,{rnd,normal,hash,palette});
- return {works,byKey,...layout};
+ const layoutFingerprint=works.reduce((v,w)=>Math.imul(v^hash(w.key+':'+[w.pos.x,w.pos.y,w.pos.z].map(x=>x.toFixed(6)).join(',')),16777619)>>>0,2166136261);
+ return {works,byKey,...layout,stats:{...layout.stats,total:works.length,edges:sortedPairs.size},layoutFingerprint,allKeys:new Set(works.map(w=>w.key)),initialStars:sample(works)};
 }
 function sample(works,cap=6500,selectedKey=null){
  cap=Math.max(0,Math.floor(cap));if(!cap)return [];
