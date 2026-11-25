@@ -8,6 +8,7 @@ export const DEFAULT_SOURCE_DESCRIPTORS: SourceDescriptor[] = [
     lists: [
       { kind: "like", role: "like", hasFolders: false },
       { kind: "favorite", role: "favorite", hasFolders: false },
+      { kind: "recommend", role: "other", hasFolders: false },
       { kind: "music", role: "other", hasFolders: false },
     ],
     actions: ["like", "favorite"],

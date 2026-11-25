@@ -17,7 +17,7 @@ import { sourceHasFolders, visibleListKinds } from "@/lib/source-capabilities";
 
 const noSources: SourceGroup[] = [];
 const noStates: SyncState[] = [];
-const noCounts: LibraryCounts = { like: 0, favorite: 0, music: 0, watch_later: 0 };
+const noCounts: LibraryCounts = { like: 0, favorite: 0, recommend: 0, music: 0, watch_later: 0 };
 const noMonths: TimelineMonth[] = [];
 
 export function LibraryPage({ scrolled, onAddAccount, onLogin }: { scrolled: boolean; onAddAccount: (source: "douyin" | "bilibili") => void; onLogin: (accountId: string) => void }) {

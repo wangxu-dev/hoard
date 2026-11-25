@@ -10,20 +10,20 @@ import {
 import type { SourceGroup } from "../web/src/lib/library";
 
 const sampleSources: SourceGroup[] = [
-  { id: "douyin", name: "Douyin", kinds: ["like", "favorite", "music"], hasFolders: false, accounts: [] },
+  { id: "douyin", name: "Douyin", kinds: ["like", "favorite", "recommend", "music"], hasFolders: false, accounts: [] },
   { id: "bilibili", name: "Bilibili", kinds: ["favorite", "watch_later"], hasFolders: true, accounts: [] },
 ];
 
 describe("source capabilities", () => {
   test("single-source scope preserves native list order", () => {
-    expect(visibleListKinds(sampleSources, { source: "douyin" })).toEqual(["like", "favorite", "music"]);
+    expect(visibleListKinds(sampleSources, { source: "douyin" })).toEqual(["like", "favorite", "recommend", "music"]);
     expect(visibleListKinds(sampleSources, { source: "bilibili" })).toEqual(["favorite", "watch_later"]);
   });
 
   test("all-accounts scope orders merged lists by cross-platform role", () => {
-    expect(visibleListKinds(sampleSources, {})).toEqual(["like", "favorite", "watch_later", "music"]);
+    expect(visibleListKinds(sampleSources, {})).toEqual(["like", "favorite", "watch_later", "recommend", "music"]);
     // Reversing source order still keeps like -> favorite -> queue -> other stable.
-    expect(visibleListKinds([...sampleSources].reverse(), {})).toEqual(["like", "favorite", "watch_later", "music"]);
+    expect(visibleListKinds([...sampleSources].reverse(), {})).toEqual(["like", "favorite", "watch_later", "recommend", "music"]);
   });
 
   test("folder capabilities and action sets follow source descriptors", () => {

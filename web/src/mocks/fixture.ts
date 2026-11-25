@@ -15,7 +15,7 @@ function avatar(letter: string) {
   const color = ["slateblue", "seagreen", "steelblue", "indianred"][Math.floor(random() * 4)];
   return `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><defs><linearGradient id="a"><stop stop-color="${color}"/><stop offset="1" stop-color="darkslateblue"/></linearGradient></defs><rect width="40" height="40" rx="20" fill="url(#a)"/><text x="20" y="25" text-anchor="middle" fill="white" font-family="sans-serif" font-size="16">${letter}</text></svg>`)}`;
 }
-const sources: SourceGroup[] = [{ id: "douyin", name: "抖音", kinds: ["like", "favorite", "music"], accounts: [
+const sources: SourceGroup[] = [{ id: "douyin", name: "抖音", kinds: ["like", "favorite", "recommend", "music"], accounts: [
   { id: "demo-a", source: "douyin", nickname: "示例账号 A", avatarUrl: avatar("A"), status: "active", syncing: true },
   { id: "demo-b", source: "douyin", nickname: "示例账号 B", avatarUrl: avatar("B"), status: "signed_out", syncing: false },
 ] }];
@@ -32,8 +32,8 @@ if (name === "bilibili") sources.splice(0, sources.length, { id: "bilibili", nam
     async checkSession() {},
     async folders() { return [{ id: "one", title: "旅行", count: 120 }, { id: "two", title: "音乐现场", count: 120 }]; },
     async sources() { return sources.map((g) => ({ ...g, accounts: g.accounts.map((a) => ({ ...a, syncing: a.id === "demo-a" && state.status === "running" })) })); },
-    async counts(scope) { return scope.accountId === "demo-a" ? { like: 10000, favorite: 56, music: 78, watch_later: 0 }
-      : scope.accountId === "demo-b" ? { like: 1234, favorite: 12, music: 0, watch_later: 0 } : { like: 10860, favorite: 68, music: 78, watch_later: 0 }; },
+    async counts(scope) { return scope.accountId === "demo-a" ? { like: 10000, favorite: 56, recommend: 34, music: 78, watch_later: 0 }
+      : scope.accountId === "demo-b" ? { like: 1234, favorite: 12, recommend: 8, music: 0, watch_later: 0 } : { like: 10860, favorite: 68, recommend: 42, music: 78, watch_later: 0 }; },
     async syncStates() { return [state,
       { accountId: "demo-a", kind: "cover", phase: "head", status: "running", items: 210, pages: 0 },
       { accountId: "demo-a", kind: "favorite", phase: "idle", status: "idle", items: 0, pages: 0 }]; },

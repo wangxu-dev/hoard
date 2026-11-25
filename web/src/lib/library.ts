@@ -7,7 +7,7 @@ import { createFixtureSource } from "@/mocks/fixture";
 import { DEFAULT_SOURCE_DESCRIPTORS, setSourceDescriptors } from "./source-capabilities";
 import { queryClient } from "./query-client";
 
-export type ListKind = "like" | "favorite" | "music" | "watch_later";
+export type ListKind = "like" | "favorite" | "recommend" | "music" | "watch_later";
 export type WorkType = "all" | "video" | "gallery";
 export type SortKey = "published" | "recent";
 export type PlayMode = "list" | "one" | "shuffle";
@@ -24,7 +24,7 @@ export interface SyncState {
   status: "running" | "checking" | "queued" | "paused" | "cooling" | "blocked" | "verifying" | "signed_out" | "unsupported" | "idle";
   items: number; remoteTotal?: number; pages: number; retryAt?: number; etaSeconds?: number; errorCode?: string; lastSyncAt?: number; fresh?: number;
 }
-export interface LibraryCounts { like: number; favorite: number; music: number; watch_later: number }
+export interface LibraryCounts { like: number; favorite: number; recommend: number; music: number; watch_later: number }
 export interface LibraryEntry {
   source?: string;
   watchLaterAccountIds?: string[];

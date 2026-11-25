@@ -16,7 +16,8 @@ function RealOwners({ entry }: { entry: LibraryEntry }) {
   const snapshot = () => accounts.filter((account) => {
     if (scope.accountId && scope.accountId !== account.id) return false;
     const state = queryClient.getQueryData<ActionState>(actionKey(account.id, entry.id));
-    return kind !== "music" && state ? state[actionField(kind)] : entry.accountIds?.includes(account.id);
+    const actionBacked = kind === "like" || kind === "favorite" || kind === "watch_later";
+    return actionBacked && state ? state[actionField(kind)] : entry.accountIds?.includes(account.id);
   }).map((account) => account.id).join(",");
   const subscribe = useCallback((notify: () => void) => queryClient.getQueryCache().subscribe((event) => {
     if (event.type === "updated" && event.query.queryKey[0] === "action-state" && event.query.queryKey[2] === entry.id) notify();
