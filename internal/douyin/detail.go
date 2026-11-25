@@ -4,11 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
 
-var hevc = regexp.MustCompile(`(?i)bytevc1|h265|hevc`)
+var (
+	hevc   = regexp.MustCompile(`(?i)bytevc1|h265|hevc`)
+	gear4K = regexp.MustCompile(`(^|_)4(_|$)`)
+)
 
 func firstHTTPS(list []string) string {
 	for _, u := range list {
@@ -19,10 +23,20 @@ func firstHTTPS(list []string) string {
 	return ""
 }
 
+// DetailQuality describes one H.264 resolution tier returned by the detail endpoint.
+type DetailQuality struct {
+	ID      string
+	Label   string
+	Height  int
+	BitRate int
+	URLs    []string
+}
+
 // Detail is the playable metadata returned by the item detail endpoint.
 type Detail struct {
 	Class       ResponseClass
 	Videos      []string
+	Qualities   []DetailQuality
 	Images      []DetailImage
 	Music       DetailMusic
 	Author      DetailAuthor
@@ -43,6 +57,12 @@ type DetailImage struct {
 type DetailMusic struct{ Title, Author, URL string }
 type DetailAuthor struct{ Nickname, Avatar string }
 
+type videoURLList struct {
+	urlList
+	Width  json.Number `json:"width"`
+	Height json.Number `json:"height"`
+}
+
 type rawDetail struct {
 	AwemeID     json.Number     `json:"aweme_id"`
 	Desc        string          `json:"desc"`
@@ -56,10 +76,11 @@ type rawDetail struct {
 	Video *struct {
 		PlayH264 *urlList `json:"play_addr_h264"`
 		BitRate  []struct {
-			GearName  string      `json:"gear_name"`
-			IsBytevc1 json.Number `json:"is_bytevc1"`
-			IsH265    json.Number `json:"is_h265"`
-			PlayAddr  *urlList    `json:"play_addr"`
+			GearName  string        `json:"gear_name"`
+			BitRate   json.Number   `json:"bit_rate"`
+			IsBytevc1 json.Number   `json:"is_bytevc1"`
+			IsH265    json.Number   `json:"is_h265"`
+			PlayAddr  *videoURLList `json:"play_addr"`
 		} `json:"bit_rate"`
 		PlayAddr     *urlList `json:"play_addr"`
 		DownloadAddr *urlList `json:"download_addr"`
@@ -126,15 +147,80 @@ func ParseDetail(reply PageReply) Detail {
 		for _, u := range raw.Video.PlayH264.all() {
 			add(u)
 		}
+		type qualityCandidate struct {
+			gearName string
+			bitRate  int
+			urls     []string
+		}
+		type qualityGroup struct {
+			id         string
+			label      string
+			rank       int
+			candidates []qualityCandidate
+		}
+		groups := map[string]*qualityGroup{}
 		for _, br := range raw.Video.BitRate {
 			// WebKit cannot rely on Douyin's H.265 streams; only H.264 gears are candidates.
 			if hevc.MatchString(br.GearName) || num(br.IsBytevc1) == 1 || num(br.IsH265) == 1 {
 				continue
 			}
-			for _, u := range br.PlayAddr.all() {
+			urls := br.PlayAddr.all()
+			for _, u := range urls {
 				add(u)
 			}
+			if len(urls) == 0 {
+				continue
+			}
+			var width, height int
+			if br.PlayAddr != nil {
+				width = int(num(br.PlayAddr.Width))
+				height = int(num(br.PlayAddr.Height))
+			}
+			id, label, rank := parseQualityTier(br.GearName, width, height)
+			if id == "" {
+				continue
+			}
+			g := groups[id]
+			if g == nil {
+				g = &qualityGroup{id: id, label: label, rank: rank}
+				groups[id] = g
+			}
+			g.candidates = append(g.candidates, qualityCandidate{
+				gearName: br.GearName,
+				bitRate:  int(num(br.BitRate)),
+				urls:     urls,
+			})
 		}
+		for _, g := range groups {
+			sort.SliceStable(g.candidates, func(i, j int) bool {
+				if g.candidates[i].bitRate != g.candidates[j].bitRate {
+					return g.candidates[i].bitRate > g.candidates[j].bitRate
+				}
+				return gearPriority(g.candidates[i].gearName) > gearPriority(g.candidates[j].gearName)
+			})
+			tierSeen := map[string]bool{}
+			var tierURLs []string
+			for _, c := range g.candidates {
+				for _, u := range c.urls {
+					if strings.HasPrefix(u, "https://") && !tierSeen[u] {
+						tierSeen[u] = true
+						tierURLs = append(tierURLs, u)
+					}
+				}
+			}
+			if len(tierURLs) > 0 {
+				out.Qualities = append(out.Qualities, DetailQuality{
+					ID:      g.id,
+					Label:   g.label,
+					Height:  g.rank,
+					BitRate: g.candidates[0].bitRate,
+					URLs:    tierURLs,
+				})
+			}
+		}
+		sort.SliceStable(out.Qualities, func(i, j int) bool {
+			return out.Qualities[i].Height > out.Qualities[j].Height
+		})
 		for _, u := range raw.Video.PlayAddr.all() {
 			add(u)
 		}
@@ -221,4 +307,62 @@ func withheldReason(msg string) string {
 		return "REVIEWING"
 	}
 	return "WITHHELD"
+}
+
+func parseQualityTier(gearName string, width, height int) (id, label string, rank int) {
+	lower := strings.ToLower(gearName)
+	switch {
+	case strings.Contains(lower, "2160") || strings.Contains(lower, "4k") || gear4K.MatchString(lower):
+		return "2160", "4K", 2160
+	case strings.Contains(lower, "1440") || strings.Contains(lower, "2k"):
+		return "1440", "2K", 1440
+	case strings.Contains(lower, "1080"):
+		return "1080", "1080P", 1080
+	case strings.Contains(lower, "720"):
+		return "720", "720P", 720
+	case strings.Contains(lower, "540"):
+		return "540", "540P", 540
+	case strings.Contains(lower, "480"):
+		return "480", "480P", 480
+	case strings.Contains(lower, "360"):
+		return "360", "360P", 360
+	}
+	dim := 0
+	switch {
+	case width > 0 && height > 0:
+		dim = min(width, height)
+	case width > 0:
+		dim = width
+	case height > 0:
+		dim = height
+	}
+	switch {
+	case dim >= 2000:
+		return "2160", "4K", 2160
+	case dim >= 1350:
+		return "1440", "2K", 1440
+	case dim >= 1000:
+		return "1080", "1080P", 1080
+	case dim >= 680:
+		return "720", "720P", 720
+	case dim >= 500:
+		return "540", "540P", 540
+	case dim >= 420:
+		return "480", "480P", 480
+	case dim > 0:
+		return "360", "360P", 360
+	}
+	return "", "", 0
+}
+
+func gearPriority(gearName string) int {
+	lower := strings.ToLower(gearName)
+	switch {
+	case strings.HasPrefix(lower, "normal_"):
+		return 2
+	case strings.HasPrefix(lower, "low_") || strings.HasPrefix(lower, "lower_"):
+		return 0
+	default:
+		return 1
+	}
 }
