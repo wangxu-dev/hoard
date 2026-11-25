@@ -1,7 +1,7 @@
 import {test,expect} from 'bun:test';
-import H from '../web/src/pages/constellation-dev/core.js';
-import {CoverDirector} from '../web/src/pages/constellation-dev/cover-director.js';
-import {ImagePool} from '../web/src/pages/constellation-dev/image-pool.js';
+import H from '../web/src/pages/constellation-dev/core.ts';
+import {CoverDirector} from '../web/src/pages/constellation-dev/cover-director.ts';
+import {ImagePool} from '../web/src/pages/constellation-dev/image-pool.ts';
 const points=Array.from({length:480},(_,i)=>({x:65+(i%20)*54,y:110+Math.floor(i/20)*24,depth:(i%7)/7,w:{key:'fixture:'+i,community:'g'+i,neighbors:[],pos:{x:i,y:0,z:0}}}));
 const options=(now:number,extra:any={})=>({now,width:1200,height:800,zoom:1.7,placeRect:H.placeRect,ready:()=>true,advancing:true,motion:now*.000055,...extra});
 function step(d:any,now:number,extra:any={}){d.update(points,options(now,extra));d.tick(now);}

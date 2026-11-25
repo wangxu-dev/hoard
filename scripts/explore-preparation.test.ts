@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import H from "../web/src/pages/constellation-dev/core.js";
-import { RelationLayer } from "../web/src/pages/constellation-dev/relation-lines.js";
+import H from "../web/src/pages/constellation-dev/core.ts";
+import { RelationLayer } from "../web/src/pages/constellation-dev/relation-lines.ts";
 
 const input = {
   scopes: [{

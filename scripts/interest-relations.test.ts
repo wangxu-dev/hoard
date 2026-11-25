@@ -1,10 +1,10 @@
 import {expect,test} from 'bun:test';
 import {readFileSync} from 'node:fs';
-import H from '../web/src/pages/constellation-dev/core.js';
-import {CameraFlight,frameNeighborhood,restoreExplorationView} from '../web/src/pages/constellation-dev/neighborhood-camera.js';
-import {RelationLayer,relationStyle} from '../web/src/pages/constellation-dev/relation-lines.js';
-import {minimumImmersiveZoom} from '../web/src/pages/constellation-dev/camera-bounds.js';
-import {OrbitController} from '../web/src/pages/constellation-dev/orbit.js';
+import H from '../web/src/pages/constellation-dev/core.ts';
+import {CameraFlight,frameNeighborhood,restoreExplorationView} from '../web/src/pages/constellation-dev/neighborhood-camera.ts';
+import {RelationLayer,relationStyle} from '../web/src/pages/constellation-dev/relation-lines.ts';
+import {minimumImmersiveZoom} from '../web/src/pages/constellation-dev/camera-bounds.ts';
+import {OrbitController} from '../web/src/pages/constellation-dev/orbit.ts';
 const camera={yaw:-.24,pitch:.72,zoom:1.8,tx:0,ty:0,tz:0,panX:0,panY:0,cx:.5};
 const work=(key:string,x=0,y=0)=>({key,pos:{x,y,z:0},neighbors:[] as {key:string,weight:number}[]});
 test('already visible neighbors cause only a six-percent nudge; isolate never invents zoom or neighbors',()=>{const a=work('a'),b=work('b',.02);a.neighbors=[{key:b.key,weight:.03}];const by=new Map([[a.key,a],[b.key,b]]);const plan=frameNeighborhood(a,by,camera,1300,900);expect(plan.reason).toBe('already-visible');expect(plan.camera.zoom/camera.zoom).toBeCloseTo(1.06);expect(plan.camera.panX).toBe(camera.panX);a.neighbors=[];const isolated=frameNeighborhood(a,by,camera,1300,900);expect(isolated.neighborCount).toBe(0);expect(isolated.camera.zoom).toBe(camera.zoom);});
@@ -15,4 +15,4 @@ test('single weak actual edge survives line LOD, unrelated co-located stars do n
 test('background true edges have a fixed sparse budget rather than all-graph drawing',()=>{const works=Array.from({length:1000},(_,i)=>work(String(i)));for(let i=1;i<works.length;i++){works[i-1].neighbors.push({key:String(i),weight:.03});works[i].neighbors.push({key:String(i-1),weight:.03});}const layer=new RelationLayer(works,new Map(works.map(w=>[w.key,w])));expect(layer.background.length).toBeLessThanOrEqual(42);expect(layer.frame(works[500],null).edges.length).toBeLessThanOrEqual(44);});
 test('navigation continues natural rotation but cannot override a deliberate pause',()=>{const o=new OrbitController(0);o.resumeNatural(100);expect(o.step(116)).toBeGreaterThan(0);o.configure({paused:true},120);o.resumeNatural(125);expect(o.step(140)).toBe(0);});
 
-test('renderer routes cover-wheel and drag to manual takeover; selected covers are not leased forever',()=>{const src=readFileSync('web/src/pages/constellation-dev/renderer.js','utf8');expect(src).toContain("on(root,'wheel'");expect(src).toContain('function zoomAt(x,y,factor){cancelFlight()');expect(src).toContain("if(e.button!==0)return;cancelFlight()");expect(src).toContain('selectedKey:null');expect(src).toContain('if(reduced){flight.cancel()');expect(src).toContain('pushView();focusWork(selectedWork)');});
+test('renderer routes cover-wheel and drag to manual takeover; selected covers are not leased forever',()=>{const src=readFileSync('web/src/pages/constellation-dev/renderer.ts','utf8');expect(src).toMatch(/on\(\s*root,\s*"wheel"/);expect(src).toMatch(/function zoomAt\(x: number, y: number, factor: number\): void \{\s*cancelFlight\(\)/);expect(src).toMatch(/if \(e\.button !== 0\) return;\s*cancelFlight\(\)/);expect(src).toContain('selectedKey: null');expect(src).toMatch(/if \(reduced\) \{\s*flight\.cancel\(\)/);expect(src).toMatch(/pushView\(\);\s*focusWork\(selectedWork\)/);});

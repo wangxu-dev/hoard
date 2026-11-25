@@ -1,17 +1,17 @@
 import {expect,test} from 'bun:test';
 import {readFileSync} from 'node:fs';
-import {OrbitController} from '../web/src/pages/constellation-dev/orbit.js';
+import {OrbitController} from '../web/src/pages/constellation-dev/orbit.ts';
 const read=(p:string)=>readFileSync(p,'utf8');
 test('exploration fills the webview while ordinary library sidebar preferences stay intact',()=>{
  const side=read('web/src/components/app-sidebar.tsx'),app=read('web/src/App.tsx');
  expect(side).toContain('if (page === "explore") return');expect(side).toContain('explore-navigation');expect(side).toContain('aria-label={t("sidebar.backToLibrary")}');expect(side).toContain('onPageChange("settings")');expect(side).toContain('localStorage.getItem("hoard-sidebar")');expect(side).not.toContain('setOpen(true)');expect(app).toContain('music.queue && page !== "explore"');
 });
 test('click takes one gentle real-neighbor frame without pinning or pausing selection',()=>{
- const src=read('web/src/pages/constellation-dev/renderer.js'),body=src.slice(src.indexOf('function openWork('),src.indexOf('function back('));
- expect(body).toContain('selectedWork=w');expect(body).toContain('focusWork(w)');expect(src).toContain('frameNeighborhood(w,M.byKey,camera');expect(src).toContain('selected:false,paused:userPaused');expect(src).toContain('selectedKey:null');expect(src).not.toContain('director.protect');
+ const src=read('web/src/pages/constellation-dev/renderer.ts'),body=src.slice(src.indexOf('function openWork('),src.indexOf('function back('));
+ expect(body).toContain('selectedWork = w');expect(body).toContain('focusWork(w)');expect(src).toContain('frameNeighborhood(w, M.byKey, camera');expect(src).toMatch(/selected:\s*false,\s*paused:\s*userPaused/);expect(src).toContain('selectedKey: null');expect(src).not.toContain('director.protect');
 });
 test('all restored view controls call live renderer operations, not placeholder controls',()=>{
- const page=read('web/src/pages/constellation-dev/index.tsx'),src=read('web/src/pages/constellation-dev/renderer.js');
+ const page=read('web/src/pages/constellation-dev/index.tsx'),src=read('web/src/pages/constellation-dev/renderer.ts');
  for(const action of ['back','reset','zoomIn','zoomOut','toggleRotation','focusSelected']){expect(page).toContain('controls'+(action==='toggleRotation'?'.toggleRotation':'?.'+action));expect(src).toContain(action);}
  expect(page).toContain('disabled={!panel?.work}');expect(page).toContain('aria-pressed={paused}');
 });
