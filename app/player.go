@@ -36,6 +36,13 @@ type MediaMusic struct {
 	URL    string `json:"url"`
 }
 
+// MediaQuality is one selectable video resolution tier with relay-registered URLs.
+type MediaQuality struct {
+	ID     string   `json:"id"`
+	Label  string   `json:"label"`
+	Videos []string `json:"videos"`
+}
+
 // MediaResult is what the viewer needs to show and play one item. Media URLs
 // point at the local relay or cover cache, never at the CDN.
 type MediaResult struct {
@@ -44,6 +51,7 @@ type MediaResult struct {
 	PartID       string               `json:"partId,omitempty"`
 	Kind         string               `json:"kind"`
 	Videos       []string             `json:"videos"`
+	Qualities    []MediaQuality       `json:"qualities,omitempty"`
 	Images       []MediaImage         `json:"images"`
 	Music        MediaMusic           `json:"music"`
 	Author       string               `json:"author"`
@@ -119,6 +127,9 @@ func mediaValid(raw string) bool {
 func mediaTTL(detail douyin.Detail) time.Time {
 	var earliest time.Time
 	all := append([]string{}, detail.Videos...)
+	for _, q := range detail.Qualities {
+		all = append(all, q.URLs...)
+	}
 	for _, im := range detail.Images {
 		all = append(all, im.URL, im.LiveURL)
 	}
@@ -454,6 +465,21 @@ func (p *Player) result(rec store.MediaRecord, d douyin.Detail) MediaResult {
 	for _, v := range d.Videos {
 		if u := p.app.Media.Register(v); u != "" {
 			out.Videos = append(out.Videos, u)
+		}
+	}
+	for _, q := range d.Qualities {
+		var videos []string
+		for _, v := range q.URLs {
+			if u := p.app.Media.Register(v); u != "" {
+				videos = append(videos, u)
+			}
+		}
+		if len(videos) > 0 {
+			out.Qualities = append(out.Qualities, MediaQuality{
+				ID:     q.ID,
+				Label:  q.Label,
+				Videos: videos,
+			})
 		}
 	}
 	for n, i := range d.Images {
