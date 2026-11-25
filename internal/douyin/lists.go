@@ -256,24 +256,69 @@ func ListShapeDiagnostics(reply PageReply) string {
 	_, hasCursor := obj["cursor"]
 	_, hasWhaleToken := obj["whale_cut_token"]
 	awemeCount := -1
-	var itemKeys []string
+	noteKeys := map[string]bool{}
 	if raw, ok := obj["aweme_list"]; ok {
 		var items []map[string]json.RawMessage
 		if err := json.Unmarshal(raw, &items); err == nil && items != nil {
 			awemeCount = len(items)
-			if len(items) > 0 && items[0] != nil {
-				for k := range items[0] {
-					itemKeys = append(itemKeys, k)
-				}
-				slices.Sort(itemKeys)
-				if len(itemKeys) > 32 {
-					itemKeys = itemKeys[:32]
+			for _, item := range items {
+				for k, v := range item {
+					lk := strings.ToLower(k)
+					if lk == "desc" || lk == "comment_gid" || lk == "comment_list" {
+						continue
+					}
+					if !containsAny(lk, "recommend", "familiar", "social", "reason", "note", "postscript", "comment", "caption", "label") {
+						continue
+					}
+					val := strings.TrimSpace(string(v))
+					if val == "" || val == "null" || val == `""` || val == "{}" || val == "[]" || val == "0" || val == "false" {
+						continue
+					}
+					if strings.HasPrefix(val, "{") {
+						var nested map[string]json.RawMessage
+						if json.Unmarshal(v, &nested) == nil && len(nested) > 0 {
+							sub := make([]string, 0, len(nested))
+							for sk := range nested {
+								sub = append(sub, sk)
+							}
+							slices.Sort(sub)
+							noteKeys[k+"{"+strings.Join(sub, ",")+"}"] = true
+							continue
+						}
+					}
+					if strings.HasPrefix(val, "[") {
+						var arr []map[string]json.RawMessage
+						if json.Unmarshal(v, &arr) == nil && len(arr) > 0 && arr[0] != nil {
+							sub := make([]string, 0, len(arr[0]))
+							for sk := range arr[0] {
+								sub = append(sub, sk)
+							}
+							slices.Sort(sub)
+							noteKeys[k+"[{"+strings.Join(sub, ",")+"}]"] = true
+							continue
+						}
+					}
+					noteKeys[k] = true
 				}
 			}
 		}
 	}
-	return fmt.Sprintf("http=%d bytes=%d json=%t keys=[%s] has_more=%t max_cursor=%t cursor=%t whale_cut_token=%t aweme_count=%d item_keys=[%s]",
-		reply.Status, len(reply.Body), valid, strings.Join(keys, ","), hasMore, hasMaxCursor, hasCursor, hasWhaleToken, awemeCount, strings.Join(itemKeys, ","))
+	matched := make([]string, 0, len(noteKeys))
+	for k := range noteKeys {
+		matched = append(matched, k)
+	}
+	slices.Sort(matched)
+	return fmt.Sprintf("http=%d bytes=%d json=%t keys=[%s] has_more=%t max_cursor=%t cursor=%t whale_cut_token=%t aweme_count=%d note_keys=[%s]",
+		reply.Status, len(reply.Body), valid, strings.Join(keys, ","), hasMore, hasMaxCursor, hasCursor, hasWhaleToken, awemeCount, strings.Join(matched, ";"))
+}
+
+func containsAny(s string, parts ...string) bool {
+	for _, p := range parts {
+		if strings.Contains(s, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // ParseList reads one page of likes, favorites, recommend or music.

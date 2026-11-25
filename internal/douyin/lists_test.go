@@ -107,19 +107,19 @@ func TestListShapeDiagnostics(t *testing.T) {
 		{
 			name:     "invalid json",
 			reply:    PageReply{Status: 500, Body: "not-json"},
-			contains: []string{"http=500", "bytes=8", "json=false", "keys=[]", "aweme_count=-1", "item_keys=[]"},
+			contains: []string{"http=500", "bytes=8", "json=false", "keys=[]", "aweme_count=-1", "note_keys=[]"},
 		},
 		{
 			name:     "null aweme_list and token",
 			reply:    PageReply{Status: 200, Body: `{"status_code":0,"has_more":0,"max_cursor":123,"whale_cut_token":"secret-token-val","aweme_list":null}`},
-			contains: []string{"http=200", "json=true", "keys=[aweme_list,has_more,max_cursor,status_code,whale_cut_token]", "has_more=true", "max_cursor=true", "cursor=false", "whale_cut_token=true", "aweme_count=-1", "item_keys=[]"},
+			contains: []string{"http=200", "json=true", "keys=[aweme_list,has_more,max_cursor,status_code,whale_cut_token]", "has_more=true", "max_cursor=true", "cursor=false", "whale_cut_token=true", "aweme_count=-1", "note_keys=[]"},
 			forbid:   []string{"secret-token-val", "123"},
 		},
 		{
-			name:     "non-empty aweme_list",
-			reply:    PageReply{Status: 200, Body: `{"status_code":0,"has_more":1,"cursor":"c1","aweme_list":[{"aweme_id":"7300000000000000009","desc":"private-title","author":{"nickname":"private-author"}}]}`},
-			contains: []string{"http=200", "json=true", "keys=[aweme_list,cursor,has_more,status_code]", "has_more=true", "max_cursor=false", "cursor=true", "whale_cut_token=false", "aweme_count=1", "item_keys=[author,aweme_id,desc]"},
-			forbid:   []string{"7300000000000000009", "private-title", "private-author", "c1"},
+			name:     "non-empty aweme_list with recommend note fields",
+			reply:    PageReply{Status: 200, Body: `{"status_code":0,"has_more":1,"cursor":"c1","aweme_list":[{"aweme_id":"7300000000000000009","desc":"private-title","familiar_recommend_info":{"text":"private-note","type":1},"author":{"nickname":"private-author"}}]}`},
+			contains: []string{"http=200", "json=true", "keys=[aweme_list,cursor,has_more,status_code]", "has_more=true", "max_cursor=false", "cursor=true", "whale_cut_token=false", "aweme_count=1", "note_keys=[familiar_recommend_info{text,type}]"},
+			forbid:   []string{"7300000000000000009", "private-title", "private-author", "private-note", "c1"},
 		},
 	}
 	for _, tc := range cases {
