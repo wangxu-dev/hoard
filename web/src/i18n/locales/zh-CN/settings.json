@@ -33,7 +33,7 @@
     "restart": "立即重启",
     "retry": "重试下载",
     "manual": "前往发布页",
-    "disabled": "当前安装方式暂不支持应用内更新，请前往发布页安装新版。",
+    "disabled": "请前往发布页下载新版",
     "view": "查看更新",
     "newBadge": "新版本",
     "readyBadge": "已就绪",

@@ -1,4 +1,22 @@
 {
+  "loading": "Loading…",
+  "retry": "Retry",
+  "error": {
+    "message": "Couldn't load Explore",
+    "reload": "Reload",
+    "load": "Couldn't load library",
+    "refresh": "Couldn't refresh"
+  },
+  "controls": {
+    "toolbar": "Galaxy view",
+    "back": "Back",
+    "reset": "Reset view",
+    "zoomOut": "Zoom out",
+    "zoomIn": "Zoom in",
+    "resume": "Resume rotation",
+    "pause": "Pause rotation",
+    "focus": "Focus selected"
+  },
   "timeline": {
     "label": "Publication timeline",
     "countUnit": "works",

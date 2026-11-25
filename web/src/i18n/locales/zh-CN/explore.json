@@ -1,4 +1,22 @@
 {
+  "loading": "正在加载…",
+  "retry": "重试",
+  "error": {
+    "message": "探索加载失败",
+    "reload": "重新加载",
+    "load": "读取失败",
+    "refresh": "更新失败"
+  },
+  "controls": {
+    "toolbar": "星系视图",
+    "back": "返回上一视图",
+    "reset": "回到全景",
+    "zoomOut": "缩小",
+    "zoomIn": "放大",
+    "resume": "继续旋转",
+    "pause": "暂停旋转",
+    "focus": "聚焦选中作品"
+  },
   "timeline": {
     "label": "发布时间轴",
     "countUnit": "个作品",
