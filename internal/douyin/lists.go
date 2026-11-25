@@ -265,7 +265,6 @@ func ListShapeDiagnostics(reply PageReply) string {
 		reply.Status, len(reply.Body), valid, strings.Join(keys, ","), hasMore, hasMaxCursor, hasCursor, awemeCount)
 }
 
-
 // ParseList reads one page of likes, favorites, recommend or music.
 func ParseList(op Operation, reply PageReply) ListPage {
 	obj, class, code := classify(op, reply)
