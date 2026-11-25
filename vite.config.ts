@@ -30,5 +30,20 @@ export default defineConfig({
     fs: { allow: [root] },
     watch: { ignored: ["**/.mygo/**", "**/build/**", "**/dist/**"] },
   },
-  build: { outDir: path.resolve(root, "dist"), emptyOutDir: true },
+  build: {
+    outDir: path.resolve(root, "dist"),
+    emptyOutDir: true,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            { name: "react-vendor", test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+            { name: "motion-vendor", test: /[\\/]node_modules[\\/](motion|motion-dom|motion-utils|framer-motion)[\\/]/ },
+            { name: "ui-vendor", test: /[\\/]node_modules[\\/](radix-ui|@radix-ui|lucide-react|sonner|embla-carousel)[\\/]/ },
+            { name: "data-vendor", test: /[\\/]node_modules[\\/](@tanstack|i18next|react-i18next)[\\/]/ },
+          ],
+        },
+      },
+    },
+  },
 });

@@ -1,12 +1,10 @@
-import { QueryClient, queryOptions } from "@tanstack/react-query";
+import { queryOptions } from "@tanstack/react-query";
 import { libraryScope } from "./library-filters";
 import { mediaScopeAccount } from "./media-key";
 import { getLibrarySource, type LibraryEntry, type MediaResult, type Scope } from "./library";
+import { queryClient } from "./query-client";
 
-/** One client for the whole app, so data outlives the page that asked for it. */
-export const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 30_000, gcTime: 30 * 60_000, refetchOnWindowFocus: false, retry: false } },
-});
+export { queryClient };
 
 export const queryKeys = {
   sources: ["sources"] as const,
@@ -16,10 +14,6 @@ export const queryKeys = {
   timeline: (filterKey: string) => ["timeline", filterKey] as const,
   media: (kind: string, id: string, partId?: string, accountId = libraryScope().accountId ?? "") => ["media", accountId, kind, id, partId ?? ""] as const,
 };
-
-// Grid lists hold thousands of slots and change a page at a time; comparing them deeply on every
-// update would cost more than it saves.
-queryClient.setQueryDefaults(["grid"], { structuralSharing: false });
 
 /** Folder names come from SQLite; sync and successful actions invalidate this cache. */
 export function foldersQuery(accountId: string) {
