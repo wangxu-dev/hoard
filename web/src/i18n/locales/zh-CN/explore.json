@@ -34,5 +34,14 @@
     "monthCount": "{{month}} · {{count}} 个作品",
     "noDates": "暂无发布时间",
     "outside": "不在当前时间范围"
+  },
+  "details": {
+    "title": "收藏详情",
+    "close": "关闭",
+    "cover": "收藏封面",
+    "avatar": "作者头像",
+    "unknownAuthor": "未知作者",
+    "related": "相关作品 · {{count}}",
+    "noRelated": "暂无关联作品"
   }
 }
