@@ -7,7 +7,7 @@ export const DEFAULT_SOURCE_DESCRIPTORS: SourceDescriptor[] = [
     id: "douyin",
     lists: [
       { kind: "like", role: "like", hasFolders: false },
-      { kind: "favorite", role: "favorite", hasFolders: false },
+      { kind: "favorite", role: "favorite", hasFolders: true },
       { kind: "recommend", role: "other", hasFolders: false },
       { kind: "music", role: "other", hasFolders: false },
     ],
