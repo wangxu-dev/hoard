@@ -1,10 +1,11 @@
 import { App, Exploration } from "@/lib/api";
-import type { ExploreScope, ExplorationDiagnostic } from "@/lib/api";
+import type { ExploreScope, ExplorationDiagnostic, Snapshot } from "@/lib/api";
 import { diagnosticError } from "./diagnostics";
+import { canReuseSnapshot } from "./scope-cache";
 let sequence=0;
 
 // View-state only: native code reads one transaction, analyzes, versions and caches.
-export async function readCurrentLibrary(signal: AbortSignal, progress: (count: number) => void, clientID: string, scope: ExploreScope = { accountId: "", source: "" }) {
+export async function readCurrentLibrary(signal: AbortSignal, progress: (count: number) => void, clientID: string, scope: ExploreScope = { accountId: "", source: "" }, cachedSnapshot?: Snapshot | null) {
   const report=(stage:string,error?:unknown,state="")=>{
     const data:ExplorationDiagnostic={stage,source:scope.source||"all",accountScoped:!!scope.accountId,sequence:request,...diagnosticError(error),state};
     console.warn("[hoard:exploration-ui]",JSON.stringify(data));
@@ -25,6 +26,11 @@ export async function readCurrentLibrary(signal: AbortSignal, progress: (count: 
       try{status=await Exploration.status(task.id);}catch(error){report("status-reject",error);throw error;}
       if(status.state!==previousState){previousState=status.state;report("status-state",undefined,status.state);}
       if (status.state === "complete") {
+        if (cachedSnapshot && canReuseSnapshot(status, cachedSnapshot, scope)) {
+          report("result-reuse");
+          progress(cachedSnapshot.meta.coverage.reduce((n, c) => n + c.worksTotal, 0));
+          return cachedSnapshot;
+        }
         report("result-call");
         let snapshot;
         try{snapshot=await Exploration.result(task.id);}catch(error){report("result-reject",error);throw error;}

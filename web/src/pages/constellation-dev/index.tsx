@@ -11,15 +11,15 @@ import type { PanelView } from "./view-types";
 import { onLibraryChanged } from "@/lib/api";
 import { readCurrentLibrary } from "./load";
 import { mountInterestSky, prepareExploration, type ViewControls } from "./renderer";
+import { ExploreScopeCache, libraryChangeAffectsScope } from "./scope-cache";
 import { ArrowLeft, LocateFixed, Maximize2, Minus, Pause, Play, Plus } from "lucide-react";
 import "./styles.css";
 
-// Last good union snapshot is a return-transition surface, not a replacement for
+// Last good snapshots per scope are a return-transition surface, not a replacement for
 // native validation. Every entry revalidates; unchanged revisions do not remount.
 type LibrarySnapshot = Awaited<ReturnType<typeof readCurrentLibrary>>;
 type PreparedExploration = Awaited<ReturnType<typeof prepareExploration>>;
-let returnSnapshot: LibrarySnapshot | null = null;
-let returnPrepared: { key: string; model: PreparedExploration } | null = null;
+const scopeCache = new ExploreScopeCache<LibrarySnapshot, PreparedExploration>(4);
 let preparationTask: Promise<{ key: string; model: PreparedExploration }> | null = null;
 let preloadTask: { scopeKey: string; promise: Promise<{ snapshot: LibrarySnapshot; model: PreparedExploration }> } | null = null;
 const currentExploreScope = (scope?: Scope): ExploreScope => ({ accountId: scope?.accountId ?? "", source: scope?.source ?? "" });
@@ -28,12 +28,10 @@ const snapshotKey = (snapshot: LibrarySnapshot) => `${snapshot.scope.accountId}:
 
 function prepareSnapshot(snapshot: LibrarySnapshot): Promise<PreparedExploration> {
   const key = snapshotKey(snapshot);
-  if (returnPrepared?.key === key) return Promise.resolve(returnPrepared.model);
+  const cached = scopeCache.get(scopeKeyOf(snapshot.scope));
+  if (cached?.key === key) return Promise.resolve(cached.model);
   if (preparationTask) return preparationTask.then((result) => result.key === key ? result.model : prepareSnapshot(snapshot));
-  const task = prepareExploration(snapshot).then((model) => {
-    returnPrepared = { key, model };
-    return { key, model };
-  });
+  const task = prepareExploration(snapshot).then((model) => ({ key, model }));
   preparationTask = task;
   void task.finally(() => { if (preparationTask === task) preparationTask = null; }).catch(() => {});
   return task.then((result) => result.model);
@@ -42,11 +40,12 @@ function prepareSnapshot(snapshot: LibrarySnapshot): Promise<PreparedExploration
 export async function preloadExploration(signal: AbortSignal) {
   const exploreScope = currentExploreScope(libraryScope());
   const scopeKey = scopeKeyOf(exploreScope);
-  if ((returnSnapshot && scopeKeyOf(returnSnapshot.scope) === scopeKey && returnPrepared?.key === snapshotKey(returnSnapshot)) || signal.aborted) return;
+  const cached = scopeCache.get(scopeKey);
+  if (signal.aborted) return;
   if (preloadTask?.scopeKey === scopeKey) return preloadTask.promise;
-  const promise = readCurrentLibrary(signal, () => {}, crypto.randomUUID(), exploreScope).then(async (snapshot) => {
+  const promise = readCurrentLibrary(signal, () => {}, crypto.randomUUID(), exploreScope, cached?.snapshot).then(async (snapshot) => {
     const model = await prepareSnapshot(snapshot);
-    if (!signal.aborted) returnSnapshot = snapshot;
+    if (!signal.aborted) scopeCache.set(scopeKey, { snapshot, model, key: snapshotKey(snapshot) });
     return { snapshot, model };
   });
   const entry = { scopeKey, promise };
@@ -68,7 +67,21 @@ export default function ConstellationDevPage() {
   const [ready, setReady] = useState(false);
   const [controls, setControls] = useState<ViewControls | null>(null);
   const [paused, setPaused] = useState(false);
-  useEffect(() => onLibraryChanged(() => setAttempt((n) => n + 1)), []);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const stop = onLibraryChanged((change) => {
+      if (!libraryChangeAffectsScope(change.accountId, exploreScope)) return;
+      if (timer !== null) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        setAttempt((n) => n + 1);
+      }, 1500);
+    });
+    return () => {
+      stop();
+      if (timer !== null) clearTimeout(timer);
+    };
+  }, [exploreScope.accountId, exploreScope.source]);
   useEffect(() => {
     const abort = new AbortController(); let dispose: (() => void) | undefined;
     setReady(false); setError(""); setPanel(null); setPaused(false);
@@ -82,21 +95,18 @@ export default function ConstellationDevPage() {
       setTimelineWorks(snapshot.scopes.flatMap(scope => scope.works));
       setReady(true);
     };
-    const matchedReturn = returnSnapshot && scopeKeyOf(returnSnapshot.scope) === scopeKey && returnPrepared?.key === snapshotKey(returnSnapshot)
-      ? returnSnapshot
-      : null;
-    if (matchedReturn && returnPrepared) {
-      const cachedSnapshot = matchedReturn, cachedModel = returnPrepared.model;
-      queueMicrotask(() => paint(cachedSnapshot, cachedModel));
+    const cached = scopeCache.get(scopeKey);
+    if (cached) {
+      queueMicrotask(() => paint(cached.snapshot, cached.model));
     }
     const load = (preloadTask?.scopeKey === scopeKey ? preloadTask.promise : null) ?? Promise.resolve().then(() => {
       if (abort.signal.aborted) throw new Error("CANCELLED");
-      return readCurrentLibrary(abort.signal, () => {}, client.current, exploreScope);
+      return readCurrentLibrary(abort.signal, () => {}, client.current, exploreScope, cached?.snapshot);
     }).then(async (snapshot) => ({ snapshot, model: await prepareSnapshot(snapshot) }));
     void load.then(({ snapshot, model }) => {
       if (abort.signal.aborted || !host.current) return;
       if (!painted || scopeKeyOf(painted.scope) !== scopeKeyOf(snapshot.scope) || painted.inputRevision !== snapshot.inputRevision || painted.analysisVersion !== snapshot.analysisVersion) paint(snapshot, model);
-      returnSnapshot = snapshot;
+      scopeCache.set(scopeKey, { snapshot, model, key: snapshotKey(snapshot) });
       // Aggregate counters only, no original IDs/titles or media URLs in diagnostics.
       console.warn("[interest-dev] coverage", JSON.stringify(snapshot.meta.coverage));
       setReady(true);
