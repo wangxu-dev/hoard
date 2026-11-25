@@ -226,7 +226,7 @@ func (s *Sync) fetch(ctx context.Context, accountID string, r *store.SyncRecord,
 			page = douyin.ParseList(op, reply)
 		}
 		log.Printf("[hoard:sync] %s page=%d class=%s http=%d code=%d items=%d more=%v elapsed_ms=%d delay_ms=%d", r.Kind, r.Pages+1, page.Class, reply.Status, page.Code, page.Received, page.HasMore, time.Since(started).Milliseconds(), r.DelayMS)
-		if r.Kind == "recommend" && (r.Pages == 0 || page.Class != douyin.ResponseOK) {
+		if r.Kind == "recommend" && page.Class != douyin.ResponseOK {
 			log.Printf("[hoard:sync] recommend shape %s", douyin.ListShapeDiagnostics(reply))
 		}
 		if page.Class != douyin.ResponseVerificationRequired && eng.PageState(ctx).Captcha {

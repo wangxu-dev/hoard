@@ -9,7 +9,7 @@ import (
 
 // SaveSyncPage commits content and its recovery position together.
 func (s *Store) SaveSyncPage(ctx context.Context, accountID string, head bool, works []Work, musics []Music, record SyncRecord) error {
-	if record.Kind != "like" && record.Kind != "favorite" && record.Kind != "music" {
+	if !validWorkRelationKind(record.Kind) && record.Kind != "music" {
 		return fmt.Errorf("invalid sync kind")
 	}
 	tx, err := s.db.BeginTx(ctx, nil)

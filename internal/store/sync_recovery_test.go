@@ -113,8 +113,12 @@ func TestSyncPageRollbackAndMusic(t *testing.T) {
 	if err := s.SaveSyncPage(ctx, "test", false, nil, []Music{{RemoteID: "1"}}, r); err != nil {
 		t.Fatal(err)
 	}
+	r.Kind = "recommend"
+	if err := s.SaveSyncPage(ctx, "test", false, []Work{{RemoteID: "2", Kind: "video"}}, nil, r); err != nil {
+		t.Fatal(err)
+	}
 	records, _ = s.SyncRecords(ctx, "test")
-	if records[0].Items != 1 || records[0].BackfillCursor != "next" {
+	if len(records) != 2 || records[0].Items != 1 || records[0].BackfillCursor != "next" {
 		t.Fatal(records)
 	}
 }
