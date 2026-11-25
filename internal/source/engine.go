@@ -29,7 +29,7 @@ func (e *Engine) UseSession(name string, show bool) error {
 	return e.UseSourceSession("douyin", name, show)
 }
 func (e *Engine) UseSourceSession(source, name string, show bool) error {
-	if source != "douyin" && source != "bilibili" {
+	if _, ok := DescriptorByID(source); !ok {
 		return errors.New("UNSUPPORTED_SOURCE")
 	}
 	if name == "" {
