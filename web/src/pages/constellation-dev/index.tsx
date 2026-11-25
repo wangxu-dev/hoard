@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PublicationTimeline } from "./publication-timeline";
 import type { ExplorationWork } from "@/lib/api";
 import shell from "./shell.html?raw";
@@ -48,6 +49,7 @@ export async function preloadExploration(signal: AbortSignal) {
 }
 
 export default function ConstellationDevPage() {
+  const { t } = useTranslation("explore");
   const host = useRef<HTMLDivElement>(null);
   const client = useRef(crypto.randomUUID());
   const [attempt, setAttempt] = useState(0), [error, setError] = useState("");
@@ -90,25 +92,25 @@ export default function ConstellationDevPage() {
       const safeCode = err instanceof Error ? err.message.match(/(?:STORE_NOT_READY|INVALID_REQUEST|TASK_[A-Z_]+|INVALID_SCOPE|SCOPE_MISMATCH|SNAPSHOT_[A-Z_]+|EXPLORATION_FAILED)/)?.[0] || "BRIDGE_OR_TRANSPORT" : "UNKNOWN";
       console.warn("[interest-dev] native-error", JSON.stringify({ code: safeCode }));
       if (!painted) setReady(false);
-      setError(painted ? "更新失败，当前为上次读取结果" : "暂时无法读取收藏");
+      setError(painted ? "refresh" : "load");
     });
     return () => { abort.abort(); dispose?.(); };
   }, [attempt, mountInterestSky]);
   return <div id="interest-native-root"><div ref={host} />{ready && <>
-    <div className="explore-controls explore-glass" role="toolbar" aria-label="星系视图">
-      <Button variant="ghost" size="icon" onClick={() => controls?.back()} disabled={!panel} aria-label="返回上一视图" title="返回上一视图"><ArrowLeft /></Button>
-      <Button variant="ghost" size="icon" onClick={() => controls?.reset()} aria-label="回到全景" title="回到全景"><Maximize2 /></Button>
+    <div className="explore-controls explore-glass" role="toolbar" aria-label={t("controls.toolbar")}>
+      <Button variant="ghost" size="icon" onClick={() => controls?.back()} disabled={!panel} aria-label={t("controls.back")} title={t("controls.back")}><ArrowLeft /></Button>
+      <Button variant="ghost" size="icon" onClick={() => controls?.reset()} aria-label={t("controls.reset")} title={t("controls.reset")}><Maximize2 /></Button>
       <span className="explore-nav-divider" />
-      <Button variant="ghost" size="icon" onClick={() => controls?.zoomOut()} aria-label="缩小" title="缩小"><Minus /></Button>
-      <Button variant="ghost" size="icon" onClick={() => controls?.zoomIn()} aria-label="放大" title="放大"><Plus /></Button>
-      <Button variant="ghost" size="icon" onClick={() => controls && setPaused(controls.toggleRotation())} aria-label={paused ? "继续旋转" : "暂停旋转"} title={paused ? "继续旋转" : "暂停旋转"} aria-pressed={paused}>{paused ? <Play /> : <Pause />}</Button>
-      <Button variant="ghost" size="icon" onClick={() => controls?.focusSelected()} disabled={!panel?.work} aria-label="聚焦选中作品" title="聚焦选中作品"><LocateFixed /></Button>
+      <Button variant="ghost" size="icon" onClick={() => controls?.zoomOut()} aria-label={t("controls.zoomOut")} title={t("controls.zoomOut")}><Minus /></Button>
+      <Button variant="ghost" size="icon" onClick={() => controls?.zoomIn()} aria-label={t("controls.zoomIn")} title={t("controls.zoomIn")}><Plus /></Button>
+      <Button variant="ghost" size="icon" onClick={() => controls && setPaused(controls.toggleRotation())} aria-label={t(paused ? "controls.resume" : "controls.pause")} title={t(paused ? "controls.resume" : "controls.pause")} aria-pressed={paused}>{paused ? <Play /> : <Pause />}</Button>
+      <Button variant="ghost" size="icon" onClick={() => controls?.focusSelected()} disabled={!panel?.work} aria-label={t("controls.focus")} title={t("controls.focus")}><LocateFixed /></Button>
     </div>
-    {error && <div className="explore-refresh-warning explore-glass" role="status">{error}<Button variant="ghost" size="sm" onClick={() => setAttempt(n => n + 1)}>重试</Button></div>}
+    {error && <div className="explore-refresh-warning explore-glass" role="status">{t(`error.${error}`)}<Button variant="ghost" size="sm" onClick={() => setAttempt(n => n + 1)}>{t("retry")}</Button></div>}
     {controls && <PublicationTimeline works={timelineWorks} controls={controls} />}
     <ContentDetails view={panel} />
   </>}{!ready && <div className="native-loading" role={error ? "alert" : "status"}>
-    <span>{error || "正在读取收藏…"}</span>
-    {error && <Button variant="outline" onClick={() => setAttempt((n) => n + 1)}>重试</Button>}
+    <span>{error ? t(`error.${error}`) : t("loading")}</span>
+    {error && <Button variant="outline" onClick={() => setAttempt((n) => n + 1)}>{t("retry")}</Button>}
   </div>}</div>;
 }

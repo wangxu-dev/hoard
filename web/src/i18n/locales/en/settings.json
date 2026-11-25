@@ -33,7 +33,7 @@
     "restart": "Restart now",
     "retry": "Retry download",
     "manual": "Open releases",
-    "disabled": "In-app updates are unavailable for this installation. Install the new version from the releases page.",
+    "disabled": "Download the new version from Releases",
     "view": "View update",
     "newBadge": "New release",
     "readyBadge": "Ready",

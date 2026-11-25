@@ -59,7 +59,7 @@
     "verify": "去验证",
     "verifyRequired": "需要验证",
     "verifying": "验证中…",
-    "verifyHint": "抖音需要一次安全验证，在抖音窗口完成滑块后会自动继续，已同步的内容会保留",
+    "verifyHint": "请在抖音窗口完成验证",
     "now": "立即同步",
     "unsupported": "暂不支持",
     "lastSync": "上次同步 {{time}}",
@@ -134,10 +134,10 @@
       "REVIEWING": "作品审核中，暂时无法查看",
       "WITHHELD": "作品暂时无法查看",
       "SESSION_NOT_READY": "账号正在连接，请稍后重试",
-      "PAID_CONTENT": "此视频尚未购买，暂时无法播放"
+      "PAID_CONTENT": "付费内容，需购买后观看"
     },
     "locate": "定位到正在播放",
-    "paidPreview": "此视频尚未购买，可试看 {{duration}}",
+    "paidPreview": "试看 {{duration}}",
     "parts": "选集"
   },
   "grid": {
@@ -195,8 +195,8 @@
       "music": "取消收藏音乐"
     },
     "saved": "已更新",
-    "unknown": "操作结果尚未确认，请重新读取状态后再操作",
-    "failed": "读取或操作失败，请关闭后重试",
+    "unknown": "状态未同步，请刷新",
+    "failed": "操作失败，请重试",
     "login": "请先登录",
     "saving": "正在确认…",
     "loading": "读取状态…",
@@ -205,7 +205,7 @@
   },
   "session": {
     "title": "需要重新登录",
-    "description": "{{account}} 的登录已失效，请重新登录后继续。",
+    "description": "{{account}} 登录已过期",
     "later": "稍后处理",
     "login": "重新登录"
   }

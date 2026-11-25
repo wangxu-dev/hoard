@@ -59,7 +59,7 @@
     "verify": "Verify",
     "verifyRequired": "Verification needed",
     "verifying": "Verifying…",
-    "verifyHint": "Douyin needs a quick check. Finish the slider in the Douyin window and syncing continues on its own; synced items stay",
+    "verifyHint": "Complete verification in the Douyin window",
     "now": "Sync now",
     "unsupported": "Not supported yet",
     "lastSync": "Last synced {{time}}",
@@ -134,14 +134,14 @@
       "REVIEWING": "This item is under review",
       "WITHHELD": "This item can't be viewed right now",
       "SESSION_NOT_READY": "Connecting to your account. Please try again shortly.",
-      "PAID_CONTENT": "This video requires a purchase to play."
+      "PAID_CONTENT": "Paid video"
     },
     "locate": "Show in library",
-    "paidPreview": "This video has not been purchased. Preview available: {{duration}}",
+    "paidPreview": "Preview · {{duration}}",
     "parts": "Episodes"
   },
   "grid": {
-    "empty": "Nothing here yet. Choose Sync at the top right to bring in your Douyin items",
+    "empty": "Nothing here yet",
     "emptySyncing": "Syncing. Items will show up shortly",
     "emptyFiltered": "No items match",
     "untitled": "Untitled",
@@ -195,8 +195,8 @@
       "music": "Unsave music"
     },
     "saved": "Updated",
-    "unknown": "Result not confirmed. Reload the state before trying again.",
-    "failed": "Unable to load or update. Close and retry.",
+    "unknown": "Status unconfirmed, refresh to retry",
+    "failed": "Action failed, try again",
     "login": "Sign in first",
     "saving": "Confirming…",
     "loading": "Loading state…",
@@ -205,7 +205,7 @@
   },
   "session": {
     "title": "Sign in again",
-    "description": "Your session for {{account}} has expired. Sign in again to continue.",
+    "description": "{{account}} signed out",
     "later": "Later",
     "login": "Sign in again"
   }
