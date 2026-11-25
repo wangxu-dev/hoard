@@ -1,4 +1,9 @@
 {
+  "loading": "正在准备探索…",
+  "error": {
+    "message": "暂时无法加载探索，收藏数据不受影响。",
+    "reload": "重新加载界面"
+  },
   "timeline": {
     "label": "发布时间轴",
     "countUnit": "个作品",

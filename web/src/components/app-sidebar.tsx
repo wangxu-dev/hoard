@@ -28,6 +28,7 @@ export type Page = "library" | "settings" | "explore";
 interface AppSidebarProps {
   page: Page;
   onPageChange: (page: Page) => void;
+  onExploreIntent?: () => void;
   children: ReactNode;
 }
 
@@ -39,7 +40,7 @@ const token = (name: string) => getComputedStyle(document.documentElement).getPr
 // Every sidebar tooltip keeps the same gap from its button.
 const TIP_OFFSET = 8;
 
-export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
+export function AppSidebar({ page, onPageChange, onExploreIntent, children }: AppSidebarProps) {
   const { t } = useTranslation("common");
   const { resolvedTheme, setTheme } = useTheme();
   const [open, setOpen] = useState(() => localStorage.getItem("hoard-sidebar") !== "false");
@@ -66,11 +67,11 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
   // Exploration owns the complete webview. Navigation floats over it instead of
   // reserving the normal library rail; the library's saved preference is untouched.
   if (page === "explore") return <div className="explore-frame relative flex h-full w-full min-w-0">
-    <nav aria-label="探索导航" className="explore-navigation explore-glass">
-      <button type="button" onClick={() => onPageChange("library")} aria-label="返回收藏库" title="返回收藏库" className="explore-nav-brand"><img src={hoardIcon} width={24} height={24} className="size-6 shrink-0 object-contain" alt="" /><span>Hoard</span></button>
+    <nav aria-label={t("sidebar.exploreNav")} className="explore-navigation explore-glass">
+      <button type="button" onClick={() => onPageChange("library")} aria-label={t("sidebar.backToLibrary")} title={t("sidebar.backToLibrary")} className="explore-nav-brand"><img src={hoardIcon} width={24} height={24} className="size-6 shrink-0 object-contain" alt="" /><span>{t("appName")}</span></button>
       <span className="explore-nav-divider" />
-      <button type="button" onClick={() => onPageChange("library")} aria-label="收藏库" title="收藏库"><Library /><span className="explore-nav-label">收藏库</span></button>
-      <button type="button" onClick={() => onPageChange("settings")} aria-label="设置" title="设置"><Settings />{available && <i className="explore-update-dot" />}</button>
+      <button type="button" onClick={() => onPageChange("library")} aria-label={t("sidebar.library")} title={t("sidebar.library")}><Library /><span className="explore-nav-label">{t("sidebar.library")}</span></button>
+      <button type="button" onClick={() => onPageChange("settings")} aria-label={t("sidebar.settings")} title={t("sidebar.settings")}><Settings />{available && <i className="explore-update-dot" />}</button>
       <AnimatedThemeToggler className="explore-theme-toggle" theme={isDark ? "dark" : "light"} onThemeChange={setTheme} aria-label={t("theme.toggle")} />
     </nav>
     {children}
@@ -93,15 +94,17 @@ export function AppSidebar({ page, onPageChange, children }: AppSidebarProps) {
                 {navigation.map(({ id, icon: Icon }) => (
                     <SidebarMenuItem key={id}>
                     <SidebarMenuButton
-                      aria-label={id === "explore" ? "探索" : t(`sidebar.${id}`)}
+                      aria-label={t(`sidebar.${id}`)}
                       isActive={page === id}
                       onClick={() => onPageChange(id)}
+                      onPointerEnter={id === "explore" ? onExploreIntent : undefined}
+                      onFocus={id === "explore" ? onExploreIntent : undefined}
                       aria-current={page === id ? "page" : undefined}
-                      tooltip={{ children: (id === "explore" ? "探索" : t(`sidebar.${id}`)), sideOffset: TIP_OFFSET }}
+                      tooltip={{ children: t(`sidebar.${id}`), sideOffset: TIP_OFFSET }}
                       className={railButton}
                     >
                       <Icon aria-hidden="true" />
-                      <span>{(id === "explore" ? "探索" : t(`sidebar.${id}`))}</span>
+                      <span>{t(`sidebar.${id}`)}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}

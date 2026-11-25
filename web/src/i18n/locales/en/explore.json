@@ -1,4 +1,9 @@
 {
+  "loading": "Preparing Explore...",
+  "error": {
+    "message": "Unable to load Explore right now. Your library data is safe.",
+    "reload": "Reload"
+  },
   "timeline": {
     "label": "Publication timeline",
     "countUnit": "works",

@@ -4,7 +4,7 @@ import {OrbitController} from '../web/src/pages/constellation-dev/orbit.js';
 const read=(p:string)=>readFileSync(p,'utf8');
 test('exploration fills the webview while ordinary library sidebar preferences stay intact',()=>{
  const side=read('web/src/components/app-sidebar.tsx'),app=read('web/src/App.tsx');
- expect(side).toContain('if (page === "explore") return');expect(side).toContain('explore-navigation');expect(side).toContain('aria-label="返回收藏库"');expect(side).toContain('onPageChange("settings")');expect(side).toContain('localStorage.getItem("hoard-sidebar")');expect(side).not.toContain('setOpen(true)');expect(app).toContain('music.queue && page !== "explore"');
+ expect(side).toContain('if (page === "explore") return');expect(side).toContain('explore-navigation');expect(side).toContain('aria-label={t("sidebar.backToLibrary")}');expect(side).toContain('onPageChange("settings")');expect(side).toContain('localStorage.getItem("hoard-sidebar")');expect(side).not.toContain('setOpen(true)');expect(app).toContain('music.queue && page !== "explore"');
 });
 test('click takes one gentle real-neighbor frame without pinning or pausing selection',()=>{
  const src=read('web/src/pages/constellation-dev/renderer.js'),body=src.slice(src.indexOf('function openWork('),src.indexOf('function back('));

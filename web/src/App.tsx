@@ -18,14 +18,14 @@ import { useWindowAppearance } from "@/lib/window-appearance";
 const loadExplore = () => import("@/pages/constellation-dev");
 const ExplorePage = lazy(loadExplore);
 
-class ExploreBoundary extends Component<{ children: React.ReactNode }, { failed: boolean }> {
+class ExploreBoundary extends Component<{ children: React.ReactNode; message: string; reloadLabel: string }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
   render() {
     if (!this.state.failed) return this.props.children;
-    return <div role="alert" className="flex h-full w-full flex-col items-center justify-center gap-4" style={{ background: "#0b131d", color: "#dbe9ed" }}>
-      <p>暂时无法加载探索，收藏数据不受影响。</p>
-      <button className="rounded-lg border border-white/20 px-4 py-2" onClick={() => window.location.reload()}>重新加载界面</button>
+    return <div role="alert" className="flex h-full w-full flex-col items-center justify-center gap-4 bg-background text-foreground">
+      <p>{this.props.message}</p>
+      <button type="button" className="rounded-lg border border-border px-4 py-2 hover:bg-accent" onClick={() => window.location.reload()}>{this.props.reloadLabel}</button>
     </div>;
   }
 }
@@ -43,19 +43,36 @@ function PageSurface({ children, explore }: { children: React.ReactNode; explore
 
 export function App() {
   const { t } = useTranslation("library");
+  const { t: tExplore } = useTranslation("explore");
   const [page, setPage] = useState<Page>("library");
   useWindowAppearance(page);
   const [scrolled, setScrolled] = useState(false);
   const music = useMusic();
   const addingAccount = useRef(false);
+  const explorePreloaded = useRef(false);
+  const exploreAbort = useRef<AbortController | null>(null);
+  const preloadExplore = () => {
+    if (explorePreloaded.current) return;
+    explorePreloaded.current = true;
+    const abort = exploreAbort.current ?? new AbortController();
+    exploreAbort.current = abort;
+    void loadExplore().then(module => {
+      if (!abort.signal.aborted) return module.preloadExploration(abort.signal);
+    }).catch(() => {});
+  };
   useEffect(startLibraryEvents, []);
   useEffect(() => {
     const abort = new AbortController();
-    const timer = window.setTimeout(() => {
-      void loadExplore().then(module => {
-        if (!abort.signal.aborted) return module.preloadExploration(abort.signal);
-      }).catch(() => {});
-    }, 1000);
+    exploreAbort.current = abort;
+    const win = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof win.requestIdleCallback === "function") {
+      const idleId = win.requestIdleCallback(preloadExplore, { timeout: 5000 });
+      return () => { win.cancelIdleCallback?.(idleId); abort.abort(); };
+    }
+    const timer = window.setTimeout(preloadExplore, 4000);
     return () => { clearTimeout(timer); abort.abort(); };
   }, []);
   useEffect(() => onAccountsChanged((accounts) => {
@@ -78,13 +95,13 @@ export function App() {
       toast.error(t("error.login"));
     }
   };
-  const content = page === "explore" ? <ExploreBoundary><Suspense fallback={<div role="status" className="flex h-full w-full items-center justify-center text-sm" style={{background:"radial-gradient(ellipse at 52% 48%,#142c39,#0b131d 72%)",color:"#a0b3bf"}}>正在准备探索…</div>}><ExplorePage /></Suspense></ExploreBoundary> : page === "library" ? <LibraryPage scrolled={scrolled} onAddAccount={(source) => { void login(undefined, source); }} onLogin={(accountId) => { void login(accountId); }} /> : <SettingsPage />;
+  const content = page === "explore" ? <ExploreBoundary message={tExplore("error.message")} reloadLabel={tExplore("error.reload")}><Suspense fallback={<div role="status" className="flex h-full w-full items-center justify-center text-sm text-muted-foreground" style={{ background: "radial-gradient(ellipse at 52% 48%, var(--explore-bg-glow), var(--explore-bg) 72%)" }}>{tExplore("loading")}</div>}><ExplorePage /></Suspense></ExploreBoundary> : page === "library" ? <LibraryPage scrolled={scrolled} onAddAccount={(source) => { void login(undefined, source); }} onLogin={(accountId) => { void login(accountId); }} /> : <SettingsPage />;
 
   return (
     <div data-app-shell className="relative flex h-dvh min-w-0 overflow-hidden bg-background">
       <AnimatePresence initial={false} mode="sync">
       <PageSurface key={page} explore={page === "explore"}>
-      <AppSidebar page={page} onPageChange={setPage}>
+      <AppSidebar page={page} onPageChange={setPage} onExploreIntent={preloadExplore}>
         <main className={cn("relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background", page === "explore" && "explore-host")}>
           <div data-testid="main-scroll" onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 0)} className={page === "explore" ? "min-h-0 min-w-0 flex-1 overflow-hidden" : "scrollbar-none min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden"}>
             <div style={page === "explore" ? { height: "100%" } : undefined} className={cn("flex min-h-full min-w-0", music.queue && page !== "explore" && "pb-20")}>

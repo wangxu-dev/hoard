@@ -1,4 +1,6 @@
 :root {
+  --explore-bg: oklch(0.18 0.02 235);
+  --explore-bg-glow: oklch(0.27 0.035 215);
   --explore-orbit-idle: 450;
   --explore-orbit-ramp: 650;
   --explore-density-height: 1rem;
@@ -92,6 +94,8 @@
 }
 
 .dark {
+  --explore-bg: oklch(0.18 0.02 235);
+  --explore-bg-glow: oklch(0.27 0.035 215);
   --explore-orbit-idle: 450;
   --explore-orbit-ramp: 650;
   --explore-density-height: 1rem;

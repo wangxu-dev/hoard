@@ -1,5 +1,14 @@
 {
   "appName": "Hoard",
-  "sidebar": { "library": "Library", "settings": "Settings", "collapse": "Collapse sidebar", "expand": "Expand sidebar", "update": "Update available" },
+  "sidebar": {
+    "library": "Library",
+    "explore": "Explore",
+    "exploreNav": "Explore navigation",
+    "backToLibrary": "Back to library",
+    "settings": "Settings",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
+    "update": "Update available"
+  },
   "theme": { "label": "Theme", "toggle": "Toggle theme", "light": "Light", "dark": "Dark" }
 }
