@@ -50,6 +50,22 @@ type ListPage struct {
 	HasMore  bool
 }
 
+// Folder is one favorite folder from the collects list endpoint.
+type Folder struct {
+	ID    string
+	Title string
+	Count int
+}
+
+// FolderPage is one parsed page of the favorite folders endpoint.
+type FolderPage struct {
+	Class   ResponseClass
+	Code    int64
+	Folders []Folder
+	Cursor  string
+	HasMore bool
+}
+
 // Profile is the subset of profile/self the sync needs.
 type Profile struct {
 	Class     ResponseClass
@@ -126,6 +142,13 @@ type rawMusic struct {
 	CoverMedium *urlList    `json:"cover_medium"`
 	CoverThumb  *urlList    `json:"cover_thumb"`
 	PlayURL     *urlList    `json:"play_url"`
+}
+
+type rawFolder struct {
+	CollectsID    json.Number `json:"collects_id"`
+	CollectsIDStr string      `json:"collects_id_str"`
+	CollectsName  string      `json:"collects_name"`
+	TotalNumber   json.Number `json:"total_number"`
 }
 
 func num(n json.Number) int64 {
@@ -263,6 +286,52 @@ func ListShapeDiagnostics(reply PageReply) string {
 	}
 	return fmt.Sprintf("http=%d bytes=%d json=%t keys=[%s] has_more=%t max_cursor=%t cursor=%t aweme_count=%d",
 		reply.Status, len(reply.Body), valid, strings.Join(keys, ","), hasMore, hasMaxCursor, hasCursor, awemeCount)
+}
+
+// ParseFolders reads one page of favorite folders.
+func ParseFolders(reply PageReply) FolderPage {
+	obj, class, code := classify(OpFolders, reply)
+	page := FolderPage{Class: class, Code: code}
+	if class != ResponseOK {
+		return page
+	}
+	more, ok := truthy(obj["has_more"])
+	if !ok {
+		page.Class = ResponseAPIRejected
+		return page
+	}
+	page.HasMore = more
+	page.Cursor = cursorOf(obj["cursor"])
+	raw, present := obj["collects_list"]
+	if !present || string(raw) == "null" {
+		if !more {
+			return page
+		}
+		page.Class = ResponseAPIRejected
+		return page
+	}
+	var list []rawFolder
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	if err := dec.Decode(&list); err != nil {
+		page.Class = ResponseAPIRejected
+		return page
+	}
+	for _, item := range list {
+		id := item.CollectsIDStr
+		if id == "" {
+			id = item.CollectsID.String()
+		}
+		if id == "" || id == "0" {
+			continue
+		}
+		page.Folders = append(page.Folders, Folder{
+			ID:    id,
+			Title: item.CollectsName,
+			Count: int(num(item.TotalNumber)),
+		})
+	}
+	return page
 }
 
 // ParseList reads one page of likes, favorites, recommend or music.

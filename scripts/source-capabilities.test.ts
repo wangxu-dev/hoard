@@ -27,7 +27,8 @@ describe("source capabilities", () => {
   });
 
   test("folder capabilities and action sets follow source descriptors", () => {
-    expect(sourceHasFolders("douyin", "favorite")).toBe(false);
+    expect(sourceHasFolders("douyin", "favorite")).toBe(true);
+    expect(sourceHasFolders("douyin", "like")).toBe(false);
     expect(sourceHasFolders("bilibili", "favorite")).toBe(true);
     expect(sourceHasFolders("bilibili", "watch_later")).toBe(false);
 

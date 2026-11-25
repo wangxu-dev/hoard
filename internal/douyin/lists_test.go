@@ -138,3 +138,106 @@ func TestListShapeDiagnostics(t *testing.T) {
 		})
 	}
 }
+
+func TestParseFolders(t *testing.T) {
+	cases := []struct {
+		name       string
+		reply      PageReply
+		wantClass  ResponseClass
+		wantCount  int
+		wantMore   bool
+		wantCursor string
+		wantFirst  *Folder
+	}{
+		{
+			name:       "normal page with collects_id_str",
+			reply:      PageReply{Status: 200, Body: `{"status_code":0,"has_more":1,"cursor":"20","total_number":2,"collects_list":[{"collects_id":7300000000000000001,"collects_id_str":"7300000000000000001","collects_name":"Folder One","total_number":12},{"collects_id":0,"collects_id_str":"","collects_name":"Ignored","total_number":1}]}`},
+			wantClass:  ResponseOK,
+			wantCount:  1,
+			wantMore:   true,
+			wantCursor: "20",
+			wantFirst:  &Folder{ID: "7300000000000000001", Title: "Folder One", Count: 12},
+		},
+		{
+			name:       "numeric collects_id fallback",
+			reply:      PageReply{Status: 200, Body: `{"status_code":0,"has_more":0,"cursor":20,"collects_list":[{"collects_id":7300000000000000002,"collects_name":"Folder Two","total_number":5}]}`},
+			wantClass:  ResponseOK,
+			wantCount:  1,
+			wantMore:   false,
+			wantCursor: "20",
+			wantFirst:  &Folder{ID: "7300000000000000002", Title: "Folder Two", Count: 5},
+		},
+		{
+			name:       "empty final page with null collects_list",
+			reply:      PageReply{Status: 200, Body: `{"status_code":0,"has_more":0,"cursor":0,"collects_list":null}`},
+			wantClass:  ResponseOK,
+			wantCount:  0,
+			wantMore:   false,
+			wantCursor: "0",
+		},
+		{
+			name:      "rejected response",
+			reply:     PageReply{Status: 200, Body: `{"status_code":5}`},
+			wantClass: ResponseAPIRejected,
+		},
+		{
+			name:       "missing collects_list while has_more true",
+			reply:      PageReply{Status: 200, Body: `{"status_code":0,"has_more":1,"cursor":"20","collects_list":null}`},
+			wantClass:  ResponseAPIRejected,
+			wantMore:   true,
+			wantCursor: "20",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ParseFolders(tc.reply)
+			if got.Class != tc.wantClass || len(got.Folders) != tc.wantCount || got.HasMore != tc.wantMore || got.Cursor != tc.wantCursor {
+				t.Fatalf("got %+v, want class=%s count=%d more=%t cursor=%s", got, tc.wantClass, tc.wantCount, tc.wantMore, tc.wantCursor)
+			}
+			if tc.wantFirst != nil && got.Folders[0] != *tc.wantFirst {
+				t.Fatalf("first folder = %+v, want %+v", got.Folders[0], *tc.wantFirst)
+			}
+		})
+	}
+}
+
+func TestParseListFolderItems(t *testing.T) {
+	cases := []struct {
+		name       string
+		reply      PageReply
+		wantClass  ResponseClass
+		wantCount  int
+		wantMore   bool
+		wantCursor string
+	}{
+		{
+			name:       "normal page",
+			reply:      PageReply{Status: 200, Body: `{"status_code":0,"has_more":1,"cursor":"20","aweme_list":[{"aweme_id":"7300000000000000010","desc":"item","create_time":1700000000,"author":{"nickname":"a","sec_uid":"MS4wLjABAAAA"},"video":{"duration":10000,"cover":{"url_list":["https://p3.douyinpic.com/f.jpg"]}}}]}`},
+			wantClass:  ResponseOK,
+			wantCount:  1,
+			wantMore:   true,
+			wantCursor: "20",
+		},
+		{
+			name:       "empty final page with null aweme_list",
+			reply:      PageReply{Status: 200, Body: `{"status_code":0,"has_more":0,"cursor":0,"aweme_list":null}`},
+			wantClass:  ResponseOK,
+			wantCount:  0,
+			wantMore:   false,
+			wantCursor: "0",
+		},
+		{
+			name:      "rejected",
+			reply:     PageReply{Status: 200, Body: `{"status_code":5}`},
+			wantClass: ResponseAPIRejected,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ParseList(OpFolderItems, tc.reply)
+			if got.Class != tc.wantClass || len(got.Works) != tc.wantCount || got.HasMore != tc.wantMore || got.Cursor != tc.wantCursor {
+				t.Fatalf("got %+v, want class=%s count=%d more=%t cursor=%s", got, tc.wantClass, tc.wantCount, tc.wantMore, tc.wantCursor)
+			}
+		})
+	}
+}

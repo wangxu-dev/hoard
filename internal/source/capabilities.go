@@ -34,7 +34,7 @@ var builtinDescriptors = []Descriptor{
 		ID: "douyin",
 		Lists: []ListSpec{
 			{Kind: "like", Role: RoleLike},
-			{Kind: "favorite", Role: RoleFavorite},
+			{Kind: "favorite", Role: RoleFavorite, HasFolders: true},
 			{Kind: "recommend", Role: RoleOther},
 			{Kind: "music", Role: RoleOther},
 		},

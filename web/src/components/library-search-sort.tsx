@@ -10,7 +10,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadio
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { setLibraryFilters, useLibraryFilters, useLibraryOrdering } from "@/lib/library-filters";
 import { useQuery } from "@tanstack/react-query";
-import { foldersQuery, queryKeys } from "@/lib/query";
+import { foldersQuery } from "@/lib/query";
+import { useLibraryVersion } from "@/lib/library-events";
+import { prefetchGridFirstPage } from "@/components/library-grid";
 import { pageTransition } from "@/lib/motion";
 import type { SortKey, WorkType } from "@/lib/library";
 
@@ -53,13 +55,22 @@ export function LibrarySort() {
 }
 export function LibraryFolders() {
   const { t } = useTranslation("library");
-  const { scope } = useLibraryFilters();
+  const { scope, kind, type, query } = useLibraryFilters();
+  const { sort } = useLibraryOrdering();
+  const version = useLibraryVersion();
   const folders = useQuery(foldersQuery(scope.accountId!));
-  return <Select value={scope.folderId ?? "all"} onValueChange={(value) => setLibraryFilters({ scope: { ...scope, folderId: value === "all" ? undefined : value } })}>
-    <SelectTrigger size="sm" data-control="folders" aria-label={t("folders.label")} className="h-8 w-32 min-w-0 shrink-0 text-[13px]"><SelectValue placeholder={t("folders.all")} /></SelectTrigger>
+  const prefetchFolder = (folderId?: string) => {
+    prefetchGridFirstPage({ scope: { ...scope, folderId }, kind, type, query, sort, version });
+  };
+  const prefetchVisibleFolders = () => {
+    prefetchFolder(undefined);
+    for (const folder of (folders.data ?? []).slice(0, 12)) prefetchFolder(folder.id);
+  };
+  return <Select value={scope.folderId ?? "all"} onOpenChange={(open) => { if (open) prefetchVisibleFolders(); }} onValueChange={(value) => setLibraryFilters({ scope: { ...scope, folderId: value === "all" ? undefined : value } })}>
+    <SelectTrigger size="sm" data-control="folders" aria-label={t("folders.label")} onPointerEnter={prefetchVisibleFolders} onFocus={prefetchVisibleFolders} className="h-8 w-32 min-w-0 shrink-0 text-[13px]"><SelectValue placeholder={t("folders.all")} /></SelectTrigger>
     <SelectContent position="popper" className="max-h-80">
-      <SelectItem value="all">{t("folders.all")}</SelectItem>
-      {folders.data?.map((folder) => <SelectItem key={folder.id} value={folder.id}><span className="max-w-48 truncate">{folder.title}</span></SelectItem>)}
+      <SelectItem value="all" onPointerEnter={() => prefetchFolder(undefined)} onFocus={() => prefetchFolder(undefined)}>{t("folders.all")}</SelectItem>
+      {folders.data?.map((folder) => <SelectItem key={folder.id} value={folder.id} onPointerEnter={() => prefetchFolder(folder.id)} onFocus={() => prefetchFolder(folder.id)}><span className="max-w-48 truncate">{folder.title}</span></SelectItem>)}
       {folders.isError && <Button variant="ghost" size="sm" onClick={() => void folders.refetch()}>{t("error.retry")}</Button>}
     </SelectContent>
   </Select>;
