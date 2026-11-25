@@ -8,7 +8,7 @@ import { ContentDetails } from "./details";
 import type { PanelView } from "./view-types";
 import { onLibraryChanged } from "@/lib/api";
 import { readCurrentLibrary } from "./load";
-import { mountInterestSky, prepareExploration, type ViewControls } from "./renderer.js";
+import { mountInterestSky, prepareExploration, type ViewControls } from "./renderer";
 import { ArrowLeft, LocateFixed, Maximize2, Minus, Pause, Play, Plus } from "lucide-react";
 import "./styles.css";
 

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { OrbitController } from "../web/src/pages/constellation-dev/orbit.js";
+import { OrbitController } from "../web/src/pages/constellation-dev/orbit.ts";
 
 test('hover exit resumes after the configured short idle and ramps smoothly',()=>{
  const o=new OrbitController(0,false,{delay:450,ramp:650});
@@ -46,7 +46,7 @@ describe("Explore clean view and single-clock motion", () => {
   const o=new OrbitController(0);let now=0;
   for(let i=0;i<50;i++){o.configure({selected:true},now);o.configure({selected:false},now+10);advance(o,now+10,now+5000);now+=5000;}
   expect(advance(o,now,now+1000)).toBeCloseTo(.055,10);
-  const source=readFileSync("web/src/pages/constellation-dev/orbit.js","utf8");expect(source).not.toMatch(/setTimeout|setInterval|document\.activeElement|flags.*focus/);
+  const source=readFileSync("web/src/pages/constellation-dev/orbit.ts","utf8");expect(source).not.toMatch(/setTimeout|setInterval|document\.activeElement|flags.*focus/);
  });
  test("frame-rate independent yaw and no huge hidden-tab catch-up", () => {
   const angles=[30,60,120].map(fps=>advance(new OrbitController(0),0,6000,fps));expect(angles[0]).toBeCloseTo(angles[1],10);expect(angles[1]).toBeCloseTo(angles[2],10);
@@ -58,7 +58,7 @@ describe("Explore clean view and single-clock motion", () => {
  test("deleted controls/explanations are absent, not hidden in a tooltip", () => {
   const shell=readFileSync("web/src/pages/constellation-dev/shell.html","utf8");
   expect(shell).not.toMatch(/<header|<footer|<button|<input|<details|<summary|view-tools|id="(?:sources|search|index|trail|mode|baseline|count)"/);
-  const visible=["index.tsx","renderer.js","details.tsx","shell.html"].map(f=>readFileSync(`web/src/pages/constellation-dev/${f}`,"utf8")).join("\n");
+  const visible=["index.tsx","renderer.ts","details.tsx","shell.html"].map(f=>readFileSync(`web/src/pages/constellation-dev/${f}`,"utf8")).join("\n");
   expect(visible).not.toMatch(/关于这条收藏|关于这个星群|主归属|画布显示|归类依据|置信|抽样|开发预览|字面线索|误检|真实收藏时间|原生一致快照|未归类|无文案作品|[▶▼×↺▷Ⅱ⌕☷]/);
   const details=readFileSync("web/src/pages/constellation-dev/details.tsx","utf8");expect(details).toContain('from "lucide-react"');expect(details).toContain('<Button variant="ghost" size="icon"');expect(details).not.toContain("innerHTML"); expect(details).not.toContain("再看一些");
  });

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import geometry from "../web/src/pages/constellation-dev/core.js";
+import geometry from "../web/src/pages/constellation-dev/core.ts";
 
 test("star population contains real source-scoped works only, including isolated/no-text works", () => {
  const scopes = ["douyin", "bilibili"].map(source => ({source,
@@ -21,11 +21,11 @@ test("star population contains real source-scoped works only, including isolated
 });
 
 test("renderer has no decorative stars, dust, or artificial topic fog", () => {
- const renderer=readFileSync("web/src/pages/constellation-dev/renderer.js","utf8");
+ const renderer=readFileSync("web/src/pages/constellation-dev/renderer.ts","utf8");
  expect(renderer).not.toMatch(/\b(bg|dust|mist)\b|disk-a|bgx|fog/);
- expect(renderer).toContain("buffer=stars.map(w=>");
- expect(renderer).toContain("for(const p of buffer){const w=p.w");
- expect(renderer).toContain("H.pick(buffer.filter(p=>timeMatches(p.w)),x,y,11)");
+ expect(renderer).toMatch(/buffer = stars\s*\.map\(\(w\) =>/);
+ expect(renderer).toMatch(/for \(const p of buffer\) \{\s*const w = p\.w;/);
+ expect(renderer).toContain("H.pick(buffer.filter((p) => timeMatches(p.w)), x, y, 11)");
  // Only background surfaces may use rectangles; all point primitives use a real work.
  expect((renderer.match(/ctx.fillRect\(/g)||[]).length).toBe(3);
  expect(renderer).not.toContain("H.mst(");

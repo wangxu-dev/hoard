@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { entranceLayers, rememberView, recallView, landingCamera } from "../web/src/pages/constellation-dev/entrance.js";
-import { CameraFlight } from "../web/src/pages/constellation-dev/neighborhood-camera.js";
+import { entranceLayers, rememberView, recallView, landingCamera } from "../web/src/pages/constellation-dev/entrance.ts";
+import { CameraFlight } from "../web/src/pages/constellation-dev/neighborhood-camera.ts";
 
 describe("exploration transitions", () => {
  test("nebula, real stars and covers enter in coordinated order", () => {

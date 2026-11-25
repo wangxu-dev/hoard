@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { clampRange, matchesPublication, nextPlaybackRange, publicationBins, workMonth } from "../web/src/pages/constellation-dev/publication-time";
-import { RelationLayer } from "../web/src/pages/constellation-dev/relation-lines.js";
+import { RelationLayer } from "../web/src/pages/constellation-dev/relation-lines.ts";
 
 const dated = (key: string | null) => ({ monthKeys: { source_time: key } });
 describe("publication timeline", () => {

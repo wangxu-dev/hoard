@@ -1,6 +1,6 @@
 import {expect,test} from 'bun:test';
-import H from '../web/src/pages/constellation-dev/core.js';
-import {OrbitController} from '../web/src/pages/constellation-dev/orbit.js';
+import H from '../web/src/pages/constellation-dev/core.ts';
+import {OrbitController} from '../web/src/pages/constellation-dev/orbit.ts';
 const distance=(a:any,b:any)=>Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z);
 function fixture(){
  const works=Array.from({length:90},(_,i)=>({id:String(i)})),neighbors=[] as any[];

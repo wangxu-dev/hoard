@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { analyze, buildScope, cachedAsset, clueMatch } from "./interest-baseline-oracle";
-import geometry from "../web/src/pages/constellation-dev/core.js";
+import geometry from "../web/src/pages/constellation-dev/core.ts";
 import type { LibraryItem } from "../.mygo/bindings.gen";
 
 const item = (id: string, title: string, source = "douyin"): LibraryItem => ({ id, title, source, kind: "video", author: "测试作者", authorId: "", cover: `hoard-cover://localhost/w/${id}`, authorAvatar: `hoard-cover://localhost/a/${id}`, publishedAt: 123, durationMs: 10, imageCount: 0, accountIds: [], likedAccountIds: [], favoritedAccountIds: [], watchLaterAccountIds: [] });
@@ -64,7 +64,7 @@ describe("native interest first slice", () => {
   const window = readFileSync("app/window.go", "utf8"), backend = readFileSync("app/exploration.go", "utf8") + readFileSync("app/library.go", "utf8");
   expect(main+window+backend+side).not.toMatch(/HOARD_INTEREST_DEV|dev=constellation|interestDev/);
   expect(window).toContain('URL:       "/"');expect(side).toContain('{ id: "explore" as const, icon: Compass }');
-  const renderer = readFileSync("web/src/pages/constellation-dev/renderer.js", "utf8");
-  expect(renderer).toContain("orbit.step(now)"); expect(renderer).toContain("selected:false,paused:userPaused"); expect(renderer).toContain("observer.disconnect()");
+  const renderer = readFileSync("web/src/pages/constellation-dev/renderer.ts", "utf8");
+  expect(renderer).toContain("orbit.step(now)"); expect(renderer).toMatch(/selected:\s*false,\s*paused:\s*userPaused/); expect(renderer).toContain("observer.disconnect()");
  });
 });
