@@ -16,7 +16,7 @@ func TestFolderOrderDefaultThenDescendingNumericID(t *testing.T) {
 	if _, err := s.UpsertAccount(ctx, Account{ID: "a", Source: "bilibili", RemoteID: "123", SessionName: "a", Status: "active"}); err != nil {
 		t.Fatal(err)
 	}
-	for _, folder := range []Folder{{"9", "Older", 0}, {"100", "Newest", 0}, {"20", "Recent", 0}, {"1", "默认收藏夹", 0}} {
+	for _, folder := range []Folder{{ID: "9", Title: "Older"}, {ID: "100", Title: "Newest"}, {ID: "20", Title: "Recent"}, {ID: "1", Title: "默认收藏夹"}} {
 		if err := s.SaveFolderMembership(ctx, "a", folder, nil); err != nil {
 			t.Fatal(err)
 		}
