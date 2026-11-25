@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PublicationTimeline } from "./publication-timeline";
-import type { ExplorationWork } from "@/lib/api";
+import type { ExploreScope, ExplorationWork } from "@/lib/api";
+import type { Scope } from "@/lib/library";
+import { libraryScope, useLibraryFilters } from "@/lib/library-filters";
 import shell from "./shell.html?raw";
 import { Button } from "@/components/ui/button";
 import { ContentDetails } from "./details";
@@ -19,7 +21,9 @@ type PreparedExploration = Awaited<ReturnType<typeof prepareExploration>>;
 let returnSnapshot: LibrarySnapshot | null = null;
 let returnPrepared: { key: string; model: PreparedExploration } | null = null;
 let preparationTask: Promise<{ key: string; model: PreparedExploration }> | null = null;
-let preloadTask: Promise<{ snapshot: LibrarySnapshot; model: PreparedExploration }> | null = null;
+let preloadTask: { scopeKey: string; promise: Promise<{ snapshot: LibrarySnapshot; model: PreparedExploration }> } | null = null;
+const currentExploreScope = (scope?: Scope): ExploreScope => ({ accountId: scope?.accountId ?? "", source: scope?.source ?? "" });
+const scopeKeyOf = (scope: ExploreScope) => `${scope.accountId}:${scope.source}`;
 const snapshotKey = (snapshot: LibrarySnapshot) => `${snapshot.scope.accountId}:${snapshot.scope.source}:${snapshot.inputRevision}:${snapshot.analysisVersion}`;
 
 function prepareSnapshot(snapshot: LibrarySnapshot): Promise<PreparedExploration> {
@@ -36,20 +40,26 @@ function prepareSnapshot(snapshot: LibrarySnapshot): Promise<PreparedExploration
 }
 
 export async function preloadExploration(signal: AbortSignal) {
-  if ((returnSnapshot && returnPrepared?.key === snapshotKey(returnSnapshot)) || signal.aborted) return;
-  if (preloadTask) return preloadTask;
-  const task = readCurrentLibrary(signal, () => {}, crypto.randomUUID()).then(async (snapshot) => {
+  const exploreScope = currentExploreScope(libraryScope());
+  const scopeKey = scopeKeyOf(exploreScope);
+  if ((returnSnapshot && scopeKeyOf(returnSnapshot.scope) === scopeKey && returnPrepared?.key === snapshotKey(returnSnapshot)) || signal.aborted) return;
+  if (preloadTask?.scopeKey === scopeKey) return preloadTask.promise;
+  const promise = readCurrentLibrary(signal, () => {}, crypto.randomUUID(), exploreScope).then(async (snapshot) => {
     const model = await prepareSnapshot(snapshot);
     if (!signal.aborted) returnSnapshot = snapshot;
     return { snapshot, model };
   });
-  preloadTask = task;
-  try { await task; }
-  finally { if (preloadTask === task) preloadTask = null; }
+  const entry = { scopeKey, promise };
+  preloadTask = entry;
+  try { await promise; }
+  finally { if (preloadTask === entry) preloadTask = null; }
 }
 
 export default function ConstellationDevPage() {
   const { t } = useTranslation("explore");
+  const { scope } = useLibraryFilters();
+  const exploreScope = currentExploreScope(scope);
+  const scopeKey = scopeKeyOf(exploreScope);
   const host = useRef<HTMLDivElement>(null);
   const client = useRef(crypto.randomUUID());
   const [attempt, setAttempt] = useState(0), [error, setError] = useState("");
@@ -72,17 +82,20 @@ export default function ConstellationDevPage() {
       setTimelineWorks(snapshot.scopes.flatMap(scope => scope.works));
       setReady(true);
     };
-    if (returnSnapshot && returnPrepared?.key === snapshotKey(returnSnapshot)) {
-      const cachedSnapshot = returnSnapshot, cachedModel = returnPrepared.model;
+    const matchedReturn = returnSnapshot && scopeKeyOf(returnSnapshot.scope) === scopeKey && returnPrepared?.key === snapshotKey(returnSnapshot)
+      ? returnSnapshot
+      : null;
+    if (matchedReturn && returnPrepared) {
+      const cachedSnapshot = matchedReturn, cachedModel = returnPrepared.model;
       queueMicrotask(() => paint(cachedSnapshot, cachedModel));
     }
-    const load = preloadTask ?? Promise.resolve().then(() => {
+    const load = (preloadTask?.scopeKey === scopeKey ? preloadTask.promise : null) ?? Promise.resolve().then(() => {
       if (abort.signal.aborted) throw new Error("CANCELLED");
-      return readCurrentLibrary(abort.signal, () => {}, client.current);
+      return readCurrentLibrary(abort.signal, () => {}, client.current, exploreScope);
     }).then(async (snapshot) => ({ snapshot, model: await prepareSnapshot(snapshot) }));
     void load.then(({ snapshot, model }) => {
       if (abort.signal.aborted || !host.current) return;
-      if (!painted || painted.inputRevision !== snapshot.inputRevision || painted.analysisVersion !== snapshot.analysisVersion) paint(snapshot, model);
+      if (!painted || scopeKeyOf(painted.scope) !== scopeKeyOf(snapshot.scope) || painted.inputRevision !== snapshot.inputRevision || painted.analysisVersion !== snapshot.analysisVersion) paint(snapshot, model);
       returnSnapshot = snapshot;
       // Aggregate counters only, no original IDs/titles or media URLs in diagnostics.
       console.warn("[interest-dev] coverage", JSON.stringify(snapshot.meta.coverage));
@@ -95,7 +108,7 @@ export default function ConstellationDevPage() {
       setError(painted ? "refresh" : "load");
     });
     return () => { abort.abort(); dispose?.(); };
-  }, [attempt, mountInterestSky]);
+  }, [attempt, exploreScope.accountId, exploreScope.source, mountInterestSky]);
   return <div id="interest-native-root"><div ref={host} />{ready && <>
     <div className="explore-controls explore-glass" role="toolbar" aria-label={t("controls.toolbar")}>
       <Button variant="ghost" size="icon" onClick={() => controls?.back()} disabled={!panel} aria-label={t("controls.back")} title={t("controls.back")}><ArrowLeft /></Button>

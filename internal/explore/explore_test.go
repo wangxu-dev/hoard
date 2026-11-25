@@ -325,3 +325,18 @@ func TestExploreCacheRejectsWrongEnvelopeAndInventedHistory(t *testing.T) {
 		t.Fatal("fabricated time capability accepted")
 	}
 }
+
+func TestExploreManagerStartValidatesSourceDescriptor(t *testing.T) {
+	m := NewManager(func(context.Context, Scope) ([]store.ExploreRecord, error) { return fixtureRows(), nil }, Cache{Dir: t.TempDir()}, nil)
+	defer m.Close()
+	for _, src := range []string{"", "douyin", "bilibili"} {
+		v, err := m.Start(Scope{Source: src}, "client")
+		if err != nil {
+			t.Fatalf("expected source %q to be accepted, got %v", src, err)
+		}
+		waitTask(t, m, v)
+	}
+	if _, err := m.Start(Scope{Source: "unknown"}, "client"); err == nil || err.Error() != "INVALID_REQUEST" {
+		t.Fatalf("expected INVALID_REQUEST for unknown source, got %v", err)
+	}
+}

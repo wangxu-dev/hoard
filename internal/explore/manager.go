@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wangxu-dev/hoard/internal/source"
 	"github.com/wangxu-dev/hoard/internal/store"
 )
 
@@ -59,8 +60,13 @@ func NewManager(reader Reader, cache Cache, after func(*Snapshot)) *Manager {
 	return &Manager{reader: reader, cache: cache, tasks: map[string]*task{}, latest: map[string]string{}, work: map[string]*computation{}, retryPersistence: map[string]bool{}, analyze: Analyze, after: after}
 }
 func (m *Manager) Start(scope Scope, client string) (TaskView, error) {
-	if client == "" || len(client) > 128 || scope.Source != "" && scope.Source != "douyin" && scope.Source != "bilibili" {
+	if client == "" || len(client) > 128 {
 		return TaskView{}, errors.New("INVALID_REQUEST")
+	}
+	if scope.Source != "" {
+		if _, ok := source.DescriptorByID(scope.Source); !ok {
+			return TaskView{}, errors.New("INVALID_REQUEST")
+		}
 	}
 	nonce := make([]byte, 16)
 	if _, err := rand.Read(nonce); err != nil {

@@ -15,6 +15,16 @@ describe("website demo data", () => {
       expect(entry.kind).toBe(work.mediaKind === "image" ? "gallery" : work.mediaKind);
     }
     expect(await Exploration.result()).toBe(snapshot);
+    const douyinTask = await Exploration.start({ source: "douyin", accountId: "" });
+    const douyinSnapshot = await Exploration.result(douyinTask.id);
+    expect(douyinSnapshot.scope).toEqual({ accountId: "", source: "douyin" });
+    expect(douyinSnapshot.scopes.map(s => s.source)).toEqual(["douyin"]);
+    const biliTask = await Exploration.start({ source: "", accountId: "demo-bilibili" });
+    const biliSnapshot = await Exploration.result(biliTask.id);
+    expect(biliSnapshot.scope).toEqual({ accountId: "demo-bilibili", source: "" });
+    expect(biliSnapshot.scopes.map(s => s.source)).toEqual(["bilibili"]);
+    await Exploration.start();
+    expect(await Exploration.result()).toBe(snapshot);
     await expect(Exploration.cancel()).resolves.toBeUndefined();
   });
   test("shared player and automatic sync APIs remain available", async () => {

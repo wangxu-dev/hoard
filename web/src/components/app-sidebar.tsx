@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useUpdate } from "@/lib/updates";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import { ExploreScopeSelect } from "@/components/explore-scope-select";
 
 export type Page = "library" | "settings" | "explore";
 
@@ -68,11 +69,9 @@ export function AppSidebar({ page, onPageChange, onExploreIntent, children }: Ap
   // reserving the normal library rail; the library's saved preference is untouched.
   if (page === "explore") return <div className="explore-frame relative flex h-full w-full min-w-0">
     <nav aria-label={t("sidebar.exploreNav")} className="explore-navigation explore-glass">
-      <button type="button" onClick={() => onPageChange("library")} aria-label={t("sidebar.backToLibrary")} title={t("sidebar.backToLibrary")} className="explore-nav-brand"><img src={hoardIcon} width={24} height={24} className="size-6 shrink-0 object-contain" alt="" /><span>{t("appName")}</span></button>
-      <span className="explore-nav-divider" />
-      <button type="button" onClick={() => onPageChange("library")} aria-label={t("sidebar.library")} title={t("sidebar.library")}><Library /><span className="explore-nav-label">{t("sidebar.library")}</span></button>
+      <button type="button" onClick={() => onPageChange("library")} aria-label={t("sidebar.backToLibrary")} title={t("sidebar.backToLibrary")} className="explore-nav-brand"><img src={hoardIcon} width={24} height={24} className="size-6 shrink-0 object-contain" alt="" /><span>{t("sidebar.library")}</span></button>
+      <ExploreScopeSelect />
       <button type="button" onClick={() => onPageChange("settings")} aria-label={t("sidebar.settings")} title={t("sidebar.settings")}><Settings />{available && <i className="explore-update-dot" />}</button>
-      <AnimatedThemeToggler className="explore-theme-toggle" theme={isDark ? "dark" : "light"} onThemeChange={setTheme} aria-label={t("theme.toggle")} />
     </nav>
     {children}
   </div>;
