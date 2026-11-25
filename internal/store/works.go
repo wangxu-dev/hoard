@@ -7,8 +7,12 @@ import (
 	"time"
 )
 
+func validWorkRelationKind(kind string) bool {
+	return kind == "like" || kind == "favorite" || kind == "watch_later" || kind == "recommend"
+}
+
 func (s *Store) WriteWorkPage(ctx context.Context, page WorkPage) error {
-	if page.Kind != "like" && page.Kind != "favorite" && page.Kind != "watch_later" {
+	if !validWorkRelationKind(page.Kind) {
 		return fmt.Errorf("invalid work relation kind")
 	}
 	if page.Phase != "head" && page.Phase != "backfill" {

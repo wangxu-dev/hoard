@@ -35,6 +35,7 @@ var builtinDescriptors = []Descriptor{
 		Lists: []ListSpec{
 			{Kind: "like", Role: RoleLike},
 			{Kind: "favorite", Role: RoleFavorite},
+			{Kind: "recommend", Role: RoleOther},
 			{Kind: "music", Role: RoleOther},
 		},
 		Actions:        []string{"like", "favorite"},

@@ -131,7 +131,7 @@ func (s *Store) KnownWorks(ctx context.Context, accountID, kind string, remoteID
 // SaveWorks adds works to a list. Head pages go above every saved item,
 // backfill pages below, so seq DESC is always the list's own order.
 func (s *Store) SaveWorks(ctx context.Context, accountID, kind string, head bool, works []Work) (int, error) {
-	if kind != "like" && kind != "favorite" && kind != "watch_later" {
+	if !validWorkRelationKind(kind) {
 		return 0, fmt.Errorf("invalid work relation kind")
 	}
 	tx, err := s.db.BeginTx(ctx, nil)

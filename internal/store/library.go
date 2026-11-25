@@ -12,7 +12,7 @@ type LibraryQuery struct {
 	AccountID string
 	Source    string
 	FolderID  string
-	Kind      string // like | favorite | watch_later | music
+	Kind      string // like | favorite | recommend | watch_later | music
 	Type      string // all | video | gallery
 	Query     string
 	Sort      string // published | recent
@@ -110,7 +110,7 @@ func (s *Store) Library(ctx context.Context, q LibraryQuery) ([]LibraryItem, int
 // order. Without a type or search filter the works are joined only for the rows returned,
 // so pages far down cost about as little as the first.
 func relationsOnly(q LibraryQuery) (where string, args []any, order string, ok bool) {
-	if q.FolderID != "" || q.AccountID == "" || (q.Kind != "like" && q.Kind != "favorite" && q.Kind != "watch_later") {
+	if q.FolderID != "" || q.AccountID == "" || !validWorkRelationKind(q.Kind) {
 		return "", nil, "", false
 	}
 	where, args = "r.account_id=? AND r.kind=?", []any{q.AccountID, q.Kind}
@@ -192,7 +192,7 @@ func listFilter(q LibraryQuery) (from, filter, order string, args []any, err err
 			order = "MAX(r.seq) DESC"
 		}
 	} else {
-		if q.Kind != "like" && q.Kind != "favorite" && q.Kind != "watch_later" {
+		if !validWorkRelationKind(q.Kind) {
 			return "", "", "", nil, fmt.Errorf("invalid list kind")
 		}
 		from = `FROM relations r JOIN works w ON w.id=r.work_id LEFT JOIN authors a ON a.id=w.author_id`
@@ -284,8 +284,8 @@ func (s *Store) Timeline(ctx context.Context, q LibraryQuery) ([]TimelineMonth, 
 
 // LibraryCounts returns how many distinct items each list holds in a scope.
 func (s *Store) LibraryCounts(ctx context.Context, accountID, source string) (map[string]int, error) {
-	counts := map[string]int{"like": 0, "favorite": 0, "music": 0}
-	for _, kind := range []string{"like", "favorite", "music", "watch_later"} {
+	counts := map[string]int{}
+	for _, kind := range []string{"like", "favorite", "recommend", "music", "watch_later"} {
 		_, total, err := s.Library(ctx, LibraryQuery{AccountID: accountID, Source: source, Kind: kind, Type: "all", Limit: 1})
 		if err != nil {
 			return nil, err

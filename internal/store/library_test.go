@@ -156,3 +156,38 @@ func TestTimeline(t *testing.T) {
 		}
 	}
 }
+
+func TestRecommendListRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(filepath.Join(t.TempDir(), "library.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if _, err := s.UpsertAccount(ctx, Account{ID: "a", Source: "douyin", RemoteID: "r1", SessionName: "s1", Status: "active"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.UpsertAccount(ctx, Account{ID: "b", Source: "douyin", RemoteID: "r2", SessionName: "s2", Status: "active"}); err != nil {
+		t.Fatal(err)
+	}
+	work := Work{RemoteID: "rec-1", Kind: "video", Title: "Recommended clip", PublishedAt: 1700000000, Author: &Author{RemoteID: "u1", Nickname: "creator"}}
+	if n, err := s.SaveWorks(ctx, "a", "recommend", false, []Work{work}); err != nil || n != 1 {
+		t.Fatalf("SaveWorks recommend: n=%d err=%v", n, err)
+	}
+	items, total, err := s.Library(ctx, LibraryQuery{AccountID: "a", Kind: "recommend", Sort: "recent", Limit: 10})
+	if err != nil || total != 1 || len(items) != 1 || items[0].RemoteID != "rec-1" {
+		t.Fatalf("Library recommend: items=%+v total=%d err=%v", items, total, err)
+	}
+	counts, err := s.LibraryCounts(ctx, "a", "douyin")
+	if err != nil || counts["recommend"] != 1 || counts["like"] != 0 {
+		t.Fatalf("LibraryCounts: %+v err=%v", counts, err)
+	}
+	owners, err := s.LibraryOwners(ctx, LibraryQuery{Kind: "recommend"}, []string{"rec-1"})
+	if err != nil || len(owners["rec-1"]) != 1 || owners["rec-1"][0] != "a" {
+		t.Fatalf("LibraryOwners recommend: %+v err=%v", owners, err)
+	}
+	explore, err := s.ExploreInput(ctx, ExploreScope{AccountID: "a"})
+	if err != nil || len(explore) != 1 || explore[0].ID != "rec-1" {
+		t.Fatalf("ExploreInput recommend: %+v err=%v", explore, err)
+	}
+}
