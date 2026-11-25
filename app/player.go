@@ -167,11 +167,7 @@ func (p *Player) media(kind, id string, force bool, partID ...string) (out Media
 	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 	defer cancel()
 	if kind == "music" {
-		source = "store"
-		out, resultErr = p.music(ctx, id)
-		if resultErr != nil {
-			class = "UNAVAILABLE"
-		}
+		out, source, class, resultErr = p.music(ctx, id, force)
 		return
 	}
 	rec, err := p.app.Store.MediaRecord(ctx, kind, id)
@@ -276,18 +272,18 @@ func storedImages(rec store.MediaRecord) (douyin.Detail, bool) {
 	return d, true
 }
 
-// detail sends one item detail request through the shared request gate,
+// request runs one playback-side endpoint through the shared request gate,
 // ahead of the next sync page and at least 1.2 s after any other request.
-func (p *Player) detail(ctx context.Context, id string) (douyin.Detail, error) {
+func (p *Player) request(ctx context.Context, op douyin.Operation, params map[string]string) (douyin.PageReply, error) {
 	eng, ok := p.app.Engine.(playerEngine)
 	if !ok {
-		return douyin.Detail{}, errors.New("UNAVAILABLE")
+		return douyin.PageReply{}, errors.New("UNAVAILABLE")
 	}
 	p.app.mu.Lock()
 	session := p.app.sessionCtx
 	p.app.mu.Unlock()
 	if session == nil {
-		return douyin.Detail{}, errors.New("SESSION_NOT_READY")
+		return douyin.PageReply{}, errors.New("SESSION_NOT_READY")
 	}
 	call, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -301,47 +297,72 @@ func (p *Player) detail(ctx context.Context, id string) (douyin.Detail, error) {
 	if !gate.lastRequest.IsZero() {
 		if d := 1200*time.Millisecond - time.Since(gate.lastRequest); d > 0 && !wait(call, d) {
 			gate.requestMu.Unlock()
-			return douyin.Detail{}, errors.New("CANCELED")
+			return douyin.PageReply{}, errors.New("CANCELED")
 		}
 	}
 	if call.Err() != nil {
 		gate.requestMu.Unlock()
-		return douyin.Detail{}, errors.New("CANCELED")
+		return douyin.PageReply{}, errors.New("CANCELED")
 	}
-	reply, err := eng.Request(call, douyin.OpDetail, map[string]string{"aweme_id": id})
+	reply, err := eng.Request(call, op, params)
 	gate.lastRequest = time.Now()
 	gate.requestMu.Unlock()
 	if err != nil {
-		log.Print("[hoard:player] detail request failed stage=session-request")
+		log.Printf("[hoard:player] %s request failed stage=session-request", op)
 		switch err.Error() {
 		case "PAGE_NOT_READY", "SESSION_REQUIRED", "UNSUPPORTED_SOURCE":
-			return douyin.Detail{}, errors.New("SESSION_NOT_READY")
+			return douyin.PageReply{}, errors.New("SESSION_NOT_READY")
 		}
-		return douyin.Detail{}, errors.New("REQUEST_FAILED")
+		return douyin.PageReply{}, errors.New("REQUEST_FAILED")
+	}
+	return reply, nil
+}
+
+func (p *Player) responseError(ctx context.Context, class douyin.ResponseClass) error {
+	switch class {
+	case douyin.ResponseOK:
+		return nil
+	case douyin.ResponseVerificationRequired, douyin.ResponseRiskControl:
+		return errors.New("NEED_VERIFY")
+	case douyin.ResponseRateLimited:
+		return errors.New("COOLING")
+	case douyin.ResponseAuthRequired:
+		p.confirmPlaybackLogin(ctx)
+		return errors.New("AUTH_REQUIRED")
+	}
+	return errors.New("UNAVAILABLE")
+}
+
+// detail sends one item detail request through the shared request gate.
+func (p *Player) detail(ctx context.Context, id string) (douyin.Detail, error) {
+	reply, err := p.request(ctx, douyin.OpDetail, map[string]string{"aweme_id": id})
+	if err != nil {
+		return douyin.Detail{}, err
 	}
 	detail := douyin.ParseDetail(reply)
 	if detail.Class != douyin.ResponseOK {
 		log.Printf("[hoard:player] detail rejected class=%v status=%d code=%d bytes=%d keys=%s problem=%q", detail.Class, reply.Status, statusCode(reply.Body), len(reply.Body), topKeys(reply.Body), detail.Problem)
-	}
-	if detail.Class == douyin.ResponseOK {
+	} else {
 		log.Printf("[hoard:player] detail sources=%s videos=%d images=%d music=%t", detail.Sources, len(detail.Videos), len(detail.Images), detail.Music.URL != "")
 	}
 	switch detail.Problem {
 	case "DELETED", "PRIVATE", "REVIEWING", "WITHHELD":
 		return detail, errors.New(detail.Problem)
 	}
-	switch detail.Class {
-	case douyin.ResponseOK:
-		return detail, nil
-	case douyin.ResponseVerificationRequired, douyin.ResponseRiskControl:
-		return detail, errors.New("NEED_VERIFY")
-	case douyin.ResponseRateLimited:
-		return detail, errors.New("COOLING")
-	case douyin.ResponseAuthRequired:
-		p.confirmPlaybackLogin(ctx)
-		return detail, errors.New("AUTH_REQUIRED")
+	return detail, p.responseError(ctx, detail.Class)
+}
+
+// musicDetail sends one music detail request through the shared request gate.
+func (p *Player) musicDetail(ctx context.Context, id string) (douyin.MusicDetail, error) {
+	reply, err := p.request(ctx, douyin.OpMusicDetail, map[string]string{"music_id": id})
+	if err != nil {
+		return douyin.MusicDetail{}, err
 	}
-	return detail, errors.New("UNAVAILABLE")
+	detail := douyin.ParseMusicDetail(reply)
+	if detail.Class != douyin.ResponseOK {
+		log.Printf("[hoard:player] music detail rejected class=%v status=%d code=%d bytes=%d keys=%s", detail.Class, reply.Status, statusCode(reply.Body), len(reply.Body), topKeys(reply.Body))
+	}
+	return detail, p.responseError(ctx, detail.Class)
 }
 
 // Confirm account identity before treating a playback rejection as an expired login.
@@ -356,23 +377,60 @@ func (p *Player) confirmPlaybackLogin(ctx context.Context) {
 	}
 }
 
-func (p *Player) music(ctx context.Context, id string) (MediaResult, error) {
+func (p *Player) music(ctx context.Context, id string, force bool) (MediaResult, string, string, error) {
 	r, err := p.app.Store.MediaRecord(ctx, "music", id)
 	if err != nil {
-		return MediaResult{}, errors.New("UNAVAILABLE")
+		return MediaResult{}, "store", "UNAVAILABLE", errors.New("UNAVAILABLE")
 	}
 	var meta struct {
 		PlayURL string `json:"play_url"`
 	}
 	_ = json.Unmarshal(r.Extra, &meta)
-	relay := ""
-	if mediaValid(meta.PlayURL) {
-		relay = p.app.Media.Register(meta.PlayURL)
+	if !force && mediaValid(meta.PlayURL) {
+		if relay := p.app.Media.Register(meta.PlayURL); relay != "" {
+			out := MediaResult{
+				Kind:   "music",
+				Music:  MediaMusic{Title: r.Title, Author: r.Author, URL: relay},
+				Author: r.Author,
+				Desc:   r.Title,
+			}
+			if exp := mediaExpiry(meta.PlayURL); !exp.IsZero() {
+				out.ExpiresAt = exp.Add(-time.Minute).UnixMilli()
+			}
+			return out, "store", "OK", nil
+		}
 	}
+	detail, err := p.musicDetail(ctx, id)
+	if err != nil {
+		return MediaResult{}, "detail", err.Error(), err
+	}
+	if detail.Music.PlayURL == "" {
+		return MediaResult{}, "detail", "UNAVAILABLE", errors.New("UNAVAILABLE")
+	}
+	relay := p.app.Media.Register(detail.Music.PlayURL)
 	if relay == "" {
-		return MediaResult{}, errors.New("UNAVAILABLE")
+		return MediaResult{}, "detail", "UNAVAILABLE", errors.New("UNAVAILABLE")
 	}
-	return MediaResult{Kind: "music", Music: MediaMusic{Title: r.Title, Author: r.Author, URL: relay}, Author: r.Author, Desc: r.Title}, nil
+	_ = p.app.Store.UpdateMusicPlayURL(ctx, id, detail.Music.PlayURL)
+	title := r.Title
+	if title == "" {
+		title = detail.Music.Title
+	}
+	author := r.Author
+	if author == "" {
+		author = detail.Music.Author
+	}
+	out := MediaResult{
+		Kind:     "music",
+		Music:    MediaMusic{Title: title, Author: author, URL: relay},
+		Author:   author,
+		Desc:     title,
+		Complete: true,
+	}
+	if exp := mediaExpiry(detail.Music.PlayURL); !exp.IsZero() {
+		out.ExpiresAt = exp.Add(-time.Minute).UnixMilli()
+	}
+	return out, "detail", "OK", nil
 }
 
 // result combines stored metadata with resolved media. The stored author,

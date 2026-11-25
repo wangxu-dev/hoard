@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -64,6 +65,37 @@ func (s *Store) MediaRecord(ctx context.Context, kind, remoteID string) (MediaRe
 func (s *Store) FillAuthorAvatar(ctx context.Context, workRemoteID, avatar string) error {
 	_, err := s.db.ExecContext(ctx, `UPDATE authors SET avatar_url=? WHERE id=(SELECT author_id FROM works WHERE remote_id=?) AND COALESCE(avatar_url,'')=''`, avatar, workRemoteID)
 	return err
+}
+
+// UpdateMusicPlayURL merges a refreshed play_url into a music row's extra JSON while preserving existing keys.
+func (s *Store) UpdateMusicPlayURL(ctx context.Context, remoteID, playURL string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin update music play url: %w", err)
+	}
+	defer tx.Rollback()
+	var raw string
+	if err := tx.QueryRowContext(ctx, `SELECT extra FROM musics WHERE remote_id=? LIMIT 1`, remoteID).Scan(&raw); err != nil {
+		return fmt.Errorf("read music extra: %w", err)
+	}
+	extra := map[string]any{}
+	if raw != "" {
+		if err := json.Unmarshal([]byte(raw), &extra); err != nil || extra == nil {
+			extra = map[string]any{}
+		}
+	}
+	extra["play_url"] = playURL
+	encoded, err := json.Marshal(extra)
+	if err != nil {
+		return fmt.Errorf("encode music extra: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE musics SET extra=?, updated_at=? WHERE remote_id=?`, string(encoded), time.Now().Unix(), remoteID); err != nil {
+		return fmt.Errorf("update music extra: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit update music play url: %w", err)
+	}
+	return nil
 }
 
 // Library returns one page of a list and the number of matching items.

@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -189,5 +190,44 @@ func TestRecommendListRoundTrip(t *testing.T) {
 	explore, err := s.ExploreInput(ctx, ExploreScope{AccountID: "a"})
 	if err != nil || len(explore) != 1 || explore[0].ID != "rec-1" {
 		t.Fatalf("ExploreInput recommend: %+v err=%v", explore, err)
+	}
+}
+
+func TestUpdateMusicPlayURLPreservesCovers(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(filepath.Join(t.TempDir(), "library.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if _, err := s.UpsertAccount(ctx, Account{ID: "a", Source: "douyin", RemoteID: "r", SessionName: "s", Status: "active"}); err != nil {
+		t.Fatal(err)
+	}
+	initialExtra := json.RawMessage(`{"play_url":"https://m.invalid/old.mp3","covers":["https://img.invalid/c1.jpg","https://img.invalid/c2.jpg"],"custom":"keep"}`)
+	if _, err := s.SaveMusics(ctx, "a", true, []Music{{
+		RemoteID: "m1",
+		Title:    "Song",
+		Author:   "Artist",
+		Extra:    initialExtra,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UpdateMusicPlayURL(ctx, "m1", "https://m.invalid/new.mp3"); err != nil {
+		t.Fatal(err)
+	}
+	rec, err := s.MediaRecord(ctx, "music", "m1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		PlayURL string   `json:"play_url"`
+		Covers  []string `json:"covers"`
+		Custom  string   `json:"custom"`
+	}
+	if err := json.Unmarshal(rec.Extra, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.PlayURL != "https://m.invalid/new.mp3" || got.Custom != "keep" || len(got.Covers) != 2 || got.Covers[0] != "https://img.invalid/c1.jpg" || got.Covers[1] != "https://img.invalid/c2.jpg" {
+		t.Fatalf("unexpected extra: %s", string(rec.Extra))
 	}
 }

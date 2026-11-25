@@ -47,3 +47,93 @@ func TestParseDetailSkipsHEVCGears(t *testing.T) {
 		t.Fatalf("videos = %v", p.Videos)
 	}
 }
+
+func TestParseMusicDetail(t *testing.T) {
+	cases := []struct {
+		name      string
+		reply     PageReply
+		wantClass ResponseClass
+		wantMusic *Music
+	}{
+		{
+			name:      "normal music_info",
+			reply:     PageReply{Status: 200, Body: `{"status_code":0,"music_info":{"id":7000000000000000001,"id_str":"7000000000000000001","title":"Demo Song","author":"Artist","duration":32,"cover_medium":{"url_list":["https://img.invalid/m.jpg"]},"cover_thumb":{"url_list":["https://img.invalid/t.jpg"]},"play_url":{"url_list":["https://m.invalid/song.mp3"]}}}`},
+			wantClass: ResponseOK,
+			wantMusic: &Music{
+				ID:         "7000000000000000001",
+				Title:      "Demo Song",
+				Author:     "Artist",
+				DurationMS: 32000,
+				Cover:      "https://img.invalid/m.jpg",
+				Covers:     []string{"https://img.invalid/m.jpg", "https://img.invalid/t.jpg"},
+				PlayURL:    "https://m.invalid/song.mp3",
+			},
+		},
+		{
+			name:      "matched_pgc_sound and owner_nickname fallback",
+			reply:     PageReply{Status: 200, Body: `{"status_code":0,"music_info":{"id":7000000000000000002,"title":"PGC Song","owner_nickname":"Owner","duration":18,"cover_thumb":{"url_list":["https://img.invalid/thumb.jpg"]},"play_url":{"url_list":[]},"matched_pgc_sound":{"play_url":{"url_list":["https://m.invalid/pgc.mp3"]}}}}`},
+			wantClass: ResponseOK,
+			wantMusic: &Music{
+				ID:         "7000000000000000002",
+				Title:      "PGC Song",
+				Author:     "Owner",
+				DurationMS: 18000,
+				Cover:      "https://img.invalid/thumb.jpg",
+				Covers:     []string{"https://img.invalid/thumb.jpg"},
+				PlayURL:    "https://m.invalid/pgc.mp3",
+			},
+		},
+		{
+			name:      "missing music_info",
+			reply:     PageReply{Status: 200, Body: `{"status_code":0,"other":1}`},
+			wantClass: ResponseAPIRejected,
+		},
+		{
+			name:      "null music_info",
+			reply:     PageReply{Status: 200, Body: `{"status_code":0,"music_info":null}`},
+			wantClass: ResponseAPIRejected,
+		},
+		{
+			name:      "missing play_url",
+			reply:     PageReply{Status: 200, Body: `{"status_code":0,"music_info":{"id_str":"7000000000000000003","title":"Silent","play_url":{"url_list":[]}}}`},
+			wantClass: ResponseAPIRejected,
+		},
+		{
+			name:      "auth required",
+			reply:     PageReply{Status: 401, Body: ""},
+			wantClass: ResponseAuthRequired,
+		},
+		{
+			name:      "risk control",
+			reply:     PageReply{Status: 200, Body: `{"status_code":2154}`},
+			wantClass: ResponseRiskControl,
+		},
+		{
+			name:      "verification required",
+			reply:     PageReply{Status: 200, Body: `{"status_code":0,"verify_page":{"a":1}}`},
+			wantClass: ResponseVerificationRequired,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ParseMusicDetail(tc.reply)
+			if got.Class != tc.wantClass {
+				t.Fatalf("class = %s, want %s", got.Class, tc.wantClass)
+			}
+			if tc.wantMusic == nil {
+				return
+			}
+			m := got.Music
+			if m.ID != tc.wantMusic.ID || m.Title != tc.wantMusic.Title || m.Author != tc.wantMusic.Author ||
+				m.DurationMS != tc.wantMusic.DurationMS || m.Cover != tc.wantMusic.Cover || m.PlayURL != tc.wantMusic.PlayURL ||
+				len(m.Covers) != len(tc.wantMusic.Covers) {
+				t.Fatalf("music = %+v, want %+v", m, *tc.wantMusic)
+			}
+			for i := range m.Covers {
+				if m.Covers[i] != tc.wantMusic.Covers[i] {
+					t.Fatalf("covers[%d] = %q, want %q", i, m.Covers[i], tc.wantMusic.Covers[i])
+				}
+			}
+		})
+	}
+}
