@@ -128,6 +128,95 @@ func (s *Store) KnownWorks(ctx context.Context, accountID, kind string, remoteID
 	return known, rows.Err()
 }
 
+// ReconcileHeadRelations removes stale relation links observed missing during a
+// head check without deleting rows from works or musics.
+func (s *Store) ReconcileHeadRelations(ctx context.Context, accountID, kind string, seenRemoteIDs []string, complete bool) (int, error) {
+	if !validWorkRelationKind(kind) && kind != "music" {
+		return 0, fmt.Errorf("invalid relation kind")
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("begin reconcile head: %w", err)
+	}
+	defer tx.Rollback()
+
+	var source string
+	if err := tx.QueryRowContext(ctx, `SELECT source FROM accounts WHERE id=?`, accountID).Scan(&source); err != nil {
+		return 0, fmt.Errorf("read reconcile account: %w", err)
+	}
+
+	seen := make(map[string]bool, len(seenRemoteIDs))
+	seenIDs := make([]string, 0, len(seenRemoteIDs))
+	for _, id := range seenRemoteIDs {
+		if id == "" {
+			continue
+		}
+		fullID := source + ":" + id
+		if !seen[fullID] {
+			seen[fullID] = true
+			seenIDs = append(seenIDs, fullID)
+		}
+	}
+
+	if !complete && len(seenIDs) == 0 {
+		return 0, nil
+	}
+
+	table, column, kindFilter := "relations", "work_id", " AND kind=?"
+	if kind == "music" {
+		table, column, kindFilter = "music_relations", "music_id", ""
+	}
+	baseArgs := []any{accountID}
+	if kindFilter != "" {
+		baseArgs = append(baseArgs, kind)
+	}
+
+	var res sql.Result
+	if len(seenIDs) == 0 {
+		res, err = tx.ExecContext(ctx, `DELETE FROM `+table+` WHERE account_id=?`+kindFilter, baseArgs...)
+		if err != nil {
+			return 0, fmt.Errorf("reconcile complete head: %w", err)
+		}
+	} else {
+		marks := strings.Repeat(",?", len(seenIDs))[1:]
+		seenArgs := make([]any, len(seenIDs))
+		for i, id := range seenIDs {
+			seenArgs[i] = id
+		}
+		if complete {
+			args := append(append([]any{}, baseArgs...), seenArgs...)
+			res, err = tx.ExecContext(ctx, `DELETE FROM `+table+` WHERE account_id=?`+kindFilter+` AND `+column+` NOT IN (`+marks+`)`, args...)
+			if err != nil {
+				return 0, fmt.Errorf("reconcile complete head: %w", err)
+			}
+		} else {
+			inArgs := append(append([]any{}, baseArgs...), seenArgs...)
+			var anchorSeq sql.NullInt64
+			if err := tx.QueryRowContext(ctx, `SELECT MIN(seq) FROM `+table+` WHERE account_id=?`+kindFilter+` AND `+column+` IN (`+marks+`)`, inArgs...).Scan(&anchorSeq); err != nil {
+				return 0, fmt.Errorf("read reconcile anchor: %w", err)
+			}
+			if !anchorSeq.Valid {
+				return 0, nil
+			}
+			delArgs := append(append([]any{}, baseArgs...), anchorSeq.Int64)
+			delArgs = append(delArgs, seenArgs...)
+			res, err = tx.ExecContext(ctx, `DELETE FROM `+table+` WHERE account_id=?`+kindFilter+` AND seq > ? AND `+column+` NOT IN (`+marks+`)`, delArgs...)
+			if err != nil {
+				return 0, fmt.Errorf("reconcile head window: %w", err)
+			}
+		}
+	}
+
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("reconcile rows affected: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit reconcile head: %w", err)
+	}
+	return int(n), nil
+}
+
 // SaveWorks adds works to a list. Head pages go above every saved item,
 // backfill pages below, so seq DESC is always the list's own order.
 func (s *Store) SaveWorks(ctx context.Context, accountID, kind string, head bool, works []Work) (int, error) {

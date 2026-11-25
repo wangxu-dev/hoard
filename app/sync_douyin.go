@@ -458,6 +458,23 @@ func (s *Sync) store(accountID, kind string, head bool, p douyin.ListPage, revis
 	return err
 }
 
+func (s *Sync) reconcileHead(accountID, kind string, seenIDs []string, complete bool, revision uint64) (int, error) {
+	s.app.mu.Lock()
+	defer s.app.mu.Unlock()
+	if s.app.actionRevision.Load() != revision {
+		return 0, errors.New("ACTIONS_CHANGED")
+	}
+	ctx, cancel := accountContext()
+	defer cancel()
+	removed, err := s.app.Store.ReconcileHeadRelations(ctx, accountID, kind, seenIDs, complete)
+	if err == nil && removed > 0 {
+		if e := libraryChanged.Broadcast(LibraryChange{AccountID: accountID, Kind: kind}); e != nil {
+			log.Print("[hoard:sync] library event delivery failed")
+		}
+	}
+	return removed, err
+}
+
 func (s *Sync) pageLanded() {
 	s.mu.Lock()
 	hide := s.hideOnPage
@@ -532,6 +549,9 @@ func (s *Sync) syncKind(ctx context.Context, accountID, secUID string, r *store.
 		}
 		cursor := "0"
 		var fresh douyin.ListPage
+		var seenIDs []string
+		hitKnown := false
+		headComplete := false
 		for i := 0; i < headPageLimit; i++ {
 			page, outcome := s.fetch(ctx, accountID, r, secUID, cursor)
 			if outcome != fetchOK {
@@ -539,26 +559,33 @@ func (s *Sync) syncKind(ctx context.Context, accountID, secUID string, r *store.
 			}
 			recycle()
 			s.pageLanded()
+			ids := pageIDs(page)
+			seenIDs = append(seenIDs, ids...)
 			sctx, cancel := accountContext()
-			known, err := s.app.Store.KnownWorks(sctx, accountID, r.Kind, pageIDs(page))
+			known, err := s.app.Store.KnownWorks(sctx, accountID, r.Kind, ids)
 			cancel()
 			if err != nil {
 				return fail(fetchPaused)
 			}
 			stop := len(page.Works)+len(page.Musics) > 0
 			for _, w := range page.Works {
-				if !known[w.ID] {
+				if known[w.ID] {
+					hitKnown = true
+				} else {
 					stop = false
 					fresh.Works = append(fresh.Works, w)
 				}
 			}
 			for _, m := range page.Musics {
-				if !known[m.ID] {
+				if known[m.ID] {
+					hitKnown = true
+				} else {
 					stop = false
 					fresh.Musics = append(fresh.Musics, m)
 				}
 			}
 			if stop || !page.HasMore || page.Cursor == "" || page.Cursor == cursor {
+				headComplete = !page.HasMore
 				break
 			}
 			cursor = page.Cursor
@@ -567,6 +594,13 @@ func (s *Sync) syncKind(ctx context.Context, accountID, secUID string, r *store.
 			if err := s.store(accountID, r.Kind, true, fresh, revision, nil); err != nil {
 				log.Printf("[hoard:sync] %s head write failed", r.Kind)
 				return fail(fetchPaused)
+			}
+		}
+		if hitKnown || headComplete {
+			if removed, err := s.reconcileHead(accountID, r.Kind, seenIDs, headComplete, revision); err != nil {
+				log.Printf("[hoard:sync] %s head reconcile failed", r.Kind)
+			} else if removed > 0 {
+				log.Printf("[hoard:sync] %s head removed=%d", r.Kind, removed)
 			}
 		}
 		found = len(fresh.Works) + len(fresh.Musics)
