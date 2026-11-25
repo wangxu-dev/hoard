@@ -34,5 +34,14 @@
     "monthCount": "{{month}} · {{count}} works",
     "noDates": "No publication dates",
     "outside": "Outside the selected date range"
+  },
+  "details": {
+    "title": "Item details",
+    "close": "Close",
+    "cover": "Cover",
+    "avatar": "Author avatar",
+    "unknownAuthor": "Unknown author",
+    "related": "Related works · {{count}}",
+    "noRelated": "No related works"
   }
 }

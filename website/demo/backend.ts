@@ -116,10 +116,45 @@ export const Library = {
     return months;
   },
 };
+let lastExplorationScope = { accountId: "", source: "" };
+const explorationTasks = new Map<string, { accountId: string; source: string }>();
+let explorationSeq = 0;
+
+function scopedExplorationSnapshot(scope: { accountId: string; source: string }) {
+  if (!scope.accountId && !scope.source) return explorationSnapshot;
+  const scopes = explorationSnapshot.scopes.filter((s) =>
+    (!scope.source || s.source === scope.source) &&
+    (!scope.accountId || accounts.some((a) => a.id === scope.accountId && a.source === s.source)),
+  );
+  return {
+    ...explorationSnapshot,
+    snapshotId: `${explorationSnapshot.snapshotId}:${scope.accountId}:${scope.source}`,
+    inputRevision: `${explorationSnapshot.inputRevision}:${scope.accountId}:${scope.source}`,
+    scope: { accountId: scope.accountId, source: scope.source },
+    meta: { ...explorationSnapshot.meta, coverage: scopes.map((s) => s.coverage) },
+    scopes,
+  };
+}
+
 export const Exploration = {
-  start: async () => ({ id: "website-exploration", state: "complete" }),
-  status: async () => ({ id: "website-exploration", state: "complete", cacheHit: true }),
-  result: async () => explorationSnapshot,
+  start: async (scope?: { accountId?: string; source?: string }, _clientID?: string) => {
+    const normalized = { accountId: scope?.accountId ?? "", source: scope?.source ?? "" };
+    lastExplorationScope = normalized;
+    const id = `website-exploration-${++explorationSeq}`;
+    explorationTasks.set(id, normalized);
+    return { id, state: "complete", scope: normalized, inputRevision: "", snapshotId: "", cacheHit: true, cacheWarning: "", error: "" };
+  },
+  status: async (id = "") => ({
+    id: id || "website-exploration",
+    state: "complete",
+    scope: explorationTasks.get(id) ?? lastExplorationScope,
+    inputRevision: "",
+    snapshotId: "",
+    cacheHit: true,
+    cacheWarning: "",
+    error: "",
+  }),
+  result: async (id?: string) => scopedExplorationSnapshot((id ? explorationTasks.get(id) : undefined) ?? lastExplorationScope),
   cancel: noop,
 };
 export const Accounts = {

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PublicationTimeline } from "./publication-timeline";
-import type { ExplorationWork } from "@/lib/api";
+import type { ExploreScope, ExplorationWork } from "@/lib/api";
+import type { Scope } from "@/lib/library";
+import { libraryScope, useLibraryFilters } from "@/lib/library-filters";
 import shell from "./shell.html?raw";
 import { Button } from "@/components/ui/button";
 import { ContentDetails } from "./details";
@@ -9,47 +11,54 @@ import type { PanelView } from "./view-types";
 import { onLibraryChanged } from "@/lib/api";
 import { readCurrentLibrary } from "./load";
 import { mountInterestSky, prepareExploration, type ViewControls } from "./renderer";
+import { ExploreScopeCache, libraryChangeAffectsScope } from "./scope-cache";
 import { ArrowLeft, LocateFixed, Maximize2, Minus, Pause, Play, Plus } from "lucide-react";
 import "./styles.css";
 
-// Last good union snapshot is a return-transition surface, not a replacement for
+// Last good snapshots per scope are a return-transition surface, not a replacement for
 // native validation. Every entry revalidates; unchanged revisions do not remount.
 type LibrarySnapshot = Awaited<ReturnType<typeof readCurrentLibrary>>;
 type PreparedExploration = Awaited<ReturnType<typeof prepareExploration>>;
-let returnSnapshot: LibrarySnapshot | null = null;
-let returnPrepared: { key: string; model: PreparedExploration } | null = null;
+const scopeCache = new ExploreScopeCache<LibrarySnapshot, PreparedExploration>(4);
 let preparationTask: Promise<{ key: string; model: PreparedExploration }> | null = null;
-let preloadTask: Promise<{ snapshot: LibrarySnapshot; model: PreparedExploration }> | null = null;
+let preloadTask: { scopeKey: string; promise: Promise<{ snapshot: LibrarySnapshot; model: PreparedExploration }> } | null = null;
+const currentExploreScope = (scope?: Scope): ExploreScope => ({ accountId: scope?.accountId ?? "", source: scope?.source ?? "" });
+const scopeKeyOf = (scope: ExploreScope) => `${scope.accountId}:${scope.source}`;
 const snapshotKey = (snapshot: LibrarySnapshot) => `${snapshot.scope.accountId}:${snapshot.scope.source}:${snapshot.inputRevision}:${snapshot.analysisVersion}`;
 
 function prepareSnapshot(snapshot: LibrarySnapshot): Promise<PreparedExploration> {
   const key = snapshotKey(snapshot);
-  if (returnPrepared?.key === key) return Promise.resolve(returnPrepared.model);
+  const cached = scopeCache.get(scopeKeyOf(snapshot.scope));
+  if (cached?.key === key) return Promise.resolve(cached.model);
   if (preparationTask) return preparationTask.then((result) => result.key === key ? result.model : prepareSnapshot(snapshot));
-  const task = prepareExploration(snapshot).then((model) => {
-    returnPrepared = { key, model };
-    return { key, model };
-  });
+  const task = prepareExploration(snapshot).then((model) => ({ key, model }));
   preparationTask = task;
   void task.finally(() => { if (preparationTask === task) preparationTask = null; }).catch(() => {});
   return task.then((result) => result.model);
 }
 
 export async function preloadExploration(signal: AbortSignal) {
-  if ((returnSnapshot && returnPrepared?.key === snapshotKey(returnSnapshot)) || signal.aborted) return;
-  if (preloadTask) return preloadTask;
-  const task = readCurrentLibrary(signal, () => {}, crypto.randomUUID()).then(async (snapshot) => {
+  const exploreScope = currentExploreScope(libraryScope());
+  const scopeKey = scopeKeyOf(exploreScope);
+  const cached = scopeCache.get(scopeKey);
+  if (signal.aborted) return;
+  if (preloadTask?.scopeKey === scopeKey) return preloadTask.promise;
+  const promise = readCurrentLibrary(signal, () => {}, crypto.randomUUID(), exploreScope, cached?.snapshot).then(async (snapshot) => {
     const model = await prepareSnapshot(snapshot);
-    if (!signal.aborted) returnSnapshot = snapshot;
+    if (!signal.aborted) scopeCache.set(scopeKey, { snapshot, model, key: snapshotKey(snapshot) });
     return { snapshot, model };
   });
-  preloadTask = task;
-  try { await task; }
-  finally { if (preloadTask === task) preloadTask = null; }
+  const entry = { scopeKey, promise };
+  preloadTask = entry;
+  try { await promise; }
+  finally { if (preloadTask === entry) preloadTask = null; }
 }
 
 export default function ConstellationDevPage() {
   const { t } = useTranslation("explore");
+  const { scope } = useLibraryFilters();
+  const exploreScope = currentExploreScope(scope);
+  const scopeKey = scopeKeyOf(exploreScope);
   const host = useRef<HTMLDivElement>(null);
   const client = useRef(crypto.randomUUID());
   const [attempt, setAttempt] = useState(0), [error, setError] = useState("");
@@ -58,7 +67,21 @@ export default function ConstellationDevPage() {
   const [ready, setReady] = useState(false);
   const [controls, setControls] = useState<ViewControls | null>(null);
   const [paused, setPaused] = useState(false);
-  useEffect(() => onLibraryChanged(() => setAttempt((n) => n + 1)), []);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const stop = onLibraryChanged((change) => {
+      if (!libraryChangeAffectsScope(change.accountId, exploreScope)) return;
+      if (timer !== null) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        setAttempt((n) => n + 1);
+      }, 1500);
+    });
+    return () => {
+      stop();
+      if (timer !== null) clearTimeout(timer);
+    };
+  }, [exploreScope.accountId, exploreScope.source]);
   useEffect(() => {
     const abort = new AbortController(); let dispose: (() => void) | undefined;
     setReady(false); setError(""); setPanel(null); setPaused(false);
@@ -72,18 +95,18 @@ export default function ConstellationDevPage() {
       setTimelineWorks(snapshot.scopes.flatMap(scope => scope.works));
       setReady(true);
     };
-    if (returnSnapshot && returnPrepared?.key === snapshotKey(returnSnapshot)) {
-      const cachedSnapshot = returnSnapshot, cachedModel = returnPrepared.model;
-      queueMicrotask(() => paint(cachedSnapshot, cachedModel));
+    const cached = scopeCache.get(scopeKey);
+    if (cached) {
+      queueMicrotask(() => paint(cached.snapshot, cached.model));
     }
-    const load = preloadTask ?? Promise.resolve().then(() => {
+    const load = (preloadTask?.scopeKey === scopeKey ? preloadTask.promise : null) ?? Promise.resolve().then(() => {
       if (abort.signal.aborted) throw new Error("CANCELLED");
-      return readCurrentLibrary(abort.signal, () => {}, client.current);
+      return readCurrentLibrary(abort.signal, () => {}, client.current, exploreScope, cached?.snapshot);
     }).then(async (snapshot) => ({ snapshot, model: await prepareSnapshot(snapshot) }));
     void load.then(({ snapshot, model }) => {
       if (abort.signal.aborted || !host.current) return;
-      if (!painted || painted.inputRevision !== snapshot.inputRevision || painted.analysisVersion !== snapshot.analysisVersion) paint(snapshot, model);
-      returnSnapshot = snapshot;
+      if (!painted || scopeKeyOf(painted.scope) !== scopeKeyOf(snapshot.scope) || painted.inputRevision !== snapshot.inputRevision || painted.analysisVersion !== snapshot.analysisVersion) paint(snapshot, model);
+      scopeCache.set(scopeKey, { snapshot, model, key: snapshotKey(snapshot) });
       // Aggregate counters only, no original IDs/titles or media URLs in diagnostics.
       console.warn("[interest-dev] coverage", JSON.stringify(snapshot.meta.coverage));
       setReady(true);
@@ -95,7 +118,7 @@ export default function ConstellationDevPage() {
       setError(painted ? "refresh" : "load");
     });
     return () => { abort.abort(); dispose?.(); };
-  }, [attempt, mountInterestSky]);
+  }, [attempt, exploreScope.accountId, exploreScope.source, mountInterestSky]);
   return <div id="interest-native-root"><div ref={host} />{ready && <>
     <div className="explore-controls explore-glass" role="toolbar" aria-label={t("controls.toolbar")}>
       <Button variant="ghost" size="icon" onClick={() => controls?.back()} disabled={!panel} aria-label={t("controls.back")} title={t("controls.back")}><ArrowLeft /></Button>
