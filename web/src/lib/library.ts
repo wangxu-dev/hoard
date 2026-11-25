@@ -5,6 +5,7 @@ import { libraryScope } from "./library-filters";
 import { fixtureName } from "./demo";
 import { createFixtureSource } from "@/mocks/fixture";
 import { DEFAULT_SOURCE_DESCRIPTORS, setSourceDescriptors } from "./source-capabilities";
+import { queryClient } from "./query-client";
 
 export type ListKind = "like" | "favorite" | "music" | "watch_later";
 export type WorkType = "all" | "video" | "gallery";
@@ -109,7 +110,6 @@ const realSource: LibrarySource = {
   async list(q) {
     const started = Date.now();
     const page = await Library.list({ accountId: q.scope.accountId ?? "", source: q.scope.source ?? "", folderId: q.scope.folderId ?? "", kind: q.kind, type: q.type, query: q.query, sort: q.sort, offset: q.offset, limit: q.limit });
-    const { queryClient } = await import("./query");
     const accounts = queryClient.getQueryData<SourceGroup[]>(["sources"])?.flatMap((group) => group.accounts) ?? [];
     for (const entry of page.items) {
       if (entry.kind === "music") continue;
