@@ -19,6 +19,9 @@ var schemaV3 string
 //go:embed schema_v4.sql
 var schemaV4 string
 
+//go:embed schema_v5.sql
+var schemaV5 string
+
 func migrate(ctx context.Context, db *sql.DB) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -40,7 +43,7 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		if _, err := tx.ExecContext(ctx, `PRAGMA user_version = 1`); err != nil {
 			return fmt.Errorf("set schema version: %w", err)
 		}
-	case 1, 2, 3, 4:
+	case 1, 2, 3, 4, 5:
 	default:
 		return fmt.Errorf("unsupported schema version: %d", version)
 	}
@@ -66,6 +69,14 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		}
 		if _, err := tx.ExecContext(ctx, `PRAGMA user_version = 4`); err != nil {
 			return fmt.Errorf("set recovery schema version: %w", err)
+		}
+	}
+	if version < 5 {
+		if _, err := tx.ExecContext(ctx, schemaV5); err != nil {
+			return fmt.Errorf("extend folders and personal state: %w", err)
+		}
+		if _, err := tx.ExecContext(ctx, `PRAGMA user_version = 5`); err != nil {
+			return fmt.Errorf("set v5 schema version: %w", err)
 		}
 	}
 	if err := tx.Commit(); err != nil {

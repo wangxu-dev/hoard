@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/wangxu-dev/hoard/internal/covers"
+	"github.com/wangxu-dev/hoard/internal/source"
 	"github.com/wangxu-dev/hoard/internal/store"
 )
 
@@ -21,6 +22,11 @@ func coverKind(kind string) string {
 type Library struct{ app *App }
 
 func NewLibrary(a *App) *Library { return &Library{app: a} }
+
+// Sources returns the built-in source capability descriptors.
+func (l *Library) Sources() []source.Descriptor {
+	return source.Descriptors()
+}
 
 // LibraryQuery selects one page of a list.
 type LibraryQuery struct {

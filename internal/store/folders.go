@@ -2,13 +2,19 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"time"
 )
 
 type Folder struct {
-	ID    string
-	Title string
-	Count int
+	ID        string
+	Title     string
+	Count     int
+	Kind      string
+	Position  int
+	Extra     json.RawMessage
+	UpdatedAt int64
 }
 type FolderWork struct {
 	RemoteID    string
@@ -30,7 +36,19 @@ func (s *Store) SaveFolderMembership(ctx context.Context, accountID string, fold
 	if err := tx.QueryRowContext(ctx, `SELECT source FROM accounts WHERE id=?`, accountID).Scan(&source); err != nil {
 		return fmt.Errorf("folder account: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO folders(account_id,remote_id,title,remote_count) VALUES(?,?,?,?) ON CONFLICT(account_id,remote_id) DO UPDATE SET title=excluded.title,remote_count=excluded.remote_count`, accountID, folder.ID, folder.Title, folder.Count); err != nil {
+	kind := folder.Kind
+	if kind == "" {
+		kind = "favorite"
+	}
+	extra := string(folder.Extra)
+	if extra == "" {
+		extra = "{}"
+	}
+	updatedAt := folder.UpdatedAt
+	if updatedAt == 0 {
+		updatedAt = time.Now().Unix()
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO folders(account_id,remote_id,title,remote_count,kind,position,extra,updated_at) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(account_id,remote_id) DO UPDATE SET title=excluded.title,remote_count=excluded.remote_count,kind=excluded.kind,position=excluded.position,extra=excluded.extra,updated_at=excluded.updated_at`, accountID, folder.ID, folder.Title, folder.Count, kind, folder.Position, extra, updatedAt); err != nil {
 		return fmt.Errorf("save folder: %w", err)
 	}
 	for _, item := range items {
@@ -44,7 +62,7 @@ func (s *Store) SaveFolderMembership(ctx context.Context, accountID string, fold
 	return tx.Commit()
 }
 func (s *Store) Folders(ctx context.Context, accountID string) ([]Folder, error) {
-	rows, err := s.read.QueryContext(ctx, `SELECT remote_id,title,remote_count FROM folders WHERE account_id=? ORDER BY CASE WHEN title IN ('默认收藏夹','默认收藏') THEN 0 ELSE 1 END, length(remote_id) DESC, remote_id DESC`, accountID)
+	rows, err := s.read.QueryContext(ctx, `SELECT remote_id,title,remote_count,kind,position,extra,updated_at FROM folders WHERE account_id=? ORDER BY position ASC, CASE WHEN title IN ('默认收藏夹','默认收藏') THEN 0 ELSE 1 END, length(remote_id) DESC, remote_id DESC`, accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -52,8 +70,12 @@ func (s *Store) Folders(ctx context.Context, accountID string) ([]Folder, error)
 	result := []Folder{}
 	for rows.Next() {
 		var item Folder
-		if err := rows.Scan(&item.ID, &item.Title, &item.Count); err != nil {
+		var extra string
+		if err := rows.Scan(&item.ID, &item.Title, &item.Count, &item.Kind, &item.Position, &extra, &item.UpdatedAt); err != nil {
 			return nil, err
+		}
+		if extra != "" && extra != "{}" {
+			item.Extra = json.RawMessage(extra)
 		}
 		result = append(result, item)
 	}

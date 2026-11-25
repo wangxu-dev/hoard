@@ -21,7 +21,7 @@ func TestFolderMembershipIsolation(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, folder := range []string{"one", "two"} {
-			if err := s.SaveFolderMembership(ctx, account, Folder{folder, "Example", 1}, []FolderWork{{"BV1abcdefghj", 100}}); err != nil {
+			if err := s.SaveFolderMembership(ctx, account, Folder{ID: folder, Title: "Example", Count: 1}, []FolderWork{{"BV1abcdefghj", 100}}); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -30,14 +30,14 @@ func TestFolderMembershipIsolation(t *testing.T) {
 	if err != nil || !known["BV1abcdefghj"] || known["missing"] {
 		t.Fatalf("source known: %v %v", known, err)
 	}
-	if err := s.SaveFolderMembership(ctx, "a", Folder{"one", "Example", 1}, []FolderWork{{"BV1abcdefghj", 200}}); err != nil {
+	if err := s.SaveFolderMembership(ctx, "a", Folder{ID: "one", Title: "Example", Count: 1}, []FolderWork{{"BV1abcdefghj", 200}}); err != nil {
 		t.Fatal(err)
 	}
 	var count int
 	if err := s.db.QueryRow(`SELECT COUNT(*) FROM folder_works`).Scan(&count); err != nil || count != 4 {
 		t.Fatalf("members %d %v", count, err)
 	}
-	if err := s.SaveFolderMembership(ctx, "a", Folder{"bad", "Rollback", 1}, []FolderWork{{"missing", 0}}); err == nil {
+	if err := s.SaveFolderMembership(ctx, "a", Folder{ID: "bad", Title: "Rollback", Count: 1}, []FolderWork{{"missing", 0}}); err == nil {
 		t.Fatal("missing work accepted")
 	}
 	folders, err := s.Folders(ctx, "a")

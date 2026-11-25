@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -16,23 +17,32 @@ type PersonalState struct {
 	LikedAt     *int64
 	FavoritedAt *int64
 	CoinsAt     *int64
+	Extra       json.RawMessage
 }
 
 func (s *Store) SavePersonalState(ctx context.Context, accountID, remoteID string, state PersonalState) error {
 	if state.Coins != nil && (*state.Coins < 0 || *state.Coins > 2) {
 		return fmt.Errorf("invalid coin amount")
 	}
-	if state.Liked == nil && state.Favorited == nil && state.Coins == nil {
+	if state.Liked == nil && state.Favorited == nil && state.Coins == nil && len(state.Extra) == 0 {
 		return nil
 	}
+	var extraArg any
+	if len(state.Extra) > 0 {
+		if !json.Valid(state.Extra) {
+			return fmt.Errorf("invalid personal state extra")
+		}
+		extraArg = string(state.Extra)
+	}
 	now := time.Now().Unix()
-	result, err := s.db.ExecContext(ctx, `INSERT INTO work_account_state(account_id,work_id,liked,liked_at,favorited,favorited_at,coins,coins_at)
- SELECT a.id,w.id,?,CASE WHEN ? IS NOT NULL THEN ? END,?,CASE WHEN ? IS NOT NULL THEN ? END,?,CASE WHEN ? IS NOT NULL THEN ? END
+	result, err := s.db.ExecContext(ctx, `INSERT INTO work_account_state(account_id,work_id,liked,liked_at,favorited,favorited_at,coins,coins_at,extra)
+ SELECT a.id,w.id,?,CASE WHEN ? IS NOT NULL THEN ? END,?,CASE WHEN ? IS NOT NULL THEN ? END,?,CASE WHEN ? IS NOT NULL THEN ? END,COALESCE(?,'{}')
  FROM accounts a JOIN works w ON w.source=a.source WHERE a.id=? AND w.remote_id=?
  ON CONFLICT(account_id,work_id) DO UPDATE SET
  liked=COALESCE(excluded.liked,liked),liked_at=COALESCE(excluded.liked_at,liked_at),
  favorited=COALESCE(excluded.favorited,favorited),favorited_at=COALESCE(excluded.favorited_at,favorited_at),
- coins=COALESCE(excluded.coins,coins),coins_at=COALESCE(excluded.coins_at,coins_at)`, state.Liked, state.Liked, now, state.Favorited, state.Favorited, now, state.Coins, state.Coins, now, accountID, remoteID)
+ coins=COALESCE(excluded.coins,coins),coins_at=COALESCE(excluded.coins_at,coins_at),
+ extra=CASE WHEN ? IS NOT NULL THEN ? ELSE extra END`, state.Liked, state.Liked, now, state.Favorited, state.Favorited, now, state.Coins, state.Coins, now, extraArg, accountID, remoteID, extraArg, extraArg)
 	if err != nil {
 		return fmt.Errorf("save personal state: %w", err)
 	}
@@ -43,9 +53,13 @@ func (s *Store) SavePersonalState(ctx context.Context, accountID, remoteID strin
 }
 func (s *Store) PersonalState(ctx context.Context, accountID, remoteID string) (PersonalState, error) {
 	var state PersonalState
-	err := s.read.QueryRowContext(ctx, `SELECT s.liked,s.favorited,s.coins,s.liked_at,s.favorited_at,s.coins_at FROM work_account_state s JOIN works w ON w.id=s.work_id WHERE s.account_id=? AND w.remote_id=?`, accountID, remoteID).Scan(&state.Liked, &state.Favorited, &state.Coins, &state.LikedAt, &state.FavoritedAt, &state.CoinsAt)
+	var extra string
+	err := s.read.QueryRowContext(ctx, `SELECT s.liked,s.favorited,s.coins,s.liked_at,s.favorited_at,s.coins_at,s.extra FROM work_account_state s JOIN works w ON w.id=s.work_id WHERE s.account_id=? AND w.remote_id=?`, accountID, remoteID).Scan(&state.Liked, &state.Favorited, &state.Coins, &state.LikedAt, &state.FavoritedAt, &state.CoinsAt, &extra)
 	if errors.Is(err, sql.ErrNoRows) {
 		return state, nil
+	}
+	if err == nil && extra != "" && extra != "{}" {
+		state.Extra = json.RawMessage(extra)
 	}
 	return state, err
 }

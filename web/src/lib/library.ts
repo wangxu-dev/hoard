@@ -4,6 +4,7 @@ import i18n from "@/i18n";
 import { libraryScope } from "./library-filters";
 import { fixtureName } from "./demo";
 import { createFixtureSource } from "@/mocks/fixture";
+import { DEFAULT_SOURCE_DESCRIPTORS, setSourceDescriptors } from "./source-capabilities";
 
 export type ListKind = "like" | "favorite" | "music" | "watch_later";
 export type WorkType = "all" | "video" | "gallery";
@@ -15,7 +16,7 @@ export interface SourceAccount {
   active?: boolean;
   status: "active" | "signed_out" | "pending"; syncing: boolean;
 }
-export interface SourceGroup { id: string; name: string; kinds: ListKind[]; accounts: SourceAccount[] }
+export interface SourceGroup { id: string; name: string; kinds: ListKind[]; hasFolders?: boolean; accounts: SourceAccount[] }
 export interface SyncState {
   accountId: string; kind: ListKind | "cover";
   phase: "idle" | "count" | "head" | "backfill" | "done";
@@ -81,11 +82,22 @@ const realSource: LibrarySource = {
   },
   folders(accountId) { return Library.folders(accountId); },
   async sources() {
-    const accounts = await Accounts.list();
-    return ["douyin", "bilibili"].map((source): SourceGroup => ({ id: source, name: i18n.t(`library:toolbar.source.${source}`), kinds: source === "douyin" ? ["like", "favorite", "music"] : ["favorite", "watch_later"], accounts: accounts.filter((a) => a.source === source && a.status !== "pending").map((a) => ({
-      id: a.id, source: a.source, nickname: a.nickname, avatarUrl: a.avatar,
-      status: a.status === "signed_out" ? "signed_out" : a.status === "pending" ? "pending" : "active", active: a.active, syncing: false,
-    })) })).filter((group) => group.accounts.length > 0);
+    const [accounts, remoteDescriptors] = await Promise.all([
+      Accounts.list(),
+      typeof Library.sources === "function" ? Library.sources().catch(() => DEFAULT_SOURCE_DESCRIPTORS) : Promise.resolve(DEFAULT_SOURCE_DESCRIPTORS),
+    ]);
+    const descriptors = remoteDescriptors.length > 0 ? remoteDescriptors : DEFAULT_SOURCE_DESCRIPTORS;
+    setSourceDescriptors(descriptors);
+    return descriptors.map((descriptor): SourceGroup => ({
+      id: descriptor.id,
+      name: i18n.t(`library:toolbar.source.${descriptor.id}`),
+      kinds: descriptor.lists.map((list) => list.kind as ListKind),
+      hasFolders: descriptor.lists.some((list) => list.hasFolders),
+      accounts: accounts.filter((a) => a.source === descriptor.id && a.status !== "pending").map((a) => ({
+        id: a.id, source: a.source, nickname: a.nickname, avatarUrl: a.avatar,
+        status: a.status === "signed_out" ? "signed_out" : a.status === "pending" ? "pending" : "active", active: a.active, syncing: false,
+      })),
+    })).filter((group) => group.accounts.length > 0);
   },
   async counts(scope) {
     return Library.counts(scope.accountId ?? "", scope.source ?? "");
