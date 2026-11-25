@@ -180,14 +180,25 @@ const (
 // Page sizes asked of the list endpoints. Likes accept 50; favorites and
 // music reject anything above 20 with status code 5.
 const (
-	likePageSize = "50"
-	listPageSize = "20"
+	likePageSize      = "50"
+	listPageSize      = "20"
+	recommendPageSize = "18"
 )
 
 func listParams(kind, secUID, cursor string) map[string]string {
 	switch kind {
 	case "like":
 		return map[string]string{"sec_user_id": secUID, "max_cursor": cursor, "min_cursor": "0", "count": likePageSize, "publish_video_strategy_type": "2", "pc_client_type": "1"}
+	case "recommend":
+		return map[string]string{
+			"sec_user_id":     secUID,
+			"max_cursor":      cursor,
+			"min_cursor":      "0",
+			"whale_cut_token": "",
+			"count":           recommendPageSize,
+			"from":            "1",
+			"pc_client_type":  "1",
+		}
 	default:
 		return map[string]string{"cursor": cursor, "count": listPageSize}
 	}
@@ -215,6 +226,9 @@ func (s *Sync) fetch(ctx context.Context, accountID string, r *store.SyncRecord,
 			page = douyin.ParseList(op, reply)
 		}
 		log.Printf("[hoard:sync] %s page=%d class=%s http=%d code=%d items=%d more=%v elapsed_ms=%d delay_ms=%d", r.Kind, r.Pages+1, page.Class, reply.Status, page.Code, page.Received, page.HasMore, time.Since(started).Milliseconds(), r.DelayMS)
+		if r.Kind == "recommend" && page.Class != douyin.ResponseOK {
+			log.Printf("[hoard:sync] recommend shape %s", douyin.ListShapeDiagnostics(reply))
+		}
 		if page.Class != douyin.ResponseVerificationRequired && eng.PageState(ctx).Captcha {
 			page.Class = douyin.ResponseVerificationRequired
 		}

@@ -15,6 +15,7 @@ const (
 	OpSelf        Operation = "self"
 	OpLikes       Operation = "likes"
 	OpFavorites   Operation = "favorites"
+	OpRecommend   Operation = "recommend"
 	OpMusic       Operation = "music"
 	OpDetail      Operation = "detail"
 	OpSetLike     Operation = "setLike"
@@ -70,6 +71,7 @@ const pageRequestScript = `(async (job) => {
     self: { path: '/aweme/v1/web/user/profile/self/' },
     likes: { path: '/aweme/v1/web/aweme/favorite/' },
     favorites: { path: '/aweme/v1/web/aweme/listcollection/', shelf: true, form: true },
+    recommend: { path: '/aweme/v1/web/familiar/recommend/feed/', shelf: true, referrer: 'https://www.douyin.com/user/self?from_tab_name=main&showTab=recommend' },
     music: { path: '/aweme/v1/web/music/listcollection/', shelf: true },
     detail: { path: '/aweme/v1/web/aweme/detail/' },
     setLike: { path: '/aweme/v1/web/commit/item/digg/', form: true, write: true },
@@ -111,7 +113,7 @@ const pageRequestScript = `(async (job) => {
   const stop = new AbortController();
   const deadline = setTimeout(() => stop.abort(), 12000);
   const init = { method: route.form ? 'POST' : 'GET', credentials: 'include', cache: 'no-store', signal: stop.signal, headers };
-  if (route.shelf) init.referrer = 'https://www.douyin.com/user/self?from_tab_name=main&showTab=favorite_collection';
+  if (route.referrer) init.referrer = route.referrer; else if (route.shelf) init.referrer = 'https://www.douyin.com/user/self?from_tab_name=main&showTab=favorite_collection';
   if (route.form) init.body = route.write ? new URLSearchParams(args).toString() : new URLSearchParams([['cursor', args.cursor || '0'], ['count', args.count || '20']]).toString();
   try {
     const reply = await fetch('https://www.douyin.com' + route.path + '?' + query, init);

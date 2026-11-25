@@ -40,7 +40,7 @@ func (s *Store) exploreInput(ctx context.Context, q ExploreScope, barrier func()
 			return nil, errors.New("SCOPE_MISMATCH")
 		}
 	}
-	from := ` FROM relations r JOIN works w ON w.id=r.work_id LEFT JOIN authors a ON a.id=w.author_id WHERE r.kind IN ('like','favorite','watch_later') AND w.source IN ('douyin','bilibili')`
+	from := ` FROM relations r JOIN works w ON w.id=r.work_id LEFT JOIN authors a ON a.id=w.author_id WHERE r.kind IN ('like','favorite','watch_later','recommend') AND w.source IN ('douyin','bilibili')`
 	args := []any{}
 	if q.AccountID != "" {
 		from += ` AND r.account_id=?`

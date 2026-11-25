@@ -65,6 +65,7 @@ export const Library = {
       lists: [
         { kind: "like", role: "like", hasFolders: false },
         { kind: "favorite", role: "favorite", hasFolders: false },
+        { kind: "recommend", role: "other", hasFolders: false },
         { kind: "music", role: "other", hasFolders: false },
       ],
       actions: ["like", "favorite"],
@@ -96,7 +97,7 @@ export const Library = {
   },
   async counts(accountId = "", source = "") {
     const total = filtered({ accountId, source }).length;
-    return { like: total, favorite: total, watch_later: total, music: 0 };
+    return { like: total, favorite: total, recommend: total, watch_later: total, music: 0 };
   },
   async timeline(q: Query) {
     const months: {

@@ -27,8 +27,8 @@ func TestDescriptors(t *testing.T) {
 	// Mutating returned copies must not affect the registry.
 	all[0].Lists[0].Kind = "mutated"
 	dy, ok := DescriptorByID("douyin")
-	if !ok || dy.Lists[0].Kind != "like" {
-		t.Fatalf("registry mutated: %+v ok=%v", dy, ok)
+	if !ok || len(dy.Lists) != 4 || dy.Lists[0].Kind != "like" || dy.Lists[1].Kind != "favorite" || dy.Lists[2].Kind != "recommend" || dy.Lists[2].Role != RoleOther || dy.Lists[3].Kind != "music" {
+		t.Fatalf("unexpected douyin descriptor: %+v ok=%v", dy, ok)
 	}
 	bl, ok := DescriptorByID("bilibili")
 	if !ok || !bl.FolderPicker || !bl.Lists[0].HasFolders {

@@ -52,7 +52,7 @@ export function SyncPill({ accountName, state, states, visible, compact = false,
     return () => clearInterval(timer);
   }, [state?.status, state?.retryAt, state?.accountId, state?.kind, t]);
   if (!state) return null;
-  const order = ["like", "favorite", "music"];
+  const order = ["like", "favorite", "recommend", "music"];
   const rows = states.filter((s) => s.accountId === state.accountId && s.kind !== "cover").sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
   const anyBusy = rows.some(busy);
   const format = (n: number) => new Intl.NumberFormat(i18n.language).format(n);

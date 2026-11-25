@@ -49,9 +49,9 @@ var (
 	libraryChanged = mygo.NewEvent[LibraryChange]("library:changed")
 )
 
-var syncKinds = []string{"like", "favorite", "music"}
+var syncKinds = []string{"like", "favorite", "recommend", "music"}
 
-var syncOps = map[string]douyin.Operation{"like": douyin.OpLikes, "favorite": douyin.OpFavorites, "music": douyin.OpMusic}
+var syncOps = map[string]douyin.Operation{"like": douyin.OpLikes, "favorite": douyin.OpFavorites, "recommend": douyin.OpRecommend, "music": douyin.OpMusic}
 
 const (
 	pageGap       = 1200 * time.Millisecond

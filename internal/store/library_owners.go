@@ -18,9 +18,9 @@ func (s *Store) LibraryOwners(ctx context.Context, q LibraryQuery, ids []string)
 	from := `relations r JOIN works w ON w.id=r.work_id`
 	where := `r.kind=?`
 	args := []any{q.Kind}
-	switch q.Kind {
-	case "like", "favorite", "watch_later":
-	case "music":
+	switch {
+	case validWorkRelationKind(q.Kind):
+	case q.Kind == "music":
 		from = `music_relations r JOIN musics w ON w.id=r.music_id`
 		where, args = "1=1", nil
 	default:

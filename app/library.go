@@ -70,6 +70,7 @@ type LibraryPage struct {
 type LibraryCounts struct {
 	Like       int `json:"like"`
 	Favorite   int `json:"favorite"`
+	Recommend  int `json:"recommend"`
 	Music      int `json:"music"`
 	WatchLater int `json:"watch_later"`
 }
@@ -169,5 +170,5 @@ func (l *Library) Counts(accountID, source string) (LibraryCounts, error) {
 	if err != nil {
 		return LibraryCounts{}, errors.New("STORE_FAILED")
 	}
-	return LibraryCounts{Like: c["like"], Favorite: c["favorite"], Music: c["music"], WatchLater: c["watch_later"]}, nil
+	return LibraryCounts{Like: c["like"], Favorite: c["favorite"], Recommend: c["recommend"], Music: c["music"], WatchLater: c["watch_later"]}, nil
 }
