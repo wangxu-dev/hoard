@@ -164,6 +164,128 @@ func (s *Sync) run(ctx context.Context, accountID string) {
 		}
 		pending = next
 	}
+	if ctx.Err() == nil {
+		s.syncFolders(ctx, accountID)
+	}
+}
+
+func (s *Sync) syncFolders(ctx context.Context, accountID string) {
+	cursor := "0"
+	var folders []douyin.Folder
+	seenFolders := map[string]bool{}
+	enumerated := false
+	for pageNum := 0; pageNum < 20; pageNum++ {
+		reply, err := s.request(ctx, douyin.OpFolders, map[string]string{"cursor": cursor, "count": listPageSize}, douyinSyncGap)
+		if ctx.Err() != nil {
+			log.Printf("[hoard:sync] folders paused class=%s", douyin.ResponseNotReady)
+			return
+		}
+		var page douyin.FolderPage
+		if err != nil {
+			page.Class = douyin.ResponseNotReady
+		} else {
+			page = douyin.ParseFolders(reply)
+		}
+		if page.Class != douyin.ResponseOK {
+			log.Printf("[hoard:sync] folders paused class=%s", page.Class)
+			return
+		}
+		for _, f := range page.Folders {
+			if !seenFolders[f.ID] {
+				seenFolders[f.ID] = true
+				folders = append(folders, f)
+			}
+		}
+		if !page.HasMore || page.Cursor == "" || page.Cursor == cursor {
+			enumerated = true
+			break
+		}
+		cursor = page.Cursor
+	}
+	keepIDs := make([]string, 0, len(folders))
+	position := 0
+	for _, f := range folders {
+		if ctx.Err() != nil {
+			return
+		}
+		itemCursor := "0"
+		var members []store.FolderWork
+		seenWorks := map[string]bool{}
+		folderComplete := false
+		for pageNum := 0; pageNum < 50; pageNum++ {
+			reply, err := s.request(ctx, douyin.OpFolderItems, map[string]string{
+				"collects_id": f.ID,
+				"cursor":      itemCursor,
+				"count":       listPageSize,
+			}, douyinSyncGap)
+			if ctx.Err() != nil {
+				return
+			}
+			if err != nil {
+				break
+			}
+			page := douyin.ParseList(douyin.OpFolderItems, reply)
+			if page.Class != douyin.ResponseOK {
+				break
+			}
+			if len(page.Works) > 0 {
+				sctx, cancel := accountContext()
+				_, saveErr := s.app.Store.SaveWorks(sctx, accountID, "favorite", false, worksOf(page.Works))
+				cancel()
+				if saveErr != nil {
+					log.Printf("[hoard:sync] folder works write failed")
+					break
+				}
+				if s.app.Covers != nil {
+					s.app.Covers.Prefetch(coverItems(page))
+				}
+				for _, w := range page.Works {
+					if !seenWorks[w.ID] {
+						seenWorks[w.ID] = true
+						members = append(members, store.FolderWork{RemoteID: w.ID, FavoritedAt: 0})
+					}
+				}
+			}
+			if !page.HasMore {
+				folderComplete = true
+				break
+			}
+			if page.Cursor == "" || page.Cursor == itemCursor {
+				break
+			}
+			itemCursor = page.Cursor
+		}
+		if folderComplete {
+			sctx, cancel := accountContext()
+			err := s.app.Store.ReplaceFolderMembership(sctx, accountID, store.Folder{
+				ID:       f.ID,
+				Title:    f.Title,
+				Count:    f.Count,
+				Kind:     "favorite",
+				Position: position,
+			}, members)
+			cancel()
+			if err != nil {
+				log.Printf("[hoard:sync] folder membership write failed")
+			}
+		}
+		position++
+		keepIDs = append(keepIDs, f.ID)
+	}
+	if ctx.Err() != nil {
+		return
+	}
+	if enumerated {
+		sctx, cancel := accountContext()
+		if err := s.app.Store.PruneFolders(sctx, accountID, keepIDs); err != nil {
+			log.Printf("[hoard:sync] folders prune failed")
+		}
+		cancel()
+	}
+	if err := libraryChanged.Broadcast(LibraryChange{AccountID: accountID, Kind: "favorite"}); err != nil {
+		log.Print("[hoard:sync] library event delivery failed")
+	}
+	log.Printf("[hoard:sync] folders done count=%d", len(keepIDs))
 }
 
 type fetchOutcome string
