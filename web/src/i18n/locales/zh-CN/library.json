@@ -106,6 +106,8 @@
     "progress": "进度",
     "volume": "音量",
     "speed": "倍速",
+    "quality": "清晰度",
+    "qualityAuto": "自动",
     "fullscreen": "全屏",
     "exitFullscreen": "退出全屏",
     "play": "播放",
