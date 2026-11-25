@@ -16,6 +16,7 @@ import (
 type Relay struct {
 	mu     sync.RWMutex
 	urls   map[string]string
+	keys   map[string]string
 	heads  map[string]*head
 	base   string
 	client *http.Client
@@ -39,7 +40,7 @@ func New() (*Relay, error) {
 	if err != nil {
 		return nil, err
 	}
-	r := &Relay{urls: make(map[string]string), base: "http://" + listener.Addr().String(), client: &http.Client{Timeout: 2 * time.Minute}}
+	r := &Relay{urls: make(map[string]string), keys: make(map[string]string), base: "http://" + listener.Addr().String(), client: &http.Client{Timeout: 2 * time.Minute}}
 	r.client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if len(via) >= 5 || !allowedMedia(req.URL.String()) {
 			return fmt.Errorf("invalid media redirect")
@@ -54,6 +55,7 @@ func New() (*Relay, error) {
 func (r *Relay) Clear() {
 	r.mu.Lock()
 	clear(r.urls)
+	clear(r.keys)
 	clear(r.heads)
 	r.mu.Unlock()
 }
@@ -62,9 +64,20 @@ func (r *Relay) Register(raw string) string {
 	if !allowedMedia(raw) {
 		return ""
 	}
-	key := rand.Text()
 	r.mu.Lock()
+	if r.urls == nil {
+		r.urls = make(map[string]string)
+	}
+	if r.keys == nil {
+		r.keys = make(map[string]string)
+	}
+	if existing, ok := r.keys[raw]; ok && r.urls[existing] == raw {
+		r.mu.Unlock()
+		return r.base + "/video/" + url.PathEscape(existing)
+	}
+	key := rand.Text()
 	r.urls[key] = raw
+	r.keys[raw] = key
 	r.mu.Unlock()
 	return r.base + "/video/" + url.PathEscape(key)
 }
