@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -242,7 +243,40 @@ func ParseProfile(reply PageReply) Profile {
 	return Profile{Class: ResponseOK, SecUID: user.SecUID, Nickname: user.Nickname, Likes: int(num(user.FavoritingCount)), Favorites: int(num(user.CollectCount))}
 }
 
-// ParseList reads one page of likes, favorites or music.
+// ListShapeDiagnostics records list response shape without identity or response values.
+func ListShapeDiagnostics(reply PageReply) string {
+	obj, valid := decodeObject(reply.Body)
+	keys := make([]string, 0, len(obj))
+	for k := range obj {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	_, hasMore := obj["has_more"]
+	_, hasMaxCursor := obj["max_cursor"]
+	_, hasCursor := obj["cursor"]
+	_, hasWhaleToken := obj["whale_cut_token"]
+	awemeCount := -1
+	var itemKeys []string
+	if raw, ok := obj["aweme_list"]; ok {
+		var items []map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &items); err == nil && items != nil {
+			awemeCount = len(items)
+			if len(items) > 0 && items[0] != nil {
+				for k := range items[0] {
+					itemKeys = append(itemKeys, k)
+				}
+				slices.Sort(itemKeys)
+				if len(itemKeys) > 32 {
+					itemKeys = itemKeys[:32]
+				}
+			}
+		}
+	}
+	return fmt.Sprintf("http=%d bytes=%d json=%t keys=[%s] has_more=%t max_cursor=%t cursor=%t whale_cut_token=%t aweme_count=%d item_keys=[%s]",
+		reply.Status, len(reply.Body), valid, strings.Join(keys, ","), hasMore, hasMaxCursor, hasCursor, hasWhaleToken, awemeCount, strings.Join(itemKeys, ","))
+}
+
+// ParseList reads one page of likes, favorites, recommend or music.
 func ParseList(op Operation, reply PageReply) ListPage {
 	obj, class, code := classify(op, reply)
 	page := ListPage{Class: class, Code: code}
@@ -255,8 +289,11 @@ func ParseList(op Operation, reply PageReply) ListPage {
 		return page
 	}
 	page.HasMore = more
-	if op == OpLikes {
+	if op == OpLikes || op == OpRecommend {
 		page.Cursor = cursorOf(obj["max_cursor"])
+		if page.Cursor == "" {
+			page.Cursor = cursorOf(obj["cursor"])
+		}
 	} else {
 		page.Cursor = cursorOf(obj["cursor"])
 		if page.Cursor == "" {
