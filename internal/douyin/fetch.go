@@ -15,6 +15,8 @@ const (
 	OpSelf        Operation = "self"
 	OpLikes       Operation = "likes"
 	OpFavorites   Operation = "favorites"
+	OpFolders     Operation = "folders"
+	OpFolderItems Operation = "folderItems"
 	OpRecommend   Operation = "recommend"
 	OpMusic       Operation = "music"
 	OpDetail      Operation = "detail"
@@ -71,6 +73,8 @@ const pageRequestScript = `(async (job) => {
     self: { path: '/aweme/v1/web/user/profile/self/' },
     likes: { path: '/aweme/v1/web/aweme/favorite/' },
     favorites: { path: '/aweme/v1/web/aweme/listcollection/', shelf: true, form: true },
+    folders: { path: '/aweme/v1/web/collects/list/', shelf: true, referrer: 'https://www.douyin.com/user/self?from_tab_name=main&showSubTab=favorite_folder&showTab=favorite_collection' },
+    folderItems: { path: '/aweme/v1/web/collects/video/list/', shelf: true, referrer: 'https://www.douyin.com/user/self?from_tab_name=main&showSubTab=favorite_folder&showTab=favorite_collection' },
     recommend: { path: '/aweme/v1/web/familiar/recommend/feed/', shelf: true, referrer: 'https://www.douyin.com/user/self?from_tab_name=main&showTab=recommend' },
     music: { path: '/aweme/v1/web/music/listcollection/', shelf: true },
     detail: { path: '/aweme/v1/web/aweme/detail/' },
