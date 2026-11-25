@@ -32,7 +32,8 @@ export interface LibraryEntry {
   publishedAt: number; durationMs: number; imageCount: number; accountIds?: string[]; likedAccountIds?: string[]; favoritedAccountIds?: string[];
 }
 export interface MediaImage { url: string; liveUrl?: string }
-export interface MediaResult { previewMs?: number; parts?: { id: string; title: string; durationMs: number }[]; partId?: string; kind: "video" | "gallery" | "music"; videos: string[]; images: MediaImage[]; music: { title: string; author: string; url: string }; author: string; authorAvatar?: string; desc: string; publishedAt: number; complete?: boolean; expiresAt?: number }
+export interface MediaQuality { id: string; label: string; videos: string[] }
+export interface MediaResult { previewMs?: number; parts?: { id: string; title: string; durationMs: number }[]; partId?: string; kind: "video" | "gallery" | "music"; videos: string[]; qualities?: MediaQuality[]; images: MediaImage[]; music: { title: string; author: string; url: string }; author: string; authorAvatar?: string; desc: string; publishedAt: number; complete?: boolean; expiresAt?: number }
 /** One month of a list sorted by publish time; start is the offset of its first item. Year and month are 0 for items without a date. */
 export interface TimelineMonth { year: number; month: number; count: number; start: number }
 export interface ListQuery { scope: Scope; kind: ListKind; type: WorkType; query: string; sort: SortKey; offset: number; limit: number }

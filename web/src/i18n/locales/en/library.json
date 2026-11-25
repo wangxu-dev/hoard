@@ -106,6 +106,8 @@
     "progress": "Progress",
     "volume": "Volume",
     "speed": "Playback speed",
+    "quality": "Quality",
+    "qualityAuto": "Auto",
     "fullscreen": "Full screen",
     "exitFullscreen": "Exit full screen",
     "play": "Play",

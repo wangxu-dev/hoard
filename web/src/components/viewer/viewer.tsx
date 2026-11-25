@@ -12,7 +12,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { getLibrarySource, type LibraryEntry } from "@/lib/library";
 import { warmImage, type ListCursor } from "@/lib/library-cursor";
 import { setSound, togglePlay, formatClock, useMediaState, useSound, pauseAll } from "@/lib/player";
-import { ControlButton, SeekBar, SpeedMenu, TimeLabel, VolumeControl } from "./controls";
+import { ControlButton, QualityMenu, SeekBar, SpeedMenu, TimeLabel, VolumeControl } from "./controls";
+import { QUALITY_STORAGE_KEY, resolveVideoQuality } from "@/lib/video-quality";
 import { VideoStage } from "./video-stage";
 import { GalleryStage, type GalleryHandle } from "./gallery-stage";
 import { ViewerActions } from "@/components/entry-actions";
@@ -65,12 +66,14 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
   const [fullscreen, setFullscreen] = useState(false);
   const [info, setInfo] = useState(() => localStorage.getItem(infoKey) !== "0");
   const [sheet, setSheet] = useState(false);
+  const [preferredQuality, setPreferredQuality] = useState(() => localStorage.getItem(QUALITY_STORAGE_KEY) || "auto");
   const state = useMediaState(element);
   const sound = useSound();
   const [part, setPart] = useState<{ key: string; id: string } | null>(null);
   const entryKey = entry ? `${entry.kind}:${entry.id}` : "";
   const partId = part?.key === entryKey ? part.id : undefined;
   const { media, error, loading, refresh, retry } = useMedia(entry, partId);
+  const resolved = resolveVideoQuality(media?.qualities, media?.videos ?? [], preferredQuality);
   const parts = media?.parts ?? [];
   const partIndex = parts.findIndex((item) => item.id === media?.partId);
   const nextPart = partIndex >= 0 && partIndex + 1 < parts.length ? () => setPart({ key: entryKey, id: parts[partIndex + 1].id }) : undefined;
@@ -78,6 +81,7 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
   useEffect(() => { pauseAll(); }, []);
   useEffect(() => { if (!entry) void cursor.at(start).then(setEntry); }, []);
   useEffect(() => { localStorage.setItem(infoKey, info ? "1" : "0"); }, [info]);
+  useEffect(() => { localStorage.setItem(QUALITY_STORAGE_KEY, preferredQuality); }, [preferredQuality]);
   useEffect(() => {
     // Warm the covers around the current item so the next swipe starts on a picture.
     for (const n of [index + 1, index - 1, index + 2]) void cursor.at(n).then((next) => warmImage(next?.cover)).catch(() => undefined);
@@ -95,14 +99,17 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
         if (!next || next.kind === "music") continue;
         const media = await prefetchMedia(next).catch(() => undefined);
         if (!live) return;
-        if (media?.videos[0]) void getLibrarySource().warm([media.videos[0]]).catch(() => undefined);
+        if (media) {
+          const warmed = resolveVideoQuality(media.qualities, media.videos, preferredQuality).videos[0];
+          if (warmed) void getLibrarySource().warm([warmed]).catch(() => undefined);
+        }
       }
     }, 300);
     return () => { live = false; clearTimeout(timer); };
-  }, [index, loading, cursor]);
+  }, [index, loading, cursor, preferredQuality]);
 
   // A video that plays keeps its opening bytes in memory, so opening it again starts at once.
-  const playingVideo = !state.paused && media?.kind === "video" ? media.videos[0] : undefined;
+  const playingVideo = !state.paused && media?.kind === "video" ? resolved.videos[0] : undefined;
   useEffect(() => { if (playingVideo) void getLibrarySource().warm([playingVideo]).catch(() => undefined); }, [playingVideo]);
 
   const move = useCallback((delta: number) => {
@@ -187,7 +194,7 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
           {entry && <div key={key} className="absolute inset-0">
             {isGallery
               ? <GalleryStage entry={entry} media={media} badgeSlot={badgeSlot} onElement={onElement} onHandle={setGallery} onSlide={onSlide} onExpired={refresh} />
-              : <VideoStage entry={entry} media={media} onNextPart={nextPart} onElement={onElement} onExhausted={refresh} onDoubleClick={() => toggleFullscreen(root.current)} />}
+              : <VideoStage entry={entry} media={media} videos={resolved.videos} qualityKey={resolved.activeId} onNextPart={nextPart} onElement={onElement} onExhausted={refresh} onDoubleClick={() => toggleFullscreen(root.current)} />}
           </div>}
 
         {(loading || state.waiting) && !error && !isGallery && <div data-testid="viewer-spinner" className="spinner-late pointer-events-none absolute inset-0 grid place-items-center"><Spinner className="size-7 text-viewer-foreground/80" /></div>}
@@ -236,6 +243,7 @@ export function Viewer({ cursor, start, onClose }: { cursor: ListCursor; start: 
               <SelectTrigger size="sm" aria-label={t("viewer.parts")} className="h-8 w-48 min-w-0 border-viewer-foreground/20 bg-viewer-control text-viewer-foreground"><SelectValue /></SelectTrigger>
               <SelectContent position="popper" side="top" className="dark z-[80] max-h-80">{parts.map((item) => <SelectItem key={item.id} value={item.id}>{item.title}</SelectItem>)}</SelectContent>
             </Select>}
+            {!isGallery && (media?.qualities?.length ?? 0) > 1 && <QualityMenu qualities={media!.qualities!} preferred={preferredQuality} activeId={resolved.activeId} activeLabel={resolved.activeLabel} onQuality={setPreferredQuality} />}
             {!isGallery && <SpeedMenu rate={state.rate} onRate={(rate) => { if (element) element.playbackRate = rate; }} />}
             {hasSound && <VolumeControl />}
             <ControlButton label={fullscreen ? t("viewer.exitFullscreen") : t("viewer.fullscreen")} hint="F" onClick={() => toggleFullscreen(root.current)}>{fullscreen ? <Minimize /> : <Maximize />}</ControlButton>

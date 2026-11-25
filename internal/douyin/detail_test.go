@@ -1,6 +1,9 @@
 package douyin
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestParseDetailVideoCandidates(t *testing.T) {
 	p := ParseDetail(PageReply{Status: 200, Body: `{"status_code":0,"aweme_detail":{"desc":"demo","create_time":1700000000,"user_digged":1,"author":{"nickname":"Author","avatar_thumb":{"url_list":["https://img.invalid/a"]}},"video":{"play_addr_h264":{"url_list":["https://v.invalid/a","https://v.invalid/a"]},"bit_rate":[{"play_addr":{"url_list":["https://v.invalid/b"]}}],"play_addr":{"url_list":["https://v.invalid/c"]}}}}`})
@@ -45,6 +48,87 @@ func TestParseDetailSkipsHEVCGears(t *testing.T) {
 	p := ParseDetail(PageReply{Status: 200, Body: `{"status_code":0,"aweme_detail":{"video":{"bit_rate":[{"gear_name":"normal_1080_bytevc1","play_addr":{"url_list":["https://v.invalid/hevc"]}},{"gear_name":"normal_720_0","play_addr":{"url_list":["https://v.invalid/avc"]}}]}}}`})
 	if len(p.Videos) != 1 || p.Videos[0] != "https://v.invalid/avc" {
 		t.Fatalf("videos = %v", p.Videos)
+	}
+	if len(p.Qualities) != 1 || p.Qualities[0].ID != "720" || p.Qualities[0].Label != "720P" {
+		t.Fatalf("qualities = %+v", p.Qualities)
+	}
+}
+
+func TestParseQualityTier(t *testing.T) {
+	cases := []struct {
+		name     string
+		gearName string
+		width    int
+		height   int
+		wantID   string
+		wantLbl  string
+		wantRank int
+	}{
+		{name: "4k gear underscore", gearName: "adapt_lowest_4_1", wantID: "2160", wantLbl: "4K", wantRank: 2160},
+		{name: "4k gear label", gearName: "normal_4k_0", wantID: "2160", wantLbl: "4K", wantRank: 2160},
+		{name: "2160 gear", gearName: "normal_2160_0", wantID: "2160", wantLbl: "4K", wantRank: 2160},
+		{name: "2k gear", gearName: "normal_2k_0", wantID: "1440", wantLbl: "2K", wantRank: 1440},
+		{name: "1440 gear", gearName: "normal_1440_0", wantID: "1440", wantLbl: "2K", wantRank: 1440},
+		{name: "1080 gear", gearName: "normal_1080_0", wantID: "1080", wantLbl: "1080P", wantRank: 1080},
+		{name: "720 gear", gearName: "low_720_0", wantID: "720", wantLbl: "720P", wantRank: 720},
+		{name: "540 gear", gearName: "normal_540_0", wantID: "540", wantLbl: "540P", wantRank: 540},
+		{name: "480 gear", gearName: "normal_480_0", wantID: "480", wantLbl: "480P", wantRank: 480},
+		{name: "360 gear", gearName: "lower_360_0", wantID: "360", wantLbl: "360P", wantRank: 360},
+		{name: "fallback portrait 1080x1920", gearName: "custom", width: 1080, height: 1920, wantID: "1080", wantLbl: "1080P", wantRank: 1080},
+		{name: "fallback 4k dims", gearName: "custom", width: 3840, height: 2160, wantID: "2160", wantLbl: "4K", wantRank: 2160},
+		{name: "fallback 2k dims", gearName: "custom", width: 2560, height: 1440, wantID: "1440", wantLbl: "2K", wantRank: 1440},
+		{name: "fallback 720 dims", gearName: "custom", width: 720, height: 1280, wantID: "720", wantLbl: "720P", wantRank: 720},
+		{name: "fallback 540 dims", gearName: "custom", width: 540, height: 960, wantID: "540", wantLbl: "540P", wantRank: 540},
+		{name: "fallback 480 dims", gearName: "custom", width: 480, height: 854, wantID: "480", wantLbl: "480P", wantRank: 480},
+		{name: "fallback 360 dims", gearName: "custom", width: 360, height: 640, wantID: "360", wantLbl: "360P", wantRank: 360},
+		{name: "fallback single dim", gearName: "", width: 720, height: 0, wantID: "720", wantLbl: "720P", wantRank: 720},
+		{name: "unknown", gearName: "unknown", width: 0, height: 0, wantID: "", wantLbl: "", wantRank: 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			id, label, rank := parseQualityTier(tc.gearName, tc.width, tc.height)
+			if id != tc.wantID || label != tc.wantLbl || rank != tc.wantRank {
+				t.Fatalf("parseQualityTier(%q, %d, %d) = (%q, %q, %d), want (%q, %q, %d)",
+					tc.gearName, tc.width, tc.height, id, label, rank, tc.wantID, tc.wantLbl, tc.wantRank)
+			}
+		})
+	}
+}
+
+func TestParseDetailQualitiesGroupingSortingAndDedup(t *testing.T) {
+	body := `{
+		"status_code": 0,
+		"aweme_detail": {
+			"video": {
+				"bit_rate": [
+					{"gear_name": "normal_540_0", "bit_rate": 600000, "play_addr": {"width": 540, "height": 960, "url_list": ["https://v.invalid/540-a", "http://v.invalid/insecure"]}},
+					{"gear_name": "low_720_0", "bit_rate": 900000, "play_addr": {"width": 720, "height": 1280, "url_list": ["https://v.invalid/720-low", "https://v.invalid/720-shared"]}},
+					{"gear_name": "normal_1080_bytevc1", "is_bytevc1": 1, "bit_rate": 2500000, "play_addr": {"width": 1080, "height": 1920, "url_list": ["https://v.invalid/hevc-1080"]}},
+					{"gear_name": "normal_1080_h265", "is_h265": 1, "bit_rate": 2400000, "play_addr": {"width": 1080, "height": 1920, "url_list": ["https://v.invalid/h265-1080"]}},
+					{"gear_name": "normal_720_0", "bit_rate": 900000, "play_addr": {"width": 720, "height": 1280, "url_list": ["https://v.invalid/720-shared", "https://v.invalid/720-normal"]}},
+					{"gear_name": "normal_1080_0", "bit_rate": 2200000, "play_addr": {"width": 1080, "height": 1920, "url_list": ["https://v.invalid/1080-a", "https://v.invalid/1080-a"]}},
+					{"gear_name": "adapt_lowest_4_1", "bit_rate": 4500000, "play_addr": {"width": 2160, "height": 3840, "url_list": ["https://v.invalid/4k-a"]}}
+				]
+			}
+		}
+	}`
+	p := ParseDetail(PageReply{Status: 200, Body: body})
+	if p.Class != ResponseOK {
+		t.Fatalf("class = %s", p.Class)
+	}
+	want := []DetailQuality{
+		{ID: "2160", Label: "4K", Height: 2160, BitRate: 4500000, URLs: []string{"https://v.invalid/4k-a"}},
+		{ID: "1080", Label: "1080P", Height: 1080, BitRate: 2200000, URLs: []string{"https://v.invalid/1080-a"}},
+		{ID: "720", Label: "720P", Height: 720, BitRate: 900000, URLs: []string{"https://v.invalid/720-shared", "https://v.invalid/720-normal", "https://v.invalid/720-low"}},
+		{ID: "540", Label: "540P", Height: 540, BitRate: 600000, URLs: []string{"https://v.invalid/540-a"}},
+	}
+	if !reflect.DeepEqual(p.Qualities, want) {
+		t.Fatalf("qualities = %+v, want %+v", p.Qualities, want)
+	}
+	for _, u := range p.Videos {
+		if u == "https://v.invalid/hevc-1080" || u == "https://v.invalid/h265-1080" {
+			t.Fatalf("unexpected HEVC URL in Videos: %q", u)
+		}
 	}
 }
 

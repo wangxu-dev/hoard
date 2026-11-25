@@ -7,6 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { formatClock, setSound, useSound, type MediaState } from "@/lib/player";
+import type { VideoQualityOption } from "@/lib/video-quality";
 
 export const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
@@ -90,6 +91,39 @@ export function SpeedMenu({ rate, onRate }: { rate: number; onRate: (rate: numbe
     <DropdownMenuContent side="top" align="center" sideOffset={8} className="dark min-w-24">
       <DropdownMenuRadioGroup value={String(rate)} onValueChange={(value) => onRate(Number(value))}>
         {[...SPEEDS].reverse().map((value) => <DropdownMenuRadioItem key={value} value={String(value)} className="tabular-nums">{label(value)}</DropdownMenuRadioItem>)}
+      </DropdownMenuRadioGroup>
+    </DropdownMenuContent>
+  </DropdownMenu>;
+}
+
+export function QualityMenu({ qualities, preferred, activeId, activeLabel, onQuality }: {
+  qualities: VideoQualityOption[];
+  preferred: string;
+  activeId: string;
+  activeLabel: string;
+  onQuality: (quality: string) => void;
+}) {
+  const { t } = useTranslation("library");
+  const highestLabel = qualities[0]?.label;
+  const autoLabel = highestLabel ? `${t("viewer.qualityAuto")} · ${highestLabel}` : t("viewer.qualityAuto");
+  const selected = !preferred || preferred === "auto"
+    ? "auto"
+    : qualities.some((q) => q.id === preferred)
+      ? preferred
+      : activeId;
+  return <DropdownMenu modal={false}>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <DropdownMenuTrigger asChild>
+          <Button data-testid="quality-menu" variant="ghost" size="sm" aria-label={t("viewer.quality")} className="h-9 min-w-12 rounded-full px-2.5 text-xs font-semibold tabular-nums text-viewer-foreground hover:bg-viewer-control-hover hover:text-viewer-foreground">{activeLabel}</Button>
+        </DropdownMenuTrigger>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={6}>{t("viewer.quality")}</TooltipContent>
+    </Tooltip>
+    <DropdownMenuContent side="top" align="center" sideOffset={8} className="dark min-w-28">
+      <DropdownMenuRadioGroup value={selected} onValueChange={onQuality}>
+        <DropdownMenuRadioItem value="auto" className="tabular-nums">{autoLabel}</DropdownMenuRadioItem>
+        {qualities.map((q) => <DropdownMenuRadioItem key={q.id} value={q.id} className="tabular-nums">{q.label}</DropdownMenuRadioItem>)}
       </DropdownMenuRadioGroup>
     </DropdownMenuContent>
   </DropdownMenu>;
