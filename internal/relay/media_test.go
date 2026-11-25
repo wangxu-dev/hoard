@@ -36,6 +36,20 @@ func TestMediaRelayClear(t *testing.T) {
 	}
 }
 
+func TestMediaRelayRegisterIdempotent(t *testing.T) {
+	r := &Relay{base: "http://127.0.0.1:1234", urls: map[string]string{}}
+	first := r.Register("https://v.douyinvod.com/same-audio")
+	second := r.Register("https://v.douyinvod.com/same-audio")
+	if first == "" || first != second {
+		t.Fatalf("expected identical relay URL for same raw media, got %q and %q", first, second)
+	}
+	r.Clear()
+	afterClear := r.Register("https://v.douyinvod.com/same-audio")
+	if afterClear == "" || afterClear == first {
+		t.Fatalf("expected fresh relay URL after Clear, got %q", afterClear)
+	}
+}
+
 func TestMediaRelayRange(t *testing.T) {
 	r := &Relay{base: "http://127.0.0.1:1234", urls: map[string]string{"1": "https://v.douyinvod.com/video"}}
 	r.client = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {

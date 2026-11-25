@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import type { LibraryEntry } from "@/lib/library";
 import { claimPlayback, formatClock, releaseMedia, togglePlay, useApplySound, useMediaState } from "@/lib/player";
 import { canGoBack, closeMusic, cyclePlayMode, locateNowPlaying, nextIndex, playNext, playPrevious, setNowPlaying, useMusic } from "@/lib/music";
+import { nextTrackSrc, type TrackSrc } from "@/lib/media-key";
 import { ControlButton, SeekBar, VolumeControl } from "./controls";
 import { useMedia } from "./use-media";
 
@@ -26,6 +27,22 @@ export function MusicBar({ className }: { className?: string }) {
   const { media, error, refresh } = useMedia(entry?.kind === "music" ? entry : undefined);
   const state = useMediaState(audio);
   useApplySound(audio);
+  // Keep the active audio URL stable for the current track so background refetches
+  // never reset playback to 00:00; only a track switch or explicit error recovery replaces it.
+  const [lockedSrc, setLockedSrc] = useState<TrackSrc | null>(null);
+  const recovering = useRef(false);
+  const incomingUrl = media?.music.url ?? "";
+  useEffect(() => {
+    if (!entry?.id || !incomingUrl) return;
+    setLockedSrc((prev) => {
+      const next = nextTrackSrc(prev, entry.id, incomingUrl, recovering.current);
+      if (next !== prev) recovering.current = false;
+      return next;
+    });
+  }, [entry?.id, incomingUrl]);
+  useEffect(() => {
+    recovering.current = false;
+  }, [entry?.id]);
   useEffect(() => {
     let live = true;
     setEntry(cursor.peek(index));
@@ -48,7 +65,7 @@ export function MusicBar({ className }: { className?: string }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [audio]);
-  const src = media?.music.url;
+  const src = entry?.id && lockedSrc?.id === entry.id ? lockedSrc.url : incomingUrl;
   useEffect(() => { if (audio && src) { claimPlayback(audio); void audio.play().catch(() => undefined); } }, [audio, src]);
   useEffect(() => {
     if (!error || nextIndex(music) < 0) return;
@@ -85,7 +102,7 @@ export function MusicBar({ className }: { className?: string }) {
       <span className="hidden w-10 shrink-0 text-[11px] tabular-nums text-viewer-muted @2xl:inline-block">{formatClock(state.duration)}</span>
       <VolumeControl />
       <ControlButton data-testid="music-close" label={t("viewer.closePlayer")} onClick={closeMusic} className="shrink-0"><X /></ControlButton>
-      {src && <audio ref={setAudio} src={src} preload="auto" loop={music.mode === "one"} onEnded={playNext} onError={() => refresh()} />}
+      {src && <audio ref={setAudio} src={src} preload="auto" loop={music.mode === "one"} onEnded={playNext} onError={() => { recovering.current = true; refresh(); }} />}
     </motion.div>
   </TooltipProvider>;
 }
