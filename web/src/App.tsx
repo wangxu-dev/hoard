@@ -7,7 +7,6 @@ import { AnimatePresence, motion, useIsPresent, useReducedMotion } from "motion/
 import { Toaster } from "@/components/ui/sonner";
 import { AppSidebar, type Page } from "@/components/app-sidebar";
 import { LibraryPage } from "@/pages/library";
-import { SettingsPage } from "@/pages/settings";
 import { startLibraryEvents } from "@/lib/library-events";
 import { useMusic } from "@/lib/music";
 import { MusicBar } from "@/components/viewer/music-bar";
@@ -17,6 +16,7 @@ import { useWindowAppearance } from "@/lib/window-appearance";
 
 const loadExplore = () => import("@/pages/constellation-dev");
 const ExplorePage = lazy(loadExplore);
+const SettingsPage = lazy(() => import("@/pages/settings").then((m) => ({ default: m.SettingsPage })));
 
 class ExploreBoundary extends Component<{ children: React.ReactNode; message: string; reloadLabel: string }, { failed: boolean }> {
   state = { failed: false };
@@ -95,7 +95,7 @@ export function App() {
       toast.error(t("error.login"));
     }
   };
-  const content = page === "explore" ? <ExploreBoundary message={tExplore("error.message")} reloadLabel={tExplore("error.reload")}><Suspense fallback={<div role="status" className="flex h-full w-full items-center justify-center text-sm text-muted-foreground" style={{ background: "radial-gradient(ellipse at 52% 48%, var(--explore-bg-glow), var(--explore-bg) 72%)" }}>{tExplore("loading")}</div>}><ExplorePage /></Suspense></ExploreBoundary> : page === "library" ? <LibraryPage scrolled={scrolled} onAddAccount={(source) => { void login(undefined, source); }} onLogin={(accountId) => { void login(accountId); }} /> : <SettingsPage />;
+  const content = page === "explore" ? <ExploreBoundary message={tExplore("error.message")} reloadLabel={tExplore("error.reload")}><Suspense fallback={<div role="status" className="flex h-full w-full items-center justify-center text-sm text-muted-foreground" style={{ background: "radial-gradient(ellipse at 52% 48%, var(--explore-bg-glow), var(--explore-bg) 72%)" }}>{tExplore("loading")}</div>}><ExplorePage /></Suspense></ExploreBoundary> : page === "library" ? <LibraryPage scrolled={scrolled} onAddAccount={(source) => { void login(undefined, source); }} onLogin={(accountId) => { void login(accountId); }} /> : <Suspense fallback={null}><SettingsPage /></Suspense>;
 
   return (
     <div data-app-shell className="relative flex h-dvh min-w-0 overflow-hidden bg-background">
