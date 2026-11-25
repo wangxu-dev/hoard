@@ -13,6 +13,7 @@ import { reconcileLibraryScope, setLibraryFilters, useLibraryFilters, useLibrary
 import { useLibraryVersion } from "@/lib/library-events";
 import { foldersQuery, queryKeys } from "@/lib/query";
 import { playMusic } from "@/lib/music";
+import { sourceHasFolders, visibleListKinds } from "@/lib/source-capabilities";
 
 const noSources: SourceGroup[] = [];
 const noStates: SyncState[] = [];
@@ -30,7 +31,7 @@ export function LibraryPage({ scrolled, onAddAccount, onLogin }: { scrolled: boo
   const statesQuery = useQuery({ queryKey: queryKeys.syncStates, queryFn: () => source.syncStates(), staleTime: Infinity });
   const countsQuery = useQuery({ queryKey: queryKeys.counts(filters.scope), queryFn: () => source.counts(filters.scope), placeholderData: keepPreviousData });
   const sources = sourcesQuery.data ?? noSources;
-  useQueries({ queries: sources.filter((group) => group.id === "bilibili").flatMap((group) => group.accounts.map((account) => foldersQuery(account.id))) });
+  useQueries({ queries: sources.filter((group) => group.hasFolders ?? sourceHasFolders(group.id)).flatMap((group) => group.accounts.map((account) => foldersQuery(account.id))) });
   useEffect(() => { if (sourcesQuery.data) reconcileLibraryScope(sourcesQuery.data); }, [sourcesQuery.data]);
   useQuery({
     queryKey: ["account-session", filters.scope.accountId ?? ""],
@@ -73,7 +74,7 @@ export function LibraryPage({ scrolled, onAddAccount, onLogin }: { scrolled: boo
     // Focus returns to the card that opened the viewer without moving the grid.
     if (from) requestAnimationFrame(() => (document.querySelector(`[data-entry="${from.kind}:${CSS.escape(from.id)}"]`) as HTMLElement | null)?.focus({ preventScroll: true }));
   }, [viewer]);
-  const kinds = [...new Set(sources.filter((s) => !filters.scope.source || s.id === filters.scope.source).flatMap((s) => s.kinds))];
+  const kinds = visibleListKinds(sources, filters.scope);
   useEffect(() => { if (kinds.length && !kinds.includes(filters.kind)) setLibraryFilters({ kind: kinds[0] }); }, [kinds.join(","), filters.kind]);
   const syncAccount = filters.scope.accountId ?? sources.flatMap((g) => g.accounts).find((account) => account.active)?.id ?? filters.syncAccountId ?? sources.flatMap((g) => g.accounts)[0]?.id;
   const accountStates = states.filter((s) => s.accountId === syncAccount && s.kind !== "cover");

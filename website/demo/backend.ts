@@ -59,6 +59,33 @@ function filtered(q: Query) {
       : result;
 }
 export const Library = {
+  sources: async () => [
+    {
+      id: "douyin",
+      lists: [
+        { kind: "like", role: "like", hasFolders: false },
+        { kind: "favorite", role: "favorite", hasFolders: false },
+        { kind: "music", role: "other", hasFolders: false },
+      ],
+      actions: ["like", "favorite"],
+      videoActions: ["like", "favorite"],
+      galleryActions: ["like", "favorite"],
+      likeIcon: "heart",
+      folderPicker: false,
+    },
+    {
+      id: "bilibili",
+      lists: [
+        { kind: "favorite", role: "favorite", hasFolders: true },
+        { kind: "watch_later", role: "queue", hasFolders: false },
+      ],
+      actions: ["favorite", "watch_later"],
+      videoActions: ["favorite", "watch_later"],
+      galleryActions: ["favorite"],
+      likeIcon: "thumbs_up",
+      folderPicker: true,
+    },
+  ],
   folders: async (_accountId: string) => [],
   async list(q: Query) {
     const all = filtered(q);

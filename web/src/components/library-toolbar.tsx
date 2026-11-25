@@ -5,6 +5,7 @@ import { LibraryFilterMenu, LibraryFolders, LibrarySearch, LibrarySort } from "@
 import { SyncPill, useSyncVisible } from "@/components/sync-pill";
 import { ProgressLine } from "@/components/progress-line";
 import { useLibraryFilters } from "@/lib/library-filters";
+import { sourceHasFolders } from "@/lib/source-capabilities";
 import type { LibraryCounts, ListKind, SourceGroup, SyncState } from "@/lib/library";
 export function LibraryToolbar({ sources, kinds, counts, state, states, scrolled, onAddAccount, onLogin }: {
   sources: SourceGroup[]; kinds: ListKind[]; counts: LibraryCounts; state?: SyncState; states: SyncState[]; scrolled: boolean; onAddAccount: (source: "douyin" | "bilibili") => void; onLogin: (accountId: string) => void;
@@ -15,7 +16,8 @@ export function LibraryToolbar({ sources, kinds, counts, state, states, scrolled
   const visible = useSyncVisible(state);
   const narrow = layout.width < 640;
   const { scope, kind } = useLibraryFilters();
-  const folderFilter = kind === "favorite" && !!scope.accountId && sources.some((source) => source.id === "bilibili" && source.accounts.some((account) => account.id === scope.accountId));
+  const activeSource = scope.accountId ? sources.find((source) => source.accounts.some((account) => account.id === scope.accountId))?.id : undefined;
+  const folderFilter = !!scope.accountId && sourceHasFolders(activeSource, kind);
   const filtersCombined = narrow || (searchExpanded && layout.width < 880);
   useEffect(() => {
     const element = toolbar.current;
