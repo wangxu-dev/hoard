@@ -62,6 +62,29 @@ export interface GridGeometry { columns: number; rowHeight: number; scrollMargin
 type Slot = LibraryEntry | undefined;
 interface GridCache { items: Slot[]; total: number; shift: number; version: number; checkedAt: number }
 const gridScroll = new Map<string, number>();
+// Delay the dimmed transition state so fast local SQLite filter/folder switches never flicker.
+const PENDING_DELAY_MS = 150;
+
+export function gridFilterKey(scope: Scope, kind: ListKind, type: WorkType, query: string, sort: SortKey) {
+  return JSON.stringify([scope.accountId, scope.source, scope.folderId, kind, type, query, sort]);
+}
+
+export function prefetchGridFirstPage({ scope, kind, type, query, sort, version }: {
+  scope: Scope; kind: ListKind; type: WorkType; query: string; sort: SortKey; version: number;
+}) {
+  const filterKey = gridFilterKey(scope, kind, type, query, sort);
+  const existing = queryClient.getQueryData<GridCache>(queryKeys.grid(filterKey));
+  if (existing && existing.version === version && Date.now() - existing.checkedAt <= 30_000) return;
+  void queryClient.fetchQuery({
+    queryKey: ["grid-page", filterKey, version, 0, PAGE],
+    queryFn: () => getLibrarySource().list({ scope, kind, type: kind === "music" ? "all" : type, query, sort, offset: 0, limit: PAGE }),
+    staleTime: REFETCH_AFTER,
+    gcTime: 30_000,
+  }).then((page) => {
+    const next = place([], new Map(), 0, page.items);
+    queryClient.setQueryData<GridCache>(queryKeys.grid(filterKey), { items: next, total: page.total, shift: 0, version, checkedAt: Date.now() });
+  }).catch(() => undefined);
+}
 // The last request to show the playing sound that a grid handled, across mounts.
 let handledLocate = 0;
 // The sticky toolbar above and the music player below cover part of the viewport.
@@ -122,7 +145,7 @@ function place(old: Slot[], where: Map<string, number>, offset: number, incoming
 
 export const LibraryGrid = memo(function LibraryGrid({ scope, kind, type, query, sort, version, syncing, onOpen, onItemsChange, onTotalChange, onGeometry }: { scope: Scope; kind: ListKind; type: WorkType; query: string; sort: SortKey; version: number; syncing: boolean; onOpen: (entry: LibraryEntry) => void; onItemsChange: (items: (LibraryEntry | undefined)[]) => void; onGeometry?: (geometry: GridGeometry) => void; onTotalChange: (total: number) => void }) {
   const { t } = useTranslation("library");
-  const filterKey = JSON.stringify([scope.accountId, scope.source, scope.folderId, kind, type, query, sort]);
+  const filterKey = gridFilterKey(scope, kind, type, query, sort);
   const sourcesQuery = useQuery({ queryKey: queryKeys.sources, queryFn: () => getLibrarySource().sources(), staleTime: 60_000 });
   const accountsContext = useMemo(() => ({ sources: sourcesQuery.data ?? [], scope, kind }), [sourcesQuery.data, scope, kind]);
   const [cached] = useState(() => queryClient.getQueryData<GridCache>(queryKeys.grid(filterKey)));
@@ -157,27 +180,39 @@ export const LibraryGrid = memo(function LibraryGrid({ scope, kind, type, query,
   // A new list, or one whose positions moved, loads its pages afresh.
   const resetPages = (next: Slot[]) => { where.current = indexIds(next); inflight.current.clear(); fetchedAt.current.clear(); };
   const lastRetry = useRef(retry);
-  // A filter change keeps the current grid dimmed until the new list and its first covers are ready.
-  // A list loaded before shows at once from the cache and only checks for new items.
+  // A filter change keeps the current grid stable until the new list arrives, only dimming
+  // if the fetch takes noticeably long. A cached list swaps in synchronously with zero flash.
   useEffect(() => {
     const id = ++request.current;
     const forced = lastRetry.current !== retry;
     lastRetry.current = retry;
     const known = forced ? undefined : queryClient.getQueryData<GridCache>(queryKeys.grid(filterKey));
     if (known) {
-      if (loaded.current !== known.items) { resetPages(known.items); apply(known.items, known.total, known.shift); }
+      if (loaded.current !== known.items || totalRef.current !== known.total || shiftRef.current !== known.shift) {
+        resetPages(known.items);
+        apply(known.items, known.total, known.shift);
+      }
       setLoading(false); setPending(false);
       if (known.version !== version || Date.now() - known.checkedAt > 30_000) refreshHead(id);
       return;
     }
-    setLoading(true); setPending(true);
+    setLoading(true);
+    const pendingTimer = window.setTimeout(() => {
+      if (id === request.current) setPending(true);
+    }, PENDING_DELAY_MS);
     fetchPage(0, PAGE).then((page) => {
       if (id !== request.current) return;
       resetPages([]);
       apply(place([], where.current, 0, page.items), page.total, 0);
       fetchedAt.current.set(0, performance.now());
+      const el = scroller();
+      if (el) el.scrollTop = gridScroll.get(filterKey) ?? 0;
     }).catch(() => { if (id === request.current) { setError(true); setSettled(true); } })
-      .finally(() => { if (id === request.current) { setLoading(false); setPending(false); } });
+      .finally(() => {
+        window.clearTimeout(pendingTimer);
+        if (id === request.current) { setLoading(false); setPending(false); }
+      });
+    return () => { window.clearTimeout(pendingTimer); };
   }, [filterKey, retry]);
   useEffect(() => () => { request.current++; }, []);
   // Items a sync adds ahead of the loaded ones. Near the top they slide in at once;
@@ -290,14 +325,14 @@ export const LibraryGrid = memo(function LibraryGrid({ scope, kind, type, query,
   const overscan = leaping ? 1 : fullOverscan;
   const virtualizer = useVirtualizer({ count: rows, getScrollElement: scroller, estimateSize: () => rowHeight, overscan, scrollMargin });
   useEffect(() => { virtualizer.measure(); }, [rowHeight]);
-  // Returning to the page puts the reader back where they were in this list.
-  const restoreScroll = useRef(!!cached);
+  // Returning to a cached list puts the reader back where they were immediately;
+  // uncached lists restore/reset scroll when their first page resolves.
   useLayoutEffect(() => {
     const el = scroller();
     if (!el) return;
-    const top = restoreScroll.current ? gridScroll.get(filterKey) : undefined;
-    restoreScroll.current = false;
-    if (top !== undefined) el.scrollTop = top;
+    if (queryClient.getQueryData<GridCache>(queryKeys.grid(filterKey))) {
+      el.scrollTop = gridScroll.get(filterKey) ?? 0;
+    }
     return () => { gridScroll.set(filterKey, el.scrollTop); };
   }, [filterKey, host]);
   const music = useMusic();
