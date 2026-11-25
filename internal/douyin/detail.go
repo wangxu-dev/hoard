@@ -1,6 +1,7 @@
 package douyin
 
 import (
+	"bytes"
 	"encoding/json"
 	"regexp"
 	"strconv"
@@ -178,6 +179,35 @@ func ParseDetail(reply PageReply) Detail {
 		out.Favorited = num(json.Number(strings.Trim(string(raw.CollectStat), `"`))) > 0
 	}
 	return out
+}
+
+// MusicDetail is the playable metadata returned by the music detail endpoint.
+type MusicDetail struct {
+	Class ResponseClass
+	Music Music
+}
+
+// ParseMusicDetail parses a music detail reply and extracts playable metadata.
+func ParseMusicDetail(reply PageReply) MusicDetail {
+	obj, class, _ := classify(OpMusicDetail, reply)
+	if class != ResponseOK {
+		return MusicDetail{Class: class}
+	}
+	body := obj["music_info"]
+	if len(body) == 0 || string(body) == "null" {
+		return MusicDetail{Class: ResponseAPIRejected}
+	}
+	var raw rawMusic
+	dec := json.NewDecoder(bytes.NewReader(body))
+	dec.UseNumber()
+	if err := dec.Decode(&raw); err != nil {
+		return MusicDetail{Class: ResponseAPIRejected}
+	}
+	music := raw.music()
+	if music.PlayURL == "" {
+		return MusicDetail{Class: ResponseAPIRejected}
+	}
+	return MusicDetail{Class: ResponseOK, Music: music}
 }
 
 // withheldReason maps Douyin's message for a withheld item to a stable code.

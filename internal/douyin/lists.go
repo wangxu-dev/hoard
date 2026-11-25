@@ -133,15 +133,47 @@ type rawAweme struct {
 }
 
 type rawMusic struct {
-	ID          json.Number `json:"id"`
-	IDStr       string      `json:"id_str"`
-	Title       string      `json:"title"`
-	Author      string      `json:"author"`
-	OwnerName   string      `json:"owner_nickname"`
-	Duration    json.Number `json:"duration"`
-	CoverMedium *urlList    `json:"cover_medium"`
-	CoverThumb  *urlList    `json:"cover_thumb"`
-	PlayURL     *urlList    `json:"play_url"`
+	ID             json.Number `json:"id"`
+	IDStr          string      `json:"id_str"`
+	Title          string      `json:"title"`
+	Author         string      `json:"author"`
+	OwnerName      string      `json:"owner_nickname"`
+	Duration       json.Number `json:"duration"`
+	CoverMedium    *urlList    `json:"cover_medium"`
+	CoverThumb     *urlList    `json:"cover_thumb"`
+	PlayURL        *urlList    `json:"play_url"`
+	MatchedPGCSong *struct {
+		PlayURL *urlList `json:"play_url"`
+	} `json:"matched_pgc_sound"`
+}
+
+func (m rawMusic) music() Music {
+	id := m.IDStr
+	if id == "" {
+		id = m.ID.String()
+	}
+	author := m.Author
+	if author == "" {
+		author = m.OwnerName
+	}
+	cover := m.CoverMedium.first()
+	if cover == "" {
+		cover = m.CoverThumb.first()
+	}
+	covers := append(m.CoverMedium.all(), m.CoverThumb.all()...)
+	playURL := m.PlayURL.first()
+	if playURL == "" && m.MatchedPGCSong != nil {
+		playURL = m.MatchedPGCSong.PlayURL.first()
+	}
+	return Music{
+		ID:         id,
+		Title:      m.Title,
+		Author:     author,
+		DurationMS: int(num(m.Duration)) * 1000,
+		Cover:      cover,
+		Covers:     covers,
+		PlayURL:    playURL,
+	}
 }
 
 type rawFolder struct {
@@ -378,23 +410,11 @@ func ParseList(op Operation, reply PageReply) ListPage {
 		}
 		page.Received = len(list)
 		for _, m := range list {
-			id := m.IDStr
-			if id == "" {
-				id = m.ID.String()
-			}
-			if id == "" || id == "0" {
+			item := m.music()
+			if item.ID == "" || item.ID == "0" {
 				continue
 			}
-			author := m.Author
-			if author == "" {
-				author = m.OwnerName
-			}
-			cover := m.CoverMedium.first()
-			if cover == "" {
-				cover = m.CoverThumb.first()
-			}
-			covers := append(m.CoverMedium.all(), m.CoverThumb.all()...)
-			page.Musics = append(page.Musics, Music{ID: id, Title: m.Title, Author: author, DurationMS: int(num(m.Duration)) * 1000, Cover: cover, Covers: covers, PlayURL: m.PlayURL.first()})
+			page.Musics = append(page.Musics, item)
 		}
 		return page
 	}
