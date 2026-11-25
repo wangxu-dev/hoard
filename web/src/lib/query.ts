@@ -1,5 +1,6 @@
 import { QueryClient, queryOptions } from "@tanstack/react-query";
 import { libraryScope } from "./library-filters";
+import { mediaScopeAccount } from "./media-key";
 import { getLibrarySource, type LibraryEntry, type MediaResult, type Scope } from "./library";
 
 /** One client for the whole app, so data outlives the page that asked for it. */
@@ -40,7 +41,7 @@ function mediaFreshness(media: MediaResult | undefined) {
 
 /** mediaQuery resolves the playable media of one item. */
 export function mediaQuery(entry: Pick<LibraryEntry, "kind" | "id">, full = false, partId?: string) {
-  const accountId = libraryScope().accountId ?? "";
+  const accountId = mediaScopeAccount(entry.kind, libraryScope().accountId);
   return queryOptions({
     queryKey: queryKeys.media(entry.kind, entry.id, partId, accountId),
     queryFn: () => getLibrarySource().media(entry.kind, entry.id, full, partId, accountId),
@@ -52,7 +53,7 @@ export function mediaQuery(entry: Pick<LibraryEntry, "kind" | "id">, full = fals
 
 /** refreshMedia asks for new play URLs and replaces the cached ones. */
 export async function refreshMedia(entry: Pick<LibraryEntry, "kind" | "id">, partId?: string): Promise<MediaResult> {
-  const accountId = libraryScope().accountId ?? "";
+  const accountId = mediaScopeAccount(entry.kind, libraryScope().accountId);
   const media = await getLibrarySource().media(entry.kind, entry.id, true, partId, accountId);
   queryClient.setQueryData(queryKeys.media(entry.kind, entry.id, partId, accountId), media);
   return media;
