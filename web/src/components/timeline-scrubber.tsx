@@ -28,23 +28,26 @@ const SNAP = 4;
 /** A month's place in the grid (top and bottom in grid pixels) and on the track (y and h). */
 interface Segment { month: TimelineMonth; top: number; bottom: number; y: number; h: number; year: boolean; dot: boolean }
 
-const scroller = () => document.querySelector<HTMLElement>("[data-testid=main-scroll]");
-const toolbar = () => document.querySelector<HTMLElement>("[data-testid=library-toolbar]");
-
 /** TimelineScrubber is the month rail beside the grid: it shows where the reader is and jumps anywhere. */
 export function TimelineScrubber({ months, geometry, active }: { months: TimelineMonth[]; geometry: GridGeometry | null; active: boolean }) {
   const { t, i18n } = useTranslation("library");
   const root = useRef<HTMLDivElement>(null);
   const indicator = useRef<HTMLDivElement>(null);
+  // Scope DOM lookups to this page surface so AnimatePresence crossfades never
+  // bind to an outgoing page's main-scroll container.
+  const scroller = () => root.current?.closest<HTMLElement>("[data-testid=main-scroll]") ?? null;
+  const toolbar = () => scroller()?.querySelector<HTMLElement>("[data-testid=library-toolbar]") ?? null;
   // The rail sits below the sticky toolbar and fills the rest of the scroll viewport.
   const [frame, setFrame] = useState({ inset: 0, height: 0 });
   useEffect(() => {
     const el = scroller(), bar = toolbar();
     if (!el) return;
-    const measure = () => setFrame((old) => {
-      const next = { inset: bar?.offsetHeight ?? 0, height: el.clientHeight - (bar?.offsetHeight ?? 0) };
-      return old.inset === next.inset && old.height === next.height ? old : next;
-    });
+    const measure = () => {
+      if (!el.clientHeight) return;
+      const inset = bar?.offsetHeight ?? 0;
+      const next = { inset, height: Math.max(0, el.clientHeight - inset) };
+      setFrame((old) => (old.inset === next.inset && old.height === next.height ? old : next));
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
