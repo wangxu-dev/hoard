@@ -9,7 +9,7 @@
     "en": "English"
   },
   "app": {
-    "description": "版本 {{version}} · MIT"
+    "description": "版本 {{version}} · AGPL-3.0"
   },
   "github": "GitHub",
   "issues": "问题反馈",
