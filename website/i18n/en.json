@@ -69,7 +69,7 @@
   "download": {
     "eyebrow": "A NEW HOME FOR YOUR FAVORITES",
     "title": "Download Hoard",
-    "description": "MIT licensed. Contributions and feedback are welcome.",
+    "description": "AGPL-3.0 licensed. Contributions and feedback are welcome.",
     "mac": "macOS",
     "windows": "Windows",
     "linux": "Linux",
@@ -86,7 +86,7 @@
     "items": [
       {
         "q": "Is Hoard free?",
-        "a": "Yes. Hoard is open source under the MIT license. Use it, explore the code, report an issue or contribute."
+        "a": "Yes. Hoard is open source under the AGPL-3.0 license. Use it, explore the code, report an issue or contribute."
       },
       {
         "q": "Where are my accounts and data stored?",
@@ -101,7 +101,7 @@
   "footer": {
     "tagline": "Keep what you love within reach.",
     "privacy": "Privacy & data",
-    "license": "MIT license",
+    "license": "AGPL-3.0 license",
     "issues": "Report an issue"
   },
   "privacy": {

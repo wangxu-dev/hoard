@@ -69,7 +69,7 @@
   "download": {
     "eyebrow": "给收藏，一个新的入口",
     "title": "免费下载",
-    "description": "MIT 开源，欢迎使用、反馈与贡献。",
+    "description": "AGPL-3.0 开源，欢迎使用、反馈与贡献。",
     "mac": "macOS",
     "windows": "Windows",
     "linux": "Linux",
@@ -86,7 +86,7 @@
     "items": [
       {
         "q": "Hoard 可以免费使用吗？",
-        "a": "可以。Hoard 采用 MIT 开源许可证，欢迎使用、查看源码、反馈问题与贡献代码。"
+        "a": "可以。Hoard 采用 AGPL-3.0 开源许可证，欢迎使用、查看源码、反馈问题与贡献代码。"
       },
       {
         "q": "我的账号和数据存在哪里？",
@@ -101,7 +101,7 @@
   "footer": {
     "tagline": "把喜欢，留给下一次相遇。",
     "privacy": "隐私与数据",
-    "license": "MIT 许可证",
+    "license": "AGPL-3.0 许可证",
     "issues": "反馈问题"
   },
   "privacy": {
